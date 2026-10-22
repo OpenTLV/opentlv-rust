@@ -1,0 +1,836 @@
+{
+  "schema": 1,
+  "issue": "https://github.com/OpenTLV/opentlv-rust/issues/2",
+  "date": "2026-10-22",
+  "core_lock": {
+    "schema": 1,
+    "repository": "OpenTLV/opentlv",
+    "version": "0.7.1",
+    "commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+    "release_tag": null,
+    "allow_verified_source": true
+  },
+  "import_commit": "95d6299099af7a7d774ed89ee223f2cda5035aa9",
+  "environments": {
+    "windows": {
+      "os": "Windows 11 Enterprise 10.0.26200 x64",
+      "rust": "1.98.1 (x86_64-pc-windows-msvc)",
+      "cmake": "3.31.7",
+      "generator": "Visual Studio 17 2022",
+      "c_compiler": "MSVC 19.44.35222.0",
+      "git": "2.49.0.windows.1",
+      "python": "3.11.4",
+      "rustflags": "-D warnings except cargo doc",
+      "target_dirs": "fresh per configuration under <repo>/build/2/"
+    },
+    "linux": {
+      "os": "WSL2 Ubuntu 24.04 (Linux 5.15.153.1-microsoft-standard-WSL2 x86_64)",
+      "rust": "1.98.1 (x86_64-unknown-linux-gnu), project-local rustup under <repo>/build/2/linux-rust",
+      "cmake": "3.28.3",
+      "c_compiler": "GCC 13.3.0",
+      "libc": "glibc 2.39",
+      "git": "2.43.0",
+      "python": "3.12.3",
+      "rustflags": "-D warnings",
+      "workspace": "copy of bindings/rust in the Linux home directory, fresh target directory",
+      "core_c_flags": "C_FLAGS = -O3 -DNDEBUG -fPIC -fvisibility=hidden"
+    }
+  },
+  "selections": {
+    "windows-pinned-git": {
+      "mode": "pinned-git",
+      "verified": false,
+      "repository": "OpenTLV/opentlv",
+      "version": "0.7.1",
+      "commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+      "dirty": false,
+      "locked_version": "0.7.1",
+      "locked_commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+      "release_tag": null,
+      "source_dir": "<repo>\\build\\2\\p\\debug\\build\\opentlv-sys-<hash>\\out\\core\\source",
+      "lib_dir": null,
+      "include_dir": null
+    },
+    "windows-local-source": {
+      "mode": "local-source",
+      "verified": false,
+      "repository": "OpenTLV/opentlv",
+      "version": "0.7.1",
+      "commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+      "dirty": false,
+      "locked_version": "0.7.1",
+      "locked_commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+      "release_tag": null,
+      "source_dir": "<sibling Core>",
+      "lib_dir": null,
+      "include_dir": null
+    },
+    "windows-copy-outside-repository": {
+      "mode": "pinned-git",
+      "verified": false,
+      "repository": "OpenTLV/opentlv",
+      "version": "0.7.1",
+      "commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+      "dirty": false,
+      "locked_version": "0.7.1",
+      "locked_commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+      "release_tag": null,
+      "source_dir": "<repo>\\build\\2\\c\\debug\\build\\opentlv-sys-<hash>\\out\\core\\source",
+      "lib_dir": null,
+      "include_dir": null
+    },
+    "linux-pinned-git": {
+      "mode": "pinned-git",
+      "verified": false,
+      "repository": "OpenTLV/opentlv",
+      "version": "0.7.1",
+      "commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+      "dirty": false,
+      "locked_version": "0.7.1",
+      "locked_commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+      "release_tag": null,
+      "source_dir": "<linux target>/debug/build/opentlv-sys-<hash>/out/core/source",
+      "lib_dir": null,
+      "include_dir": null
+    }
+  },
+  "dependency_tests": {
+    "rust": {
+      "command": "cargo test -p opentlv-sys --test core_dependency",
+      "passed": 15,
+      "log": "build/2/logs/core-dependency-tests.log",
+      "log_sha256": "05c8d88971f22ef3212a3d78d5ff608c8105fcee3e970c3bc03f94c3c6128465"
+    },
+    "python": {
+      "command": "python -B -m unittest discover -s tests",
+      "passed": 29,
+      "log": "build/2/logs/python-tests.log",
+      "log_sha256": "9f196e243fe2be1abb736722059b64e258a3ff9a8f5d007b32134da28063267a"
+    }
+  },
+  "migration_verification": {
+    "command": "python -B scripts/verify_migration.py --core ../opentlv --import-ref 95d6299099af7a7d774ed89ee223f2cda5035aa9",
+    "exit": 0,
+    "files": 69,
+    "log": "build/2/logs/verify-migration.log",
+    "log_sha256": "5c10c861e13bde9ac02081a87bf987e2f6b4a868a7414f3a9d98fb2c3ad9a73c",
+    "working_tree_without_import_ref": "rejected: Modified imported file: bindings/rust/opentlv-sys/build.rs",
+    "pre_import_commit_c03fa6930a5e79948dccdd8ab57bef16f7818130": "rejected"
+  },
+  "windows_steps": [
+    {
+      "name": "pinned-fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 0.8,
+      "log": "build/2/logs/pinned-fmt.log",
+      "log_sha256": "c36ba1028c621eb5861ea8e2f3ea2f630b6b379e28fd7309ff49c30589e80440"
+    },
+    {
+      "name": "pinned-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 31.9,
+      "log": "build/2/logs/pinned-clippy.log",
+      "log_sha256": "dca554809503bb9e0c88b46f9a3aabe750e68fce525ce3bfed63ebdae0456b2c"
+    },
+    {
+      "name": "pinned-build",
+      "command": [
+        "cargo",
+        "build",
+        "--workspace",
+        "--all-targets"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 43.3,
+      "log": "build/2/logs/pinned-build.log",
+      "log_sha256": "5be2226452b21d2375f638d2c32290fa168438fe3dbe8abd58d0599181df0fda"
+    },
+    {
+      "name": "pinned-test",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 45.4,
+      "log": "build/2/logs/pinned-test.log",
+      "log_sha256": "42af84ce783fb22c08a7860d819013e0d5f0294574bbaf5784666adafaed4f37",
+      "tests": {
+        "passed": 217,
+        "failed": 0,
+        "ignored": 0,
+        "targets": 25
+      }
+    },
+    {
+      "name": "pinned-example-quick_start",
+      "command": [
+        "cargo",
+        "run",
+        "-q",
+        "-p",
+        "opentlv",
+        "--example",
+        "quick_start"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 28.3,
+      "log": "build/2/logs/pinned-example-quick_start.log",
+      "log_sha256": "e16098957eceaa89f3a18e2a2b45ba232dacc784d95ee9a0f45b912e860cc7ff"
+    },
+    {
+      "name": "pinned-example-parse",
+      "command": [
+        "cargo",
+        "run",
+        "-q",
+        "-p",
+        "opentlv",
+        "--example",
+        "parse"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 3.9,
+      "log": "build/2/logs/pinned-example-parse.log",
+      "log_sha256": "158d27e67d3446d5731941f914d0312d620eb1ea677cdfa834e3f725f9bf9793"
+    },
+    {
+      "name": "pinned-example-reader",
+      "command": [
+        "cargo",
+        "run",
+        "-q",
+        "-p",
+        "opentlv",
+        "--example",
+        "reader"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 1.0,
+      "log": "build/2/logs/pinned-example-reader.log",
+      "log_sha256": "43e39572bd5b0de274acdfbaf7138f5beea132eefa0e674b73fb081e22f457c0"
+    },
+    {
+      "name": "pinned-example-validate",
+      "command": [
+        "cargo",
+        "run",
+        "-q",
+        "-p",
+        "opentlv",
+        "--example",
+        "validate"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 1.2,
+      "log": "build/2/logs/pinned-example-validate.log",
+      "log_sha256": "15061a1b89a5a72f9c4ca2cc642531a1864255bc22ee1fbc234321ae2e9d481e"
+    },
+    {
+      "name": "pinned-example-write",
+      "command": [
+        "cargo",
+        "run",
+        "-q",
+        "-p",
+        "opentlv",
+        "--example",
+        "write"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 1.1,
+      "log": "build/2/logs/pinned-example-write.log",
+      "log_sha256": "296e331079d0aae133527db34097c8616fc38ed1e6cf9daa413e7b1476bd8174"
+    },
+    {
+      "name": "pinned-example-writer",
+      "command": [
+        "cargo",
+        "run",
+        "-q",
+        "-p",
+        "opentlv",
+        "--example",
+        "writer"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 1.1,
+      "log": "build/2/logs/pinned-example-writer.log",
+      "log_sha256": "470ca01d122f4dcdf8f09a752d683eded07b8bc9707ed1d5a684835b3195a7aa"
+    },
+    {
+      "name": "pinned-query-corpus",
+      "command": [
+        "C:\\Users\\Cingel.Marek\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+        "-B",
+        "<repo>\\build\\2\\p\\debug\\build\\opentlv-sys-1c539f73b248c1c2\\out\\core\\source\\tests\\query\\run.py",
+        "--native",
+        "<repo>\\build\\2\\p\\debug\\examples\\query_conformance",
+        "--property-cases",
+        "0"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 16.8,
+      "log": "build/2/logs/pinned-query-corpus.log",
+      "log_sha256": "5ac0a9788668814f7437453356fa880d4fd11545d7d1a0042680c5da348ddd25"
+    },
+    {
+      "name": "pinned-rebuild",
+      "command": [
+        "cargo",
+        "build",
+        "--workspace",
+        "--all-targets",
+        "-v"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 2.1,
+      "log": "build/2/logs/pinned-rebuild.log",
+      "log_sha256": "590e673a178d18bce84f599d6558bac392de93e838b68f3ee2270d611859c8e4"
+    },
+    {
+      "name": "nodefault-build",
+      "command": [
+        "cargo",
+        "build",
+        "--workspace",
+        "--all-targets",
+        "--no-default-features"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 41.9,
+      "log": "build/2/logs/nodefault-build.log",
+      "log_sha256": "75924b9c2fcd7bd89efef66fd30587291b5d8826b2d2ebe8a71254c570c10f27"
+    },
+    {
+      "name": "nodefault-test",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--no-default-features"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 43.5,
+      "log": "build/2/logs/nodefault-test.log",
+      "log_sha256": "a0c7d7ec3415488394486725547276f7ea7b96a3d74be32bdd82afce88f57fe0",
+      "tests": {
+        "passed": 201,
+        "failed": 0,
+        "ignored": 0,
+        "targets": 25
+      }
+    },
+    {
+      "name": "local-build",
+      "command": [
+        "cargo",
+        "build",
+        "--workspace",
+        "--all-targets"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {
+        "OPENTLV_CORE_SOURCE": "<sibling Core>"
+      },
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 31.7,
+      "log": "build/2/logs/local-build.log",
+      "log_sha256": "786f3a92a1ad44f2ff1bdcf4808ef4b89663504f69f8100c987d488e819f58fc"
+    },
+    {
+      "name": "local-test",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {
+        "OPENTLV_CORE_SOURCE": "<sibling Core>"
+      },
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 39.6,
+      "log": "build/2/logs/local-test.log",
+      "log_sha256": "ec39ff64cb92785280eb27b2eb516c0c143ebf2a8b552fc2f0eb505e79bfdae4",
+      "tests": {
+        "passed": 217,
+        "failed": 0,
+        "ignored": 0,
+        "targets": 25
+      }
+    },
+    {
+      "name": "prebuilt-static-configure",
+      "command": [
+        "cmake",
+        "-S",
+        "<repo>\\build\\2\\p\\debug\\build\\opentlv-sys-1c539f73b248c1c2\\out\\core\\source",
+        "-B",
+        "<repo>\\build\\2\\core-static",
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DOPENTLV_READER=ON",
+        "-DOPENTLV_WRITER=ON",
+        "-DOPENTLV_QUERY=ON",
+        "-DOPENTLV_SCHEMA=ON",
+        "-DOPENTLV_CODEC=ON",
+        "-DOPENTLV_DOCUMENT=ON",
+        "-DOPENTLV_NFC=ON",
+        "-DOPENTLV_LLDP=ON",
+        "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
+        "-DOPENTLV_BUILD_SHARED_LIBS=OFF",
+        "-DOPENTLV_BUILD_CXX=OFF",
+        "-DOPENTLV_BUILD_TESTS=OFF",
+        "-DOPENTLV_BUILD_EXAMPLES=OFF",
+        "-DOPENTLV_WARNINGS_AS_ERRORS=OFF"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 6.1,
+      "log": "build/2/logs/prebuilt-static-configure.log",
+      "log_sha256": "562b42008be06fe805f3b45b180d9ddda98941cf1d6ba5ab985903761ab526d3"
+    },
+    {
+      "name": "prebuilt-static-core",
+      "command": [
+        "cmake",
+        "--build",
+        "<repo>\\build\\2\\core-static",
+        "--target",
+        "tlv",
+        "--config",
+        "Release"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 14.9,
+      "log": "build/2/logs/prebuilt-static-core.log",
+      "log_sha256": "04675423f0f993a046b977a337e9f9e9f8f71ce493ff3f61ee72577f3e3af59b"
+    },
+    {
+      "name": "prebuilt-static-test",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {
+        "OPENTLV_LIB_DIR": "<repo>\\build\\2\\core-static\\tlv\\Release",
+        "OPENTLV_LINK_KIND": "static"
+      },
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 59.6,
+      "log": "build/2/logs/prebuilt-static-test.log",
+      "log_sha256": "eaf3c7069ff7c5d5fee6a1bf1691c8bbe084b82e8879906b1ea33fce078c3e44",
+      "tests": {
+        "passed": 217,
+        "failed": 0,
+        "ignored": 0,
+        "targets": 25
+      }
+    },
+    {
+      "name": "prebuilt-static-quick_start",
+      "command": [
+        "cargo",
+        "run",
+        "-q",
+        "-p",
+        "opentlv",
+        "--example",
+        "quick_start"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {
+        "OPENTLV_LIB_DIR": "<repo>\\build\\2\\core-static\\tlv\\Release",
+        "OPENTLV_LINK_KIND": "static"
+      },
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 10.1,
+      "log": "build/2/logs/prebuilt-static-quick_start.log",
+      "log_sha256": "962399e7e1fb9e3c5dff24d6dd25556aa1430e353d4673514848840b4cdc0d3d"
+    },
+    {
+      "name": "prebuilt-dylib-configure",
+      "command": [
+        "cmake",
+        "-S",
+        "<repo>\\build\\2\\p\\debug\\build\\opentlv-sys-1c539f73b248c1c2\\out\\core\\source",
+        "-B",
+        "<repo>\\build\\2\\core-dylib",
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DOPENTLV_READER=ON",
+        "-DOPENTLV_WRITER=ON",
+        "-DOPENTLV_QUERY=ON",
+        "-DOPENTLV_SCHEMA=ON",
+        "-DOPENTLV_CODEC=ON",
+        "-DOPENTLV_DOCUMENT=ON",
+        "-DOPENTLV_NFC=ON",
+        "-DOPENTLV_LLDP=ON",
+        "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
+        "-DOPENTLV_BUILD_SHARED_LIBS=ON",
+        "-DOPENTLV_BUILD_CXX=OFF",
+        "-DOPENTLV_BUILD_TESTS=OFF",
+        "-DOPENTLV_BUILD_EXAMPLES=OFF",
+        "-DOPENTLV_WARNINGS_AS_ERRORS=OFF"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 8.5,
+      "log": "build/2/logs/prebuilt-dylib-configure.log",
+      "log_sha256": "168c24277402756e80f028d587dc97b3248ecf9d8aae2f0fdbfd74c687c4f049"
+    },
+    {
+      "name": "prebuilt-dylib-core",
+      "command": [
+        "cmake",
+        "--build",
+        "<repo>\\build\\2\\core-dylib",
+        "--target",
+        "tlv",
+        "--config",
+        "Release"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 16.5,
+      "log": "build/2/logs/prebuilt-dylib-core.log",
+      "log_sha256": "43818fe5d2c1e61276a175c3fc890dd6c4a785c7fbed956559f8aea6df3cec2a"
+    },
+    {
+      "name": "prebuilt-dylib-test",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {
+        "OPENTLV_LIB_DIR": "<repo>\\build\\2\\core-dylib\\tlv\\Release",
+        "OPENTLV_LINK_KIND": "dylib"
+      },
+      "rustflags": "-D warnings",
+      "exit": 101,
+      "expected_exit": 101,
+      "seconds": 12.8,
+      "log": "build/2/logs/prebuilt-dylib-test.log",
+      "log_sha256": "0e30146af4c4cd17b33e4dfebcbd18a1fb9d94fa553d7b65832e995427f6dc70"
+    },
+    {
+      "name": "prebuilt-dylib-quick_start",
+      "command": [
+        "cargo",
+        "run",
+        "-q",
+        "-p",
+        "opentlv",
+        "--example",
+        "quick_start"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {
+        "OPENTLV_LIB_DIR": "<repo>\\build\\2\\core-dylib\\tlv\\Release",
+        "OPENTLV_LINK_KIND": "dylib"
+      },
+      "rustflags": "-D warnings",
+      "exit": 101,
+      "expected_exit": 101,
+      "seconds": 11.5,
+      "log": "build/2/logs/prebuilt-dylib-quick_start.log",
+      "log_sha256": "ee876e62abf35e05e38e8ea46c4f763924aa9c79f7fdfcc31ed7425523be5b9d"
+    },
+    {
+      "name": "reject-ci-local",
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "opentlv-sys"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {
+        "OPENTLV_CORE_SOURCE": "<sibling Core>",
+        "CI": "true"
+      },
+      "rustflags": "-D warnings",
+      "exit": 101,
+      "expected_exit": 101,
+      "seconds": 2.0,
+      "log": "build/2/logs/reject-ci-local.log",
+      "log_sha256": "c235bb97a564b8cd6f9df4b4bc4895d0d3c39cf0485aa215f561cb9973d7769e"
+    },
+    {
+      "name": "reject-actions-local",
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "opentlv-sys"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {
+        "OPENTLV_CORE_SOURCE": "<sibling Core>",
+        "GITHUB_ACTIONS": "true"
+      },
+      "rustflags": "-D warnings",
+      "exit": 101,
+      "expected_exit": 101,
+      "seconds": 0.2,
+      "log": "build/2/logs/reject-actions-local.log",
+      "log_sha256": "a3bcfa1b017579c65b4ae9d819d261aaf0347000a655de886030da79906359a5"
+    },
+    {
+      "name": "reject-relative-local",
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "opentlv-sys"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {
+        "OPENTLV_CORE_SOURCE": "../opentlv"
+      },
+      "rustflags": "-D warnings",
+      "exit": 101,
+      "expected_exit": 101,
+      "seconds": 0.3,
+      "log": "build/2/logs/reject-relative-local.log",
+      "log_sha256": "2c7d6d8fe018a5204e116a9df1a29f54da3f27c2f733c4ed5c359ab07a47c4a8"
+    },
+    {
+      "name": "reject-require-verified",
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "opentlv-sys"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {
+        "OPENTLV_REQUIRE_VERIFIED_CORE": "1"
+      },
+      "rustflags": "-D warnings",
+      "exit": 101,
+      "expected_exit": 101,
+      "seconds": 0.2,
+      "log": "build/2/logs/reject-require-verified.log",
+      "log_sha256": "20ccdb8dbab35ecbf0b6f76a2d414b781d42c3cdbf934a8c6035f33aeb84b379"
+    },
+    {
+      "name": "reject-locked-release-unverifiable",
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "opentlv-sys"
+      ],
+      "cwd": "<repo>\\build\\2\\release-copy",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 101,
+      "expected_exit": 101,
+      "seconds": 5.8,
+      "log": "build/2/logs/reject-locked-release-unverifiable.log",
+      "log_sha256": "0573e76fe42391a352fbabe2d5a983719736ca57186bc329f73ac31ea8a47a9f"
+    },
+    {
+      "name": "copy-build",
+      "command": [
+        "cargo",
+        "build",
+        "--workspace",
+        "--all-targets"
+      ],
+      "cwd": "<copy outside repository>",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 42.2,
+      "log": "build/2/logs/copy-build.log",
+      "log_sha256": "32e92b5db5a7cf6d731ea2992fc8fc8620bc3914229088debf748ee250bf78da"
+    },
+    {
+      "name": "copy-test",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace"
+      ],
+      "cwd": "<copy outside repository>",
+      "env": {},
+      "rustflags": "-D warnings",
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 46.2,
+      "log": "build/2/logs/copy-test.log",
+      "log_sha256": "53d79069cbe7f28e9a2d138e8ef4e8b0bbe59ad58143d04a089bd2cd209ad8ec",
+      "tests": {
+        "passed": 217,
+        "failed": 0,
+        "ignored": 0,
+        "targets": 25
+      }
+    },
+    {
+      "name": "pinned-doc",
+      "command": [
+        "cargo",
+        "doc",
+        "--workspace",
+        "--no-deps"
+      ],
+      "cwd": "<repo>\\bindings\\rust",
+      "env": {},
+      "rustflags": null,
+      "exit": 0,
+      "expected_exit": 0,
+      "seconds": 28.5,
+      "log": "build/2/logs/pinned-doc.log",
+      "log_sha256": "4ce74633612be706e6bda36ca3f3aa814481e76c5c336b0bf40f50c2bbf07760"
+    }
+  ],
+  "linux_steps": [
+    {
+      "name": "linux-build",
+      "command": "cargo build --workspace --all-targets",
+      "exit": 0,
+      "log": "build/2/logs/linux-build.log",
+      "log_sha256": "81524d7a3ea99f4bff63e7311d184e1c0d2fe206e73b421dd1c8f9f919d4c565"
+    },
+    {
+      "name": "linux-test",
+      "command": "cargo test --workspace",
+      "exit": 0,
+      "log": "build/2/logs/linux-test.log",
+      "log_sha256": "76795ffa9e88c3147433d2242c27116e0c34207cdc427958439d14e0f79142f8",
+      "tests": {
+        "passed": 217,
+        "failed": 0,
+        "ignored": 0,
+        "targets": 25
+      }
+    },
+    {
+      "name": "linux-quick_start",
+      "command": "cargo run -q -p opentlv --example quick_start",
+      "exit": 0,
+      "log": "build/2/logs/linux-quick_start.log",
+      "log_sha256": "d9014c4624844aa5bac314773d6b689ad467fa4e1d1a50a1b8a99d5a95f72ff5"
+    },
+    {
+      "name": "linux-query-corpus",
+      "command": "python3 -B <Core>/tests/query/run.py --native $CARGO_TARGET_DIR/debug/examples/query_conformance --property-cases 0",
+      "exit": 0,
+      "log": "build/2/logs/linux-query-corpus.log",
+      "log_sha256": "654e210c372652a34f3614db267c49a72b7325f45e4b03d108fe88e09466ff49"
+    },
+    {
+      "name": "linux-nodefault-test",
+      "command": "cargo test --workspace --no-default-features",
+      "exit": 0,
+      "log": "build/2/logs/linux-nodefault-test.log",
+      "log_sha256": "255f740da6eea094d6f113e4d5647e5a376778a8fc07bbcd613c850c85851451",
+      "tests": {
+        "passed": 201,
+        "failed": 0,
+        "ignored": 0,
+        "targets": 25
+      }
+    }
+  ]
+}

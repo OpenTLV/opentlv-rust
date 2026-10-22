@@ -5,45 +5,145 @@ library for parsing, encoding, and working with TLV and TLV-like binary formats.
 
 The Rust bindings are being migrated out of Core
 ([migration epic](https://github.com/OpenTLV/opentlv/issues/670)). This
-repository contains the source import described in
-[issue #1](https://github.com/OpenTLV/opentlv-rust/issues/1): the existing Cargo
-workspace, its sources, tests and examples, preserved byte-for-byte from Core.
-Standalone build integration is a follow-up: the imported workspace still
-requires the original Core build tree, so `cargo build` does not work in this
-repository yet. Until then, build and develop the bindings in
+repository contains the Cargo workspace imported from Core in
+[issue #1](https://github.com/OpenTLV/opentlv-rust/issues/1). Since
+[issue #2](https://github.com/OpenTLV/opentlv-rust/issues/2) it builds standalone
+against an explicitly pinned Core dependency. Hosted CI, packaging, layout
+normalization, documentation integration and Core cleanup are later migration
+steps. Until that cleanup, Core keeps its in-tree
 [`bindings/rust`](https://github.com/OpenTLV/opentlv/tree/main/bindings/rust)
-in Core.
+and the workflow that tests it.
 
 ## Layout
 
 | Path | Content |
 | --- | --- |
 | `bindings/rust/` | Cargo workspace with the `opentlv-sys` and `opentlv` crates, their tests and seven examples |
+| `bindings/rust/opentlv-sys/core/` | Core dependency lock, selection module, release verifier and toolchain probe used by `build.rs` |
+| `tests/` | Tests for the release verifier |
 | `docs/guides/rust.md` | Preserved Rust user guide |
 | `docs/development/rust.md` | Preserved Rust developer guide |
 | `docs/migration.md` | Migration baseline, source import and validation results |
 | `docs/migration/` | Source inventory, original CI configuration and validation evidence |
+| `docs/validation/` | Standalone build validation |
 | `scripts/verify_baseline.py` | Verifies the inventory against the pinned Core tree |
 | `scripts/verify_migration.py` | Verifies the imported files against the inventory and the pinned Core tree |
 
 The preserved guides describe the original Core checkout. Their commands
 and links to other Core documents retain that context; they are not standalone
-instructions. Use the pinned originals linked in the
-[migration record](docs/migration.md) for cross-repository documentation links.
+instructions. Use this README to build, and the pinned originals linked in
+the [migration record](docs/migration.md) for cross-repository documentation
+links.
+
+## Building
+
+Requirements: a Rust toolchain (the crates declare 1.70), CMake 3.16 or newer,
+a C99 compiler and Git. On Windows, use the MSVC Rust toolchain with Visual
+Studio. The first build of each configuration downloads Core from GitHub.
+
+```sh
+cd bindings/rust
+cargo build --workspace
+cargo test --workspace
+```
+
+The Cargo features `lldp`, `nfc` and `document` (all on by default) and the
+native linking modes are the same as in Core.
+
+### Core dependency
+
+[`core-artifact.json`](bindings/rust/opentlv-sys/core/core-artifact.json) pins
+Core:
+
+| Field | Value |
+| --- | --- |
+| `version` | `0.7.1` |
+| `commit` | `476f1fbecde6b056419e43c9a6cea4d1ca8df1cf` (`0.7.1-31-g476f1fbe`, the migration source commit) |
+| `release_tag` | `null`: no approved Core release with attested artifacts is locked yet |
+| `allow_verified_source` | `true` |
+
+The `opentlv-sys` build script selects Core before it runs any Core build
+file:
+
+| Mode | Selected when | Verification |
+| --- | --- | --- |
+| `pinned-git` | Default while `release_tag` is `null` | Clones `OpenTLV/opentlv` into `OUT_DIR` once, checks out the locked commit and requires a matching commit, version tag and clean tree. Git commit IDs identify the content; no archive is involved. |
+| `verified-binary` or `verified-source` | `release_tag` is set, or `OPENTLV_REQUIRE_VERIFIED_CORE=1` | [`verified_core.py`](bindings/rust/opentlv-sys/core/verified_core.py) checks the release and that its tag resolves to the locked commit. It verifies the GitHub Artifact Attestations of the manifest, `SHA256SUMS` and every downloaded archive (signer `core-release.yml`, source digest of the locked commit), along with the archive checksums, Core's Full CI evidence and the configuration bound to the source. It uses a static Verified Binary only when it matches the target, the C compiler of a CMake probe, the MSVC runtime or declared Linux PIC and glibc, and the Core components of the enabled Cargo features. Otherwise it uses the Verified Source, if `allow_verified_source` permits. It never falls back to Git. Needs Python 3.11 or newer and an authenticated [GitHub CLI](https://cli.github.com/). |
+| `local-source` | `OPENTLV_CORE_SOURCE` is set | Records the commit, version and dirty state of the local checkout without verifying them, and prints a Cargo warning. Rejected when `CI` or `GITHUB_ACTIONS` is set, or with `OPENTLV_REQUIRE_VERIFIED_CORE`. |
+
+After building Core, or before linking a Verified Binary, the build script
+checks that the public `tlv/version.h` and `tlv/config.h` report the selected
+version, commit and Core components. Each build records its selection in
+`core-selection.json` in the `opentlv-sys` `OUT_DIR`
+(`target/<profile>/build/opentlv-sys-*/out/`).
+
+Core is built in `OUT_DIR` with CMake as before: as a Release static,
+position-independent library without C++, tests, examples or
+warnings-as-errors. Within an `OUT_DIR`, the clone and the Core build are
+reused; Core is rebuilt only when the lock, the selected Core sources or the
+build environment variables change. Cargo configurations with their own
+`OUT_DIR`, such as another profile or feature set, clone and build Core once
+each.
+
+`OPENTLV_LIB_DIR` and `OPENTLV_LINK_KIND` still link a prebuilt library.
+The build script still selects Core for its headers and test data, but does not
+build it, and the prebuilt library is not verified.
+
+The C ABI probe test and the corpus seed replay read the selected Core tree.
+To run the shared Query corpus, use the `tests/query/run.py` of the selected
+Core, given as `source_dir` in `core-selection.json`:
+
+```sh
+python -B <Core>/tests/query/run.py --native target/debug/examples/query_conformance --property-cases 0
+```
+
+To test the dependency selection itself:
+
+```sh
+cd bindings/rust && cargo test -p opentlv-sys --test core_dependency
+python -B -m unittest discover -s tests     # from the repository root
+```
+
+### Local Core development
+
+To build against a local Core checkout, for example the sibling `opentlv`
+checkout of the [workspace](https://github.com/OpenTLV/opentlv-workspace), set
+`OPENTLV_CORE_SOURCE` to the absolute path of its repository root. From
+`bindings/rust`:
+
+```sh
+export OPENTLV_CORE_SOURCE="$(cd ../../../opentlv && pwd)"
+cargo test --workspace
+```
+
+```powershell
+$env:OPENTLV_CORE_SOURCE = (Resolve-Path ../../../opentlv).Path
+cargo test --workspace
+```
+
+Unset the variable to return to the pinned Core. Local builds are for
+development only. To change the Core dependency, update the lock to a new
+approved commit, or to a release once one is published, and record its
+validation.
 
 ## Migration verification
 
 With a sibling Core checkout that contains the recorded commit:
 
 ```sh
-python -B scripts/verify_migration.py --core ../opentlv
+python -B scripts/verify_migration.py --core ../opentlv \
+  --import-ref 95d6299099af7a7d774ed89ee223f2cda5035aa9
 ```
 
 This needs Python 3.11 or newer and Git. It runs the baseline verification,
-then checks every imported file byte-for-byte against its original Git blob
-and rejects missing, extra or modified files in `bindings/rust`. It does not
-build anything. See the [migration record](docs/migration.md) for the baseline
-and imported-source build and test results and known failures.
+then checks every file of the import commit byte-for-byte against its original
+Git blob and rejects missing, extra or modified files in `bindings/rust`. It
+does not build anything. Without `--import-ref` it checks the working tree,
+which no longer matches: the standalone build intentionally changed
+`opentlv-sys/build.rs`, `opentlv-sys/tests/fixed_abi.rs`,
+`opentlv/tests/corpus.rs` and `opentlv/Cargo.toml`, and added files. See the
+[migration record](docs/migration.md) for the baseline and imported-source
+results and the [standalone build validation](docs/validation/standalone-build.md).
 
 ## License
 
