@@ -10,9 +10,12 @@ repository contains the Cargo workspace imported from Core in
 [issue #2](https://github.com/OpenTLV/opentlv-rust/issues/2) it builds standalone
 against an explicitly pinned Core dependency, and since
 [issue #3](https://github.com/OpenTLV/opentlv-rust/issues/3) it has its own
-[PR, Main and Full CI](docs/quality-gates.md). Crate publication, layout
-normalization, documentation integration and Core cleanup are later migration
-steps. Until that cleanup, Core keeps its in-tree
+[PR, Main and Full CI](docs/quality-gates.md). Since
+[issue #4](https://github.com/OpenTLV/opentlv-rust/issues/4) both crates are
+prepared as independent Cargo packages with their own
+[versioning](docs/packaging.md); they are not published yet. Crate
+publication, layout normalization, documentation integration and Core cleanup
+are later migration steps. Until that cleanup, Core keeps its in-tree
 [`bindings/rust`](https://github.com/OpenTLV/opentlv/tree/main/bindings/rust)
 and the workflow that tests it.
 
@@ -21,6 +24,7 @@ and the workflow that tests it.
 | Path | Content |
 | --- | --- |
 | `bindings/rust/` | Cargo workspace with the `opentlv-sys` and `opentlv` crates, their tests and seven examples |
+| `bindings/rust/*/README.md`, `bindings/rust/*/LICENSE` | Package readme and license text of each crate |
 | `bindings/rust/opentlv-sys/core/` | Core dependency lock, selection module, release verifier and toolchain probe used by `build.rs` |
 | `.github/workflows/` | PR, Main and Full CI, source quality and CodeQL |
 | `ci/matrix.json` | CI toolchains, platforms, feature sets and test inventory |
@@ -31,7 +35,8 @@ and the workflow that tests it.
 | `docs/migration.md` | Migration baseline, source import and validation results |
 | `docs/migration/` | Source inventory, original CI configuration and validation evidence |
 | `docs/quality-gates.md` | CI entry points, supported configurations, test ownership and evidence |
-| `docs/validation/` | Standalone build and CI validation |
+| `docs/packaging.md` | Package identities, versioning, Core compatibility and crates.io prerequisites |
+| `docs/validation/` | Standalone build, CI and packaging validation |
 | `scripts/verify_baseline.py` | Verifies the inventory against the pinned Core tree |
 | `scripts/verify_migration.py` | Verifies the imported files against the inventory and the pinned Core tree |
 

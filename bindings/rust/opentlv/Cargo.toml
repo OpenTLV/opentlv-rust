@@ -6,6 +6,8 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+keywords.workspace = true
+categories = ["parser-implementations", "encoding", "api-bindings"]
 build = "build.rs"
 
 [features]
@@ -15,4 +17,4 @@ nfc = ["opentlv-sys/nfc"]
 document = ["opentlv-sys/document"]
 
 [dependencies]
-opentlv-sys = { version = "0.7.1", path = "../opentlv-sys", default-features = false }
+opentlv-sys = { version = "=0.7.1", path = "../opentlv-sys", default-features = false }
