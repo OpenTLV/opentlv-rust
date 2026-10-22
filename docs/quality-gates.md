@@ -8,14 +8,75 @@ Core's in-tree Rust workflow keeps testing its own copy until the Core cleanup.
 | Entry point | Trigger | Required work |
 | --- | --- | --- |
 | `rust-pr.yml` | Pull request to `main` | Linux with pinned stable Rust: rustfmt, Clippy, build, the default and reduced-feature test suites (including the C ABI probe), examples, the shared Query corpus, Rustdoc, Core provenance, infrastructure regressions and CodeQL |
-| `rust-main.yml` | Push to `main` | Linux with pinned stable Rust: workspace build, `quick_start` smoke and Core provenance |
+| `rust-main.yml` | Push to `main` | Linux with pinned stable Rust: workspace build, `quick_start` smoke and Core provenance, then documentation change detection |
 | `rust-full.yml` | Manual dispatch or `workflow_call` | All seven configurations below, Cargo packaging, prebuilt static and shared linking, AddressSanitizer, source quality and CodeQL |
+| `docs-notify.yml` | Successful `Rust Main CI` on `main` | [Documentation portal notification](#documentation-portal-notifications) when documentation inputs changed |
 
 PR has no path filters, so a documentation-only pull request still produces its
 required check. Feature branch pushes do not duplicate PR builds. Main does not
 repeat the matrix or source analysis. Full has no push, tag or schedule trigger
 and never publishes. A failed configuration does not cancel the remaining Full
 matrix. PR/Main superseded runs can be cancelled.
+
+## Documentation portal notifications
+
+The [OpenTLV documentation portal](https://github.com/OpenTLV/opentlv-docs)
+assembles the Rust manuals from this repository's `docs/` directory at a
+reviewed, pinned commit. After the checks of `Rust Main CI` pass on the official
+repository's `main`, its `docs_changes` job records whether documentation
+inputs changed. It compares against the most recent earlier successful Main
+run, so cancelled or failed pushes do not lose documentation changes. If no
+earlier successful run is available in the latest 100 successful runs, it
+checks the complete source tree. Detection includes `docs/`,
+`opentlv/examples/`, the root README and changelog, the crate READMEs, and
+notification workflow/tool changes. Unrelated implementation changes produce a
+record with `changed: false`.
+
+`Notify Rust documentation portal` runs after Main finishes successfully. It
+downloads only `docs-notification-<producer attempt>`, validates its repository,
+commit, run and attempt, and skips dispatch when no relevant files changed.
+The notifier performs no checkout and executes no artifact code. PR, fork,
+failed and cancelled runs cannot use its cross-repository credential.
+
+Configure `OPENTLV_DOCS_DISPATCH_TOKEN` as a repository secret holding a
+fine-grained GitHub token restricted to **OpenTLV/opentlv-docs**, with
+**Contents: write** for repository dispatch. The producer uses only its
+read-only `GITHUB_TOKEN`; the dispatch secret is available solely to the
+notifier's final step. Missing credentials, HTTP authentication/permission
+errors and network failures fail the notifier clearly without printing the
+token. They do not change the successful Main result.
+
+The event is `component-docs-updated` with exactly these payload fields:
+
+```json
+{
+  "source": "rust",
+  "repository": "OpenTLV/opentlv-rust",
+  "commit": "<full producer commit SHA>",
+  "ref": "main",
+  "run_id": 123
+}
+```
+
+Install the paired Docs receiver configuration on Docs `main` first. Docs
+independently verifies the configured `rust-main.yml` push run and commit
+ancestry, then proposes a monotonic Rust source pin update. Duplicate and
+older pending or merged updates do not replace newer pins. This documentation
+mode makes no runtime compatibility claim and consumes no compatibility feed.
+The proposal runs normal Docs PR checks; neither Rust PRs nor this event invoke
+Docs Full or publish Pages, so a rejected or failed proposal leaves the last
+published documentation unchanged. New manual pages still require reviewed
+portal navigation changes.
+
+If dispatch fails, rerun the notifier for the same successful producer while
+its artifact remains available. Replaying a delivered event is safe. After
+artifact expiry, rerun the producer. A 204 response means GitHub accepted the
+event; confirm the Docs receiver run and source-update PR separately. Local
+mocked HTTP tests do not establish hosted delivery or publication.
+
+Independent Rust documentation releases are not configured: this repository
+has no release workflow yet, so no release receipt is sent and the portal
+shows the manuals of its selected source pin.
 
 ## Supported configurations
 
@@ -139,8 +200,9 @@ Rustdoc, `RUSTFLAGS=-D warnings`.
 
 Source quality runs [`scripts/check_quality.py`](../scripts/check_quality.py)
 (Python syntax, workflow structure and whitespace of all files except the
-preserved migration evidence), the existing release-verifier tests and the CI
-regression tests with `python -m unittest discover -s tests`, and actionlint.
+preserved migration evidence), the existing release-verifier tests, the CI and
+documentation notification regression tests with
+`python -m unittest discover -s tests`, and actionlint.
 CodeQL analyzes Rust and Python from source.
 
 Each build configuration also executes the workflow's build and gate shell

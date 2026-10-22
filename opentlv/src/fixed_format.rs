@@ -53,7 +53,7 @@ impl From<ByteOrder> for native::tlv_byte_order_t {
 /// `tlv_fixed_format_t`/`tlv_fixed_format_init()` split directly instead of
 /// hiding the address-stability requirement behind a heap allocation. See
 /// [format context ownership and
-/// lifetime](https://github.com/marekcingel/OpenTLV/blob/main/docs/guides/memory.md#format-context-ownership-and-lifetime).
+/// lifetime](https://github.com/OpenTLV/opentlv/blob/main/docs/guides/memory.md#format-context-ownership-and-lifetime).
 #[derive(Clone, Copy, Debug)]
 pub struct FixedFormatConfig {
     inner: native::tlv_fixed_format_t,

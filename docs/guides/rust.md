@@ -1,37 +1,49 @@
 # Using OpenTLV from Rust
 
-Start with setup below, then run the [Rust quick start](../getting-started/README.md#quick-start)
+Start with setup below, then run the [Rust quick start](../../opentlv/examples/quick_start.rs)
 for input, expected output and the public API. You can use this guide without
 studying native C implementation contracts.
 
 The `opentlv` crate is an experimental safe Rust API over the OpenTLV C library.
 This guide covers setup, reading, writing, error handling and ownership. For
 crate layout, schemas, codecs, canonical validation and CI, see
-[Rust bindings](../development/rust.md); every public item also has Rustdoc
-(`cargo doc -p opentlv --open` from `bindings/rust`).
+[Rust development](../development/rust.md); every public item also has Rustdoc
+(`cargo doc -p opentlv --open` from the repository root).
 
 ## Cargo setup
 
 The crates are not published to crates.io yet. Depend on them by path from a
-checkout of the repository:
+checkout of [opentlv-rust](https://github.com/OpenTLV/opentlv-rust):
+
+```sh
+git clone https://github.com/OpenTLV/opentlv-rust.git
+```
 
 ```toml
 [dependencies]
-opentlv = { path = "OpenTLV/bindings/rust/opentlv" }
+opentlv = { path = "opentlv-rust/opentlv" }
 ```
 
-The build script of `opentlv-sys` builds the C library with CMake and links it,
-so you need a Rust toolchain (1.70 or newer), CMake 3.16 or newer and a C99
-compiler. To link a library you built yourself, set `OPENTLV_LIB_DIR` (and
+The build script of `opentlv-sys` fetches the OpenTLV Core commit pinned by
+this repository, builds the C library with CMake and links it, so you need
+Rust 1.82 or newer, CMake 3.16 or newer, a C99 compiler, Git and network
+access to GitHub for the first build. On Windows, use the MSVC Rust toolchain
+with Visual Studio. See [Build](../development/rust.md#build) for the Core
+dependency. To link a library you built yourself, set `OPENTLV_LIB_DIR` (and
 optionally `OPENTLV_LINK_KIND`); see
 [Linking a prebuilt library](../development/rust.md#linking-a-prebuilt-library).
+
+The Cargo features `lldp`, `nfc` and `document` are enabled by default; see
+[Cargo features](../development/rust.md#cargo-features). The crate version is
+independent of the Core version; see
+[Versioning](../development/rust.md#versioning).
 
 ## Reading
 
 The default Cargo feature `lldp` exposes `Format::Lldp` and enables the shared
 LLDP C package in source builds. Use `default-features = false` to omit it.
 For a prebuilt C library, match this feature to its `OPENTLV_LLDP` option.
-See [LLDP framing and presets](../formats/lldp/README.md).
+See [LLDP framing and presets](https://github.com/OpenTLV/opentlv/blob/main/docs/formats/lldp/README.md).
 
 `Reader` iterates over `Result<Element>`. Each `Element` has a `Tag` and a value
 that is a `&[u8]` slice of your input. Constructed elements are not expanded
@@ -63,8 +75,8 @@ for element in Reader::with_fixed_format(&data, &format) {
 ```
 
 Runnable version with nesting and EMV tag names:
-[reader.rs](https://github.com/marekcingel/OpenTLV/blob/main/bindings/rust/opentlv/examples/reader.rs)
-(`cargo run --example reader`).
+[reader.rs](../../opentlv/examples/reader.rs)
+(`cargo run --example reader` from the repository root).
 
 ## Writing
 
@@ -83,8 +95,8 @@ let encoded: &[u8] = writer.written();
 
 Use `encoded_size` to size the buffer beforehand, or `encoded_size_fixed`/
 `Writer::with_fixed_format` for a `FixedFormat`. Runnable version:
-[writer.rs](https://github.com/marekcingel/OpenTLV/blob/main/bindings/rust/opentlv/examples/writer.rs)
-(`cargo run --example writer`).
+[writer.rs](../../opentlv/examples/writer.rs)
+(`cargo run --example writer` from the repository root).
 
 ## Error handling
 
@@ -143,13 +155,13 @@ all parsing, encoding, validation and codec work instead of reimplementing it,
 so behavior matches the C API, and the C error codes map one to one onto
 `Error`. What the safe API changes is memory handling: pointer and length pairs
 become slices, initialization and `NULL` checks are done internally, and
-lifetimes replace the borrowing rules the [C memory guide](memory.md)
+lifetimes replace the borrowing rules the [C memory guide](https://github.com/OpenTLV/opentlv/blob/main/docs/guides/memory.md)
 documents. Reader and Tree Reader `visit` methods support resumable callbacks;
 panics are resumed only after returning from C. `QueryMatcher` retains canonical
 matching state across STOP and input replacement. See the
-[Reader and Query facade contract](../concepts/bindings.md#rust-and-python-reader-and-query-facades).
+[Reader and Query facade contract](https://github.com/OpenTLV/opentlv/blob/main/docs/concepts/bindings.md#rust-and-python-reader-and-query-facades).
 Structure codecs and the DOL component are not bound yet; see the
-[C API reference](../reference/c-api.md).
+[C API reference](https://github.com/OpenTLV/opentlv/blob/main/docs/reference/c-api.md).
 
 ## Tree measurement and owning Documents
 
@@ -224,12 +236,12 @@ Its `schema` is a `QuerySchemaDetail` with the failed assertion's `kind`, `tag`
 and `field`; the location, path and expected text come from `failure`.
 Borrowing prevents Document mutation while validation runs.
 
-The [consumer example](../../bindings/rust/opentlv/examples/query_conformance.rs)
+The [consumer example](../../opentlv/examples/query_conformance.rs)
 runs the common corpus through the public facade. Remaining custom Format and
 semantic Tag adapter coverage is tracked by the
-[release requirements](../development/query-release.md).
+[release requirements](https://github.com/OpenTLV/opentlv/blob/main/docs/development/query-release.md).
 
 ## Next step
 
-Use [the basic model](../concepts/learning-model.md) to choose borrowed processing
-or owned editing, then [processing choices](processing.md) for your next task.
+Use [the basic model](https://github.com/OpenTLV/opentlv/blob/main/docs/concepts/learning-model.md) to choose borrowed processing
+or owned editing, then [processing choices](https://github.com/OpenTLV/opentlv/blob/main/docs/guides/processing.md) for your next task.

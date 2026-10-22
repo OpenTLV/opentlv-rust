@@ -15,8 +15,11 @@ against an explicitly pinned Core dependency, and since
 prepared as independent Cargo packages with their own
 [versioning](docs/packaging.md); they are not published yet. Since
 [issue #5](https://github.com/OpenTLV/opentlv-rust/issues/5) the Cargo
-workspace is at the repository root. Crate publication, documentation
-integration and Core cleanup are later migration steps. Until that cleanup, Core keeps its in-tree
+workspace is at the repository root, and since
+[issue #6](https://github.com/OpenTLV/opentlv-rust/issues/6) this repository
+owns the Rust [documentation](#documentation) published through the OpenTLV
+documentation portal. Crate publication and Core cleanup are later migration
+steps. Until that cleanup, Core keeps its in-tree
 [`bindings/rust`](https://github.com/OpenTLV/opentlv/tree/main/bindings/rust)
 and the workflow that tests it.
 
@@ -29,12 +32,13 @@ and the workflow that tests it.
 | `opentlv-sys/core/` | Core dependency lock, selection module, release verifier and toolchain probe used by `build.rs` |
 | `opentlv/` | Safe Rust crate: sources, tests and seven examples |
 | `opentlv-sys/README.md`, `opentlv/README.md`, `*/LICENSE` | Package readme and license text of each crate |
-| `.github/workflows/` | PR, Main and Full CI, source quality and CodeQL |
+| `.github/workflows/` | PR, Main and Full CI, source quality, CodeQL and the documentation portal notification |
 | `ci/matrix.json` | CI toolchains, platforms, feature sets and test inventory |
 | `scripts/ci.py` | Runs one CI configuration, or checks the evidence of all of them |
-| `tests/` | Tests for the release verifier and the CI infrastructure |
-| `docs/guides/rust.md` | Preserved Rust user guide |
-| `docs/development/rust.md` | Preserved Rust developer guide |
+| `scripts/docs_notification.py` | Records documentation changes for the portal notification |
+| `tests/` | Tests for the release verifier, the CI infrastructure and the documentation notification |
+| `docs/guides/rust.md` | Rust user guide |
+| `docs/development/rust.md` | Rust development guide: crates, build, features, versioning and contributing |
 | `docs/migration.md` | Migration baseline, source import and validation results |
 | `docs/migration/` | Source inventory, original CI configuration and validation evidence |
 | `docs/quality-gates.md` | CI entry points, supported configurations, test ownership and evidence |
@@ -43,11 +47,19 @@ and the workflow that tests it.
 | `scripts/verify_baseline.py` | Verifies the inventory against the pinned Core tree |
 | `scripts/verify_migration.py` | Verifies the imported files against the inventory and the pinned Core tree |
 
-The preserved guides describe the original Core checkout. Their commands
-and links to other Core documents retain that context; they are not standalone
-instructions. Use this README to build, and the pinned originals linked in
-the [migration record](docs/migration.md) for cross-repository documentation
-links.
+## Documentation
+
+The [user guide](docs/guides/rust.md) covers setup, reading, writing, errors,
+ownership, Documents and Query; the [development guide](docs/development/rust.md)
+covers the crates, build, Cargo features, versioning, CI and contributing. Every
+public item also has Rustdoc (`cargo doc -p opentlv --open`). The
+[OpenTLV documentation portal](https://github.com/OpenTLV/opentlv-docs)
+assembles `docs/` at a reviewed commit and links the examples in
+`opentlv/examples/` from this repository. Change Rust documentation here, not
+in Core or the portal. Successful Main builds notify the portal when
+documentation inputs change; see the
+[notification contract and token permissions](docs/quality-gates.md#documentation-portal-notifications).
+The [migration record](docs/migration.md) links the original Core guides.
 
 ## Building
 

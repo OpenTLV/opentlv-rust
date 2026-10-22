@@ -1,6 +1,9 @@
 # Rust bindings (experimental)
 
-The Rust bindings live in `bindings/rust/`, a Cargo workspace with two crates:
+The root of [opentlv-rust](https://github.com/OpenTLV/opentlv-rust) is a Cargo
+workspace with two crates. Core remains the source of truth for shared
+architecture and TLV semantics; this repository owns the Rust implementation,
+its documentation, tests and development.
 
 | Crate | Purpose |
 | --- | --- |
@@ -10,7 +13,7 @@ The Rust bindings live in `bindings/rust/`, a Cargo workspace with two crates:
 For setup, examples, error handling and ownership as a user, see
 [Using OpenTLV from Rust](../guides/rust.md). For the naming and shape this
 crate follows and adapts, see the [language bindings conceptual
-model](../concepts/bindings.md).
+model](https://github.com/OpenTLV/opentlv/blob/main/docs/concepts/bindings.md).
 
 Raw C declarations live in `opentlv-sys`; safe facade implementations in
 `opentlv` contain the audited unsafe calls and callback adapters. Only the part of the C API the safe crate needs is bound
@@ -59,7 +62,7 @@ for element in reader {
 ```
 
 `Reader::new` uses BER;
-`Reader::with_format` takes a `Format` (`Ber`, `Emv`, `Cer`, `Der`, plus optional `Lldp`), and
+`Reader::with_format` takes a `Format` (`Ber`, `Emv`, `Cer`, `Der`, plus optional `Lldp` and `NfcType2`), and
 `Reader::with_fixed_format` takes a borrowed `&FixedFormat` for a
 runtime-configurable tag width, length width and length byte order (wraps the C
 `tlv_fixed_format_t` and `tlv_fixed_format_init()`: `FixedFormatConfig::new(tag_size,
@@ -140,7 +143,7 @@ borrowed value.
 
 ## Formats and canonical validation
 
-`Format` (`Ber`, `Emv`, `Cer`, `Der`, plus optional `Lldp`) selects the wire
+`Format` (`Ber`, `Emv`, `Cer`, `Der`, plus optional `Lldp` and `NfcType2`) selects the wire
 encoding; it implements `FromStr` and `Display` for names such as `"der"`.
 `Format` (`Der`, `Cer`) adds canonical-encoding checks and resource `Limits`
 on top of the format: `validate`, `read`, `encoded_size` and `write`, each with
@@ -155,48 +158,92 @@ The DOL component and structure codecs are not bound yet.
 
 ## Build
 
-Requirements: a Rust toolchain (1.70 or newer), CMake 3.16 or newer and a C99
-compiler. On Windows use the MSVC Rust toolchain with Visual Studio.
+Requirements: Rust 1.82 or newer, CMake 3.16 or newer, a C99 compiler and Git.
+On Windows use the MSVC Rust toolchain with Visual Studio. The first build of
+each configuration downloads Core from GitHub.
+
+From the repository root:
 
 ```sh
-cd bindings/rust
-cargo build
-cargo test
+cargo build --workspace
+cargo test --workspace
 ```
 
-By default the build script configures and builds the OpenTLV C library from the
-repository root with CMake, as a static Release library inside Cargo's `target`
-directory, and links it. The C++ layer, CLI, tests and examples are not built.
+By default the build script of `opentlv-sys` clones OpenTLV Core into Cargo's
+`OUT_DIR`, checks out the commit locked in
+[`opentlv-sys/core/core-artifact.json`](../../opentlv-sys/core/core-artifact.json)
+and verifies its identity. It builds Core with CMake as a static,
+position-independent Release library and links it. The C++ layer, CLI, tests
+and examples of Core are not built. After building, it checks that Core's
+public `tlv/version.h` and `tlv/config.h` report the locked version, commit and
+components. The [repository README](../../README.md#core-dependency) describes
+every Core selection mode, including verified Core releases, and the recorded
+selection evidence.
 
-The build script passes no `OPENTLV_FORMAT_*` or `OPENTLV_EMV` options, so the
-C library uses its default components except LLDP: the default `lldp` Cargo
-feature enables `OPENTLV_LLDP`; `--no-default-features` disables it. For prebuilt
-libraries, match the feature to the C build's option. Component selection for
-other built-ins remains future work. See [LLDP presets](../formats/lldp/README.md).
+## Cargo features
+
+The build script always enables the Core Reader, Writer, Query, Schema and Codec
+components. Each Cargo feature of `opentlv` forwards to the `opentlv-sys`
+feature of the same name, which enables one more Core component in source
+builds:
+
+| Feature | Default | Enables | Core option |
+| --- | --- | --- | --- |
+| `lldp` | yes | `Format::Lldp` | `OPENTLV_LLDP` |
+| `nfc` | yes | `Format::NfcType2` | `OPENTLV_NFC` |
+| `document` | yes | `Document`, `DocumentBuilder` and the Query edit API | `OPENTLV_DOCUMENT` |
+
+`--no-default-features` disables all three. The build script passes no
+`OPENTLV_FORMAT_*` or `OPENTLV_EMV` options, so the other built-ins use Core's
+defaults. For prebuilt libraries, match the features to the C build's options.
+See [LLDP presets](https://github.com/OpenTLV/opentlv/blob/main/docs/formats/lldp/README.md).
+
+## Local workspace development
+
+In [opentlv-workspace](https://github.com/OpenTLV/opentlv-workspace), Core and
+Rust are sibling checkouts. To build against the local Core checkout, set
+`OPENTLV_CORE_SOURCE` to the absolute path of its repository root. From
+`opentlv-rust`:
+
+```sh
+export OPENTLV_CORE_SOURCE="$(cd ../opentlv && pwd)"
+cargo test --workspace
+```
+
+```powershell
+$env:OPENTLV_CORE_SOURCE = (Resolve-Path ../opentlv).Path
+cargo test --workspace
+```
+
+The build records the local commit, version and dirty state without verifying
+them and prints a Cargo warning. CI and `OPENTLV_REQUIRE_VERIFIED_CORE` reject
+this override. Unset the variable to return to the locked Core. Local builds are
+for development only and are not release evidence.
 
 ## Versioning
 
-The Cargo workspace version (`version.workspace = true` in each crate's
-`Cargo.toml`) is independent of the OpenTLV C library's version and is not
-derived from the repository's Git tags; it follows its own release cadence,
-the same way the Python package's `pyproject.toml` version does (see
-[Python bindings](python.md#versioning)). `opentlv::version()` is a separate
+`opentlv` and `opentlv-sys` share the Cargo workspace version
+(`version.workspace = true` in each crate's `Cargo.toml`). It started from the
+`0.7.1` migration baseline and is independent of the OpenTLV C library's
+version; it is not derived from Core's Git tags. `opentlv` requires exactly the
+`opentlv-sys` version it is released with, and each `opentlv-sys` version
+records its compatible Core dependency. `opentlv::version()` is a separate
 thing: it calls `tlv_version_string()` at run time and reports the version of
-the *linked C library*, not the crate's own version. The two can differ, for
-example crate `0.1.0` built against OpenTLV C library `0.7.1`.
+the *linked C library*, not the crate's own version. The two are equal at the
+migration baseline and can differ after either is released. See
+[packaging and versioning](../packaging.md).
 
 ## Continuous integration and quality checks
 
-The [Rust Bindings workflow](https://github.com/marekcingel/OpenTLV/blob/main/.github/workflows/rust.yml)
-runs on every push and pull request to `main` and fails on any of:
+Pull request, Main and Full CI fail on any of:
 
 - `cargo fmt --all --check`, formatting differs from rustfmt;
 - `cargo clippy --workspace --all-targets -- -D warnings`, any clippy or
   compiler warning;
-- `cargo build` and `cargo test` on Linux, Windows and macOS, with warnings
-  denied.
+- `cargo build` and `cargo test` with warnings denied. Full CI covers Linux,
+  Windows and macOS with the pinned stable toolchain and the tested MSRV.
 
-Run the same checks locally from `bindings/rust`:
+Run the same checks locally from the repository root:
 
 ```sh
 cargo fmt --all --check
@@ -204,10 +251,22 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
+The [quality gates](../quality-gates.md) list every CI check, the supported
+toolchains and platforms, and how to run a complete CI configuration locally.
+
 `opentlv/tests/corpus.rs` replays the C fuzz seeds (each harness's `corpus/`
-folder under `tests/fuzz/`) through the safe API (reader on every format, DER
-and CER rules, writer and reader round trips, every EMV codec), so seeds
-added for the C harnesses also cover the bindings without being copied.
+folder under `tests/fuzz/` of the selected Core tree) through the safe API
+(reader on every format, DER and CER rules, writer and reader round trips,
+every EMV codec), so seeds added for the C harnesses also cover the bindings
+without being copied.
+
+## Contributing
+
+Report Rust binding issues and send changes to
+[opentlv-rust](https://github.com/OpenTLV/opentlv-rust/issues). Changes to
+shared TLV semantics, the C API or Core components belong to
+[OpenTLV Core](https://github.com/OpenTLV/opentlv/issues); this repository then
+selects the Core revision that contains them.
 
 ## Linking a prebuilt library
 
@@ -221,7 +280,8 @@ OPENTLV_LIB_DIR=/path/to/build/tlv cargo build
 `OPENTLV_LINK_KIND` selects `static` or `dylib` (default `dylib`, matching the
 default CMake build). With a shared library, the platform's loader must find it
 at run time (`PATH` on Windows, `LD_LIBRARY_PATH` on Linux, `DYLD_LIBRARY_PATH`
-on macOS).
+on macOS). The build script still selects Core for its headers and test data,
+but does not build it, and the prebuilt library is not verified.
 
 ## Document component
 

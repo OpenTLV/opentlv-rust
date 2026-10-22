@@ -11,7 +11,11 @@ features, linking modes, API, tests, examples and the frozen inventory. The
 [#5](https://github.com/OpenTLV/opentlv-rust/issues/5) then moved the
 workspace from `bindings/rust/` to the repository root. The inventory and this
 record keep the original `bindings/rust/` paths, which are Core's source paths
-and those of the import commit. Use the
+and those of the import commit. The documentation integration of
+[#6](https://github.com/OpenTLV/opentlv-rust/issues/6) turned the imported
+guides into the current standalone [user guide](guides/rust.md) and
+[development guide](development/rust.md); the import commit and the pinned
+Core links below keep the originals. Use the
 [README](../README.md#building) to build and the
 [standalone build validation](validation/standalone-build.md) for its results.
 To verify the original import, rather than today's working tree, against
@@ -385,7 +389,8 @@ instructions. For working cross-links, use the pinned
 and
 [developer guide](https://github.com/OpenTLV/opentlv/blob/476f1fbecde6b056419e43c9a6cea4d1ca8df1cf/docs/development/rust.md).
 Documentation integration is
-[opentlv-rust#6](https://github.com/OpenTLV/opentlv-rust/issues/6).
+[opentlv-rust#6](https://github.com/OpenTLV/opentlv-rust/issues/6), which
+has since replaced the imported guides with standalone instructions.
 
 ### Verifying the import
 
