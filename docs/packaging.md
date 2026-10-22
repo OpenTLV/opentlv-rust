@@ -148,9 +148,9 @@ first publication:
 - **docs.rs.** docs.rs builds without network access, so the default build
   script cannot fetch Core there. Rendering the documentation on docs.rs needs
   a documentation-only build path in `build.rs`.
-- **Documentation.** The crate-level Rustdoc of `opentlv` and the preserved
-  guides still describe a path dependency on a Core checkout; they are updated
-  with the documentation integration.
+- **Documentation.** The crate-level Rustdoc, the crate READMEs and the
+  [user guide](guides/rust.md) describe a path dependency on an opentlv-rust
+  checkout. They need the crates.io dependency once the crates are published.
 - **Release process.** Release tags, the release workflow and the crates.io
   token or trusted publishing configuration are defined with publication. The
   CI never publishes.
