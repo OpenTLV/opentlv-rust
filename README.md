@@ -3,7 +3,7 @@
 Rust bindings for [OpenTLV](https://github.com/OpenTLV/opentlv), a universal
 library for parsing, encoding, and working with TLV and TLV-like binary formats.
 
-The Rust bindings are being migrated out of Core
+The Rust bindings were migrated out of Core
 ([migration epic](https://github.com/OpenTLV/opentlv/issues/670)). This
 repository contains the Cargo workspace imported from Core in
 [issue #1](https://github.com/OpenTLV/opentlv-rust/issues/1). Since
@@ -18,10 +18,13 @@ prepared as independent Cargo packages with their own
 workspace is at the repository root, and since
 [issue #6](https://github.com/OpenTLV/opentlv-rust/issues/6) this repository
 owns the Rust [documentation](#documentation) published through the OpenTLV
-documentation portal. Crate publication and Core cleanup are later migration
-steps. Until that cleanup, Core keeps its in-tree
-[`bindings/rust`](https://github.com/OpenTLV/opentlv/tree/main/bindings/rust)
-and the workflow that tests it.
+documentation portal. Core removed its in-tree `bindings/rust` and the workflow
+that tested it in
+[OpenTLV/opentlv#679](https://github.com/OpenTLV/opentlv/issues/679), and
+[issue #7](https://github.com/OpenTLV/opentlv-rust/issues/7) validated the
+completed migration across repositories; see the
+[migration completion record](docs/migration.md#migration-completion). Crate
+publication is separate post-migration work.
 
 ## Layout
 
@@ -39,7 +42,7 @@ and the workflow that tests it.
 | `tests/` | Tests for the release verifier, the CI infrastructure and the documentation notification |
 | `docs/guides/rust.md` | Rust user guide |
 | `docs/development/rust.md` | Rust development guide: crates, build, features, versioning and contributing |
-| `docs/migration.md` | Migration baseline, source import and validation results |
+| `docs/migration.md` | Migration baseline, source import, validation results and completion record |
 | `docs/migration/` | Source inventory, original CI configuration and validation evidence |
 | `docs/quality-gates.md` | CI entry points, supported configurations, test ownership and evidence |
 | `docs/packaging.md` | Package identities, versioning, Core compatibility and crates.io prerequisites |

@@ -3,7 +3,8 @@
 Rust follows the PR, Main and Full entry points of the standalone Lua and
 Python repositories. Full is reusable by a future release workflow; this
 repository does not publish crates or create tags through these workflows.
-Core's in-tree Rust workflow keeps testing its own copy until the Core cleanup.
+Core no longer contains a Rust binding or Rust workflow; these gates are the
+only Rust CI.
 
 | Entry point | Trigger | Required work |
 | --- | --- | --- |
@@ -171,7 +172,7 @@ Rustdoc, `RUSTFLAGS=-D warnings`.
   normalized `Cargo.toml` must keep the [package identity](packaging.md)
   without a dependency `path`, with `opentlv` requiring exactly the
   `opentlv-sys` version. The archive SHA-256 digests are recorded.
-  Publication remains a later migration step; the dependency on `opentlv-sys`
+  Publication is separate post-migration work; the dependency on `opentlv-sys`
   now also states its version so that `opentlv` can be packaged at all.
 - **Native linking.** Core from the selected tree is built once as a static
   and once as a shared library, with the options of `build.rs`. The default
