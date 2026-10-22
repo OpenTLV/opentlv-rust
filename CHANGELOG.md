@@ -4,8 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Declare Rust 1.82, the oldest toolchain that compiles the safe crate, as `rust-version` instead of the never-working 1.70, and use `Option::is_none_or` where Clippy now suggests it; give `opentlv`'s `opentlv-sys` dependency a version so both crates can be packaged; repair three broken Rustdoc links in `codec.rs`. (#3)
+
 ### Added
 
+- Add standalone Rust PR, Main and Full CI: rustfmt, Clippy, per-target test inventories for every Cargo feature set including the unchanged C ABI probe, examples, Core's shared Query corpus, Rustdoc, Cargo packaging, prebuilt static and shared linking, AddressSanitizer, a Linux/Windows/macOS matrix with pinned stable and tested MSRV, verified Core provenance and an exact-evidence quality gate. (#3)
 - Build both crates standalone against Core pinned to an exact commit, with recorded and header-validated Core identity, a development-only local Core override, and Verified Source/Binary support for locked Core releases with checksum and GitHub Artifact Attestation verification; Cargo features and native linking modes unchanged. (#2)
 - Import the existing Rust Cargo workspace from Core byte-for-byte: both crates, sources, tests, examples, FFI declarations, Cargo features and native linking unchanged, with the original guides and workflow preserved as evidence, a migration verifier against the frozen baseline, and an identical imported-source rerun of the baseline matrix in the Core build context. (#1)
 - Record the Rust migration baseline from Core: source commit, history, crate versions, Cargo features and defaults, native linking modes, supported platforms, the complete source and integration inventory, and Windows baseline build and test results, with a verifier against the pinned Core tree. No Rust sources are imported yet. (OpenTLV/opentlv#671)

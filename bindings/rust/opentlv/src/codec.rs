@@ -545,7 +545,7 @@ impl Codec {
     ///
     /// # Errors
     ///
-    /// [`CodecFailure::from(crate::Error::InvalidValue)`] if the bytes are not a valid value of this
+    /// [`CodecFailure::from(crate::Error::InvalidValue)`](crate::Error::InvalidValue) if the bytes are not a valid value of this
     /// codec's kind (wrong length, bad BCD digit, out-of-range field, …).
     pub fn decode(&self, data: &[u8]) -> CodecResult<Value> {
         // SAFETY (all `zeroed` uses below): the C types are plain integers,
@@ -848,7 +848,7 @@ impl Codec {
     ///
     /// # Errors
     ///
-    /// [`CodecFailure::from(crate::Error::InvalidValue)`] if `value` is of another kind than the
+    /// [`CodecFailure::from(crate::Error::InvalidValue)`](crate::Error::InvalidValue) if `value` is of another kind than the
     /// codec's or invalid for it.
     pub fn encoded_size(&self, value: &Value) -> CodecResult<usize> {
         self.encode_value(value, ptr::null_mut(), 0)
@@ -858,7 +858,7 @@ impl Codec {
     ///
     /// # Errors
     ///
-    /// [`CodecFailure::from(crate::Error::BufferTooShort)`] if `out` is too small, or the errors of
+    /// [`CodecFailure::from(crate::Error::BufferTooShort)`](crate::Error::BufferTooShort) if `out` is too small, or the errors of
     /// [`Codec::encoded_size`]. On error `out` may have been modified.
     pub fn encode_into(&self, value: &Value, out: &mut [u8]) -> CodecResult<usize> {
         self.encode_value(value, out.as_mut_ptr(), out.len())

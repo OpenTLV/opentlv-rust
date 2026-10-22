@@ -1,0 +1,670 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "issue": "https://github.com/OpenTLV/opentlv-rust/issues/3",
+  "scope": "Local uncommitted implementation; not hosted CI or release acceptance",
+  "policy": {
+    "toolchains": {
+      "stable": "1.99.1",
+      "msrv": "1.82.0",
+      "sanitizer": "nightly-2026-10-21"
+    },
+    "platforms": [
+      {
+        "id": "linux",
+        "os": "ubuntu-24.04",
+        "system": "Linux"
+      },
+      {
+        "id": "windows",
+        "os": "windows-latest",
+        "system": "Windows"
+      },
+      {
+        "id": "macos",
+        "os": "macos-latest",
+        "system": "Darwin"
+      }
+    ],
+    "features": {
+      "default": null,
+      "none": [],
+      "lldp": [
+        "lldp"
+      ],
+      "nfc": [
+        "nfc"
+      ],
+      "document": [
+        "document"
+      ]
+    },
+    "tests": {
+      "default": {
+        "codec": 16,
+        "core_dependency": 15,
+        "corpus": 5,
+        "definition": 1,
+        "diagnostic": 3,
+        "diagnostic_vocabulary": 12,
+        "doc:opentlv": 14,
+        "doc:opentlv_sys": 0,
+        "document": 8,
+        "emv_format": 1,
+        "fixed_abi": 1,
+        "incremental_native": 1,
+        "lldp": 1,
+        "nfc_type2": 1,
+        "opentlv": 26,
+        "opentlv_sys": 2,
+        "program": 11,
+        "query_extensions": 8,
+        "query_schema": 9,
+        "reader": 13,
+        "schema": 26,
+        "tree_reader": 11,
+        "tree_writer": 5,
+        "validation": 12,
+        "writer": 15
+      },
+      "none": {
+        "codec": 16,
+        "core_dependency": 15,
+        "corpus": 5,
+        "definition": 1,
+        "diagnostic": 3,
+        "diagnostic_vocabulary": 12,
+        "doc:opentlv": 13,
+        "doc:opentlv_sys": 0,
+        "document": 0,
+        "emv_format": 1,
+        "fixed_abi": 1,
+        "incremental_native": 1,
+        "lldp": 0,
+        "nfc_type2": 1,
+        "opentlv": 26,
+        "opentlv_sys": 2,
+        "program": 8,
+        "query_extensions": 8,
+        "query_schema": 6,
+        "reader": 13,
+        "schema": 26,
+        "tree_reader": 11,
+        "tree_writer": 5,
+        "validation": 12,
+        "writer": 15
+      },
+      "lldp": {
+        "codec": 16,
+        "core_dependency": 15,
+        "corpus": 5,
+        "definition": 1,
+        "diagnostic": 3,
+        "diagnostic_vocabulary": 12,
+        "doc:opentlv": 13,
+        "doc:opentlv_sys": 0,
+        "document": 0,
+        "emv_format": 1,
+        "fixed_abi": 1,
+        "incremental_native": 1,
+        "lldp": 1,
+        "nfc_type2": 1,
+        "opentlv": 26,
+        "opentlv_sys": 2,
+        "program": 8,
+        "query_extensions": 8,
+        "query_schema": 6,
+        "reader": 13,
+        "schema": 26,
+        "tree_reader": 11,
+        "tree_writer": 5,
+        "validation": 12,
+        "writer": 15
+      },
+      "nfc": {
+        "codec": 16,
+        "core_dependency": 15,
+        "corpus": 5,
+        "definition": 1,
+        "diagnostic": 3,
+        "diagnostic_vocabulary": 12,
+        "doc:opentlv": 13,
+        "doc:opentlv_sys": 0,
+        "document": 0,
+        "emv_format": 1,
+        "fixed_abi": 1,
+        "incremental_native": 1,
+        "lldp": 0,
+        "nfc_type2": 1,
+        "opentlv": 26,
+        "opentlv_sys": 2,
+        "program": 8,
+        "query_extensions": 8,
+        "query_schema": 6,
+        "reader": 13,
+        "schema": 26,
+        "tree_reader": 11,
+        "tree_writer": 5,
+        "validation": 12,
+        "writer": 15
+      },
+      "document": {
+        "codec": 16,
+        "core_dependency": 15,
+        "corpus": 5,
+        "definition": 1,
+        "diagnostic": 3,
+        "diagnostic_vocabulary": 12,
+        "doc:opentlv": 14,
+        "doc:opentlv_sys": 0,
+        "document": 8,
+        "emv_format": 1,
+        "fixed_abi": 1,
+        "incremental_native": 1,
+        "lldp": 0,
+        "nfc_type2": 1,
+        "opentlv": 26,
+        "opentlv_sys": 2,
+        "program": 11,
+        "query_extensions": 8,
+        "query_schema": 9,
+        "reader": 13,
+        "schema": 26,
+        "tree_reader": 11,
+        "tree_writer": 5,
+        "validation": 12,
+        "writer": 15
+      }
+    },
+    "examples": [
+      "parse",
+      "quick_start",
+      "reader",
+      "validate",
+      "write",
+      "writer"
+    ],
+    "query": {
+      "fixtures": 171,
+      "comparisons": 0,
+      "executions": 2133,
+      "unavailable": 0
+    },
+    "sanitizer": {
+      "rustflags": "-Zsanitizer=address",
+      "cc": "clang-18",
+      "cflags": "-fsanitize=address -fno-omit-frame-pointer",
+      "asan_options": "detect_leaks=1"
+    }
+  },
+  "definitions": {
+    ".github/workflows/rust-checks.yml": "c66518b8fd45626e144af27b70d262db8d61dfb263d41937f928cfbbf72aad4c",
+    ".github/workflows/rust-codeql.yml": "dab3726c69afcdbb2cd318539242641b1b793f3375c774368c33c96351323566",
+    ".github/workflows/rust-full.yml": "edf656f20768738fca594f8eb8754f09bd8273e5a4c3e60038bb7b3de602f6f9",
+    ".github/workflows/rust-main.yml": "047e2863cf51b7e4a7cf8afcd4558e0dee600d655b8a50b1b5b4a40b83feb056",
+    ".github/workflows/rust-pr.yml": "ed8667b0d1c18fec646d10ce06c39b882f96dfa31e8dd27abf0fdf9b1dc1f8b9",
+    ".github/workflows/rust-quality.yml": "af49481e631059b6b527ffcc33689b912644717d559b9263dbc81608ab58fb95",
+    "bindings/rust/Cargo.lock": "e784a9e3516331c91eb6004e5df1cb45343e21a392d3a23a5479455637b78165",
+    "bindings/rust/Cargo.toml": "f771aac80edd8f4abffc385f6987a36f04aa2d561b9d6152e5322e8c3f234ae2",
+    "bindings/rust/opentlv-sys/Cargo.toml": "a0e213d9b1f18124d355d0bb2ce97b59693a2bd19b9b79f26a9c46a0fdfaa1e9",
+    "bindings/rust/opentlv-sys/build.rs": "043393e050f09a818c93aab1dacd9d87635a3ef8b2380a4dffb07d8528d15f93",
+    "bindings/rust/opentlv-sys/core/core-artifact.json": "a8e1f891abab0823b0b0d4ab1cc7cae42da9b47451cbc790e1321dd3f0b58170",
+    "bindings/rust/opentlv-sys/core/probe/CMakeLists.txt": "ff96f24457180ddc7f076cd692aff2af3c0c8eadd865ec37f59062607ed5d8a3",
+    "bindings/rust/opentlv-sys/core/select.rs": "a6ea9e42d326fd15cb9ebb3a9c39f0c7963578501554f92432418643150b5fd1",
+    "bindings/rust/opentlv-sys/core/verified_core.py": "f65f7e8253ae9244c0b56cf74d268e50bfa8863f413a04124161dc08a922a176",
+    "bindings/rust/opentlv-sys/src/codec_diagnostic.rs": "307bb9380f91ca4191c14ba4f986b28b7cdeba40ada5f8f83b9b2853a1aa9dba",
+    "bindings/rust/opentlv-sys/src/diagnostic_strings.rs": "c5d6b94cf8f10f7c1543633fa1453b0286b682cdf48bdde9c93593becb010837",
+    "bindings/rust/opentlv-sys/src/document.rs": "6abb0f7d63b4724c53e0299f5822294457bbd88731d8fd4ae02e63a2ae35023d",
+    "bindings/rust/opentlv-sys/src/lib.rs": "679b4443c41ca604ff9a185ea6bed7972f93303ee9ad1642ed30904bae97c784",
+    "bindings/rust/opentlv-sys/src/program.rs": "74ccffcaee637c34fff58a174125c42c24ac5311783dbf085e2e0a0bd928d9de",
+    "bindings/rust/opentlv-sys/src/schema_report.rs": "6c0e1fd30ee9d02222a14c071931f573d17a5664c65c309e3b960c96c59dbbff",
+    "bindings/rust/opentlv-sys/tests/abi_probe/CMakeLists.txt": "d3c9d55e43359abd333581d1ec0e47400a7b794ad4a763de2f6cb8dd7d874436",
+    "bindings/rust/opentlv-sys/tests/abi_probe/main.c": "874c66d465df0e708e89a93cc773bf445b6382253a30fc205c575341539314e9",
+    "bindings/rust/opentlv-sys/tests/abi_probe/values.c": "659e7590ddeaae38e9f78e12ea3fa0a9a2e10d392827b85a19c392ca37af0699",
+    "bindings/rust/opentlv-sys/tests/core_dependency.rs": "d4e5c902e1322c6d31d094ed1464ece0c420854550bf1f6a67d18a311566222d",
+    "bindings/rust/opentlv-sys/tests/fixed_abi.rs": "265f09251816c8931cd740f16d151ea34ff297c96750f03dc95168981ffbe885",
+    "bindings/rust/opentlv/Cargo.toml": "202b3edd0c85bdd2aab0d39460fdb1542e2c11732c785ab36c74a527168577c8",
+    "bindings/rust/opentlv/build.rs": "9610fcebb04e4f095b5410feb6afe246fdae66fc850686229500e669b23db1b0",
+    "bindings/rust/opentlv/examples/parse.rs": "b23f4b02043f1f0f1ce7af84a39d60668e234516b1a0a15b82fce0cccf4a9f2c",
+    "bindings/rust/opentlv/examples/query_conformance.rs": "9d9472979d1265b8a5e9c35c64f0da5cecf558ca79b951e8a360959de1f49cd9",
+    "bindings/rust/opentlv/examples/quick_start.rs": "b4b12c5c27b8cd4752113c4c6fd47833238012605e7e42a081aaf0966ad82608",
+    "bindings/rust/opentlv/examples/reader.rs": "92e92f163428d89863cbb5389374249ada0819d4a2349e445d30922623c3f33e",
+    "bindings/rust/opentlv/examples/validate.rs": "bc1a968b4c790ed043bcfcb729eb67d0f5dbb114e4098aa2940d33d0a85211df",
+    "bindings/rust/opentlv/examples/write.rs": "b764c7c7da2598250bf8c147de83c8ad7e8c4348a2491f82ec8104fd6ce1a946",
+    "bindings/rust/opentlv/examples/writer.rs": "5bac64b7e31b12fef2337778bcd69a9674d5f7467eed522ded47af0038b436ac",
+    "bindings/rust/opentlv/src/codec.rs": "2918e002b23c5e3a93deecb40a5980db8ac03e9b65bbfac9ce544c425522c0fb",
+    "bindings/rust/opentlv/src/definition.rs": "fc8558dfb33a4f7edf8f048cd91ccc8b0f77ca9044742fbad97aedaf78bc4af0",
+    "bindings/rust/opentlv/src/diagnostic_kind.rs": "ceb64370b55d6add22487e2336748cc3abdf40a85015b35987b6f48cff79f662",
+    "bindings/rust/opentlv/src/document.rs": "655fb2b5410c3e0a1da1d325b53f17365a19cea7fcb47d7b55c97aef888e7a9f",
+    "bindings/rust/opentlv/src/element.rs": "3bf6d970b86ca49dcec7901fd116c9b3d669d37aade25d94ea6ce7a393cea936",
+    "bindings/rust/opentlv/src/emv.rs": "ce559272f1f76b709562108c01401522a36d891adf82fb1f46cc25ead8f8be45",
+    "bindings/rust/opentlv/src/error.rs": "4458ca8838ee6abed2146cdf8a68e14ee3172e6bf0b3038b1354d4d203f302fe",
+    "bindings/rust/opentlv/src/fixed_format.rs": "0b132b727ab0e2a9988b9151d845e2b292a7d7417e740481a451206941b21c29",
+    "bindings/rust/opentlv/src/format.rs": "c4c7252b89ab12cda255e8280e98b511b403642478a73891a895a5baba75289f",
+    "bindings/rust/opentlv/src/lib.rs": "3013c4afa4466204aec0fd60db35ed75645b912c802b6d8e6982e6fdac7bf655",
+    "bindings/rust/opentlv/src/location.rs": "8ae5f2581ba86a37509be928367d427a377d40c121fc70d6e7a23eaa9ce69e70",
+    "bindings/rust/opentlv/src/program.rs": "c8176975ac62f4006494d16ecc6d584f590ab9ea7c3de9640e7c527c44fd370c",
+    "bindings/rust/opentlv/src/program/providers.rs": "d39969c7f977806d27bcae4103d522220f5fb15da4791073b2af65607f54fddf",
+    "bindings/rust/opentlv/src/program/schema.rs": "baccff87d81f59db94db6c9be2f83035f9cb4450d283687c2f5036e3cd620a6e",
+    "bindings/rust/opentlv/src/query.rs": "05dfa007ecfdabd1fb008d7e37aa076751ecceace674129193408e648953ae3a",
+    "bindings/rust/opentlv/src/reader.rs": "1a89932999c570593571ca113e42222aeb4d8a5dc0d55faa3fa82ed39cb42344",
+    "bindings/rust/opentlv/src/reader_diagnostic.rs": "fd460921fb17f8a9cda57cd76ad21d6a23056fd138ec08c112cd306c2a798163",
+    "bindings/rust/opentlv/src/schema.rs": "c4537ba05e62bb8aa818af47c3cdec46b664697d8c46521f372a4cbecf4f8883",
+    "bindings/rust/opentlv/src/source.rs": "e5f33918698881fcfe133e3473352f10c1753c5f714e28b13f44672e1968facc",
+    "bindings/rust/opentlv/src/tag.rs": "bf2fe743061e9ff697867805946a48648555576793f2d15eff29a1994e455f8c",
+    "bindings/rust/opentlv/src/tree_reader.rs": "6c34945796a77f47e47965316609942286ae74ae28dd4ef8cc76f6bad96e9d90",
+    "bindings/rust/opentlv/src/tree_writer.rs": "fcbea98f2e9512c1540b18296937ebe4c0cdd6d42192eb59843a4c47f77193d6",
+    "bindings/rust/opentlv/src/validation.rs": "117ef9e726dba7485aac5b0dffd4c91f26a5f081623d2c5fab58c15b6442074f",
+    "bindings/rust/opentlv/src/visitor.rs": "8a1de2113af80ca7105a84cbc166396116b45c87525798d1161dff38fa890f31",
+    "bindings/rust/opentlv/src/writer.rs": "6cfb7b06d427382586df40fb135386308d478be706c34f21839ea40a4f399ffa",
+    "bindings/rust/opentlv/tests/codec.rs": "5778cae8ee267ce578b4e0ad6c0010972a168d859e2de22f1765b2c39dcc7827",
+    "bindings/rust/opentlv/tests/corpus.rs": "bb6ca43b3dc8d3ff16b53db247540796ad68432aa0211694627ddb05bbe64acc",
+    "bindings/rust/opentlv/tests/definition.rs": "978e1d42aa3f3e17f699064c34aab2501022fb4ce35c85fe70ae110e3f17d540",
+    "bindings/rust/opentlv/tests/diagnostic.rs": "f1b5709949b46fd7a63809a2ecad838eb36ce656b25b7ab6446ddaf4d9739026",
+    "bindings/rust/opentlv/tests/diagnostic_vocabulary.rs": "aaf64846e429a195cab4b4c055c910d7a7efdf21f1912892d84644f58c86085b",
+    "bindings/rust/opentlv/tests/document.rs": "184e21158f69a3ec90d1cb00373280f6d23f18f33916495118adb06ac4ed92ea",
+    "bindings/rust/opentlv/tests/emv_format.rs": "88d21e52d154f1ea2c5e95e8d083f3210b5017420f8edb320c482e3c9b21fa5c",
+    "bindings/rust/opentlv/tests/incremental_native.rs": "266358bafce66e79a41a9d54aa66c3bed2cf4f133dd32190316a2ffb11ba05dd",
+    "bindings/rust/opentlv/tests/lldp.rs": "48b05515f9e32c150e84143de956ab7bbd09c2366b1d3def933edd8960978bfc",
+    "bindings/rust/opentlv/tests/nfc_type2.rs": "d7eb6f51e666778b74bc2b99b5969bca5d786b538bd62e91be20f78cbe8ee29d",
+    "bindings/rust/opentlv/tests/program.rs": "5af914a8a8d17ca24c31143eab3e844705e98eb1384bdcc95611a70647ab8ceb",
+    "bindings/rust/opentlv/tests/query_extensions.rs": "4274844edf50a44828791410bd0b767d1f9e7baab2bc0e22c9d8432b4fafe68a",
+    "bindings/rust/opentlv/tests/query_schema.rs": "29a20a4b449a4bf02d44ed1c7da9c8f562c6ee29b29b24c987244516b5246553",
+    "bindings/rust/opentlv/tests/reader.rs": "9ab5b808f312c3f58de4ba1e51a5954195529d846d84ba4b1cf5555554c33795",
+    "bindings/rust/opentlv/tests/schema.rs": "5cb3112c5e2191cdd18007a8dfff9b016e85bf6c01da780e7317d820fa0cd20e",
+    "bindings/rust/opentlv/tests/tree_reader.rs": "60cfff1e3630af72eca1d75f507d676390f45ce9a8081c045c29e0a3c1bc4196",
+    "bindings/rust/opentlv/tests/tree_writer.rs": "fb95a6b9449d20ba9aec7e821da2e99783ae4eff9723cf2cfd234da0f3f4cd68",
+    "bindings/rust/opentlv/tests/validation.rs": "1b726a1a2d344683aed993fe6b8754da00884eaa266061ed8825558e8fd770da",
+    "bindings/rust/opentlv/tests/writer.rs": "8254d80c373143d50470f562d5d25979b506308192ce7be8c498703fa616b8a3",
+    "ci/matrix.json": "629e54676374faf2a43685ca7666536a7dd86dfef9ccb93bfd6529c4a7a765f6",
+    "requirements-dev.txt": "a663ef37e26ae303f86315d935d1445fb39adcd69c9041f77ad4c099273602da",
+    "scripts/check_quality.py": "a96860977b8e6dfc47e642a9ca40f1dccc2a88633a2e079f2d658be0079c22b8",
+    "scripts/ci.py": "d6abadf962f2d09edffd55e121b57bb46fcc16a85229fc21cc86cc73987e404a",
+    "scripts/ci_contract.py": "75220b06f32531211b457973d1369b726b1a1c789991aded8222cfcc4ddf50a1",
+    "scripts/ci_support.py": "7c310b2a576d60dbf01602ba70ec4a07ce59c6a1db91f63499a9215c2ac69d83",
+    "scripts/ci_timings.py": "a271d3a6a874fcc161ae1fa092f941ae009fad3cc9d7ef66def8a0c19d7e42bf",
+    "scripts/verify_baseline.py": "116a4ba28ace2b4dc8891d828f6f3357cadac2f45eb677e4801150b614abde35",
+    "scripts/verify_migration.py": "b7d13fe452ae33f2d8b19dfa49a732d38da7040013b87418221912a6882c3a9d",
+    "tests/test_ci_contract.py": "1eb40a64a4afa90e7b0db0cad44438fec488f33b32f7cdea5c5bf299b4c31354",
+    "tests/test_ci_shell.py": "88e364ef357e49b45f51c7efae3192ca1ec58aa1695ba6564617a89efe8de367",
+    "tests/test_ci_timings.py": "e7d898d9c3832222fc56eb7174cacdb314a17546a5442c0b208b0228828e8020",
+    "tests/test_ci_workflows.py": "da9bde1bb6377da9c7b3cb079f08be001b7dbcb64db18bd65904973f91aba20d",
+    "tests/test_verified_core.py": "806e6e58ba46b193288b688965071906d759057f30ece3b7780fffea6d194fb4"
+  },
+  "records": {
+    "full-linux-msrv": {
+      "tier": "full",
+      "configuration": "linux-msrv",
+      "commit": "13f0bc531ce5d9396845ff6468516a57d29a9450",
+      "dirty": true,
+      "hosted": false,
+      "definitions_sha256": "7e68a242cbb24176b5111ab5fed9ae13d27f6fd95d2531f893fa2b83ae5b5d34",
+      "runtime": {
+        "rustc": "1.82.0",
+        "host": "x86_64-unknown-linux-gnu",
+        "rustc_commit": "f6e511eec7342f59a25f7c0534f1dbea00d01b14",
+        "llvm": "19.1.1",
+        "system": "Linux",
+        "machine": "x86_64"
+      },
+      "c_compiler": [
+        {
+          "id": "GNU",
+          "version": "13.3.0"
+        }
+      ],
+      "core": [
+        {
+          "commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+          "dirty": false,
+          "locked_commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+          "locked_version": "0.7.1",
+          "mode": "pinned-git",
+          "release_tag": null,
+          "repository": "OpenTLV/opentlv",
+          "verified": false,
+          "version": "0.7.1"
+        }
+      ],
+      "core_selections": 2,
+      "tests": {
+        "default": 217,
+        "none": 201
+      },
+      "seconds": 268,
+      "log_sha256": "00c381ba081bd18b5b10a76ae04352aad0d72530fca7a4fe688c521bba4204cd"
+    },
+    "full-linux-sanitizer": {
+      "tier": "full",
+      "configuration": "linux-sanitizer",
+      "commit": "13f0bc531ce5d9396845ff6468516a57d29a9450",
+      "dirty": true,
+      "hosted": false,
+      "definitions_sha256": "7e68a242cbb24176b5111ab5fed9ae13d27f6fd95d2531f893fa2b83ae5b5d34",
+      "runtime": {
+        "rustc": "1.101.0-nightly",
+        "host": "x86_64-unknown-linux-gnu",
+        "rustc_commit": "19833af7224424e8b53e288097d56b6af43d5bcf",
+        "llvm": "23.1.4",
+        "system": "Linux",
+        "machine": "x86_64"
+      },
+      "c_compiler": [
+        {
+          "id": "Clang",
+          "version": "18.1.3"
+        }
+      ],
+      "core": [
+        {
+          "commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+          "dirty": false,
+          "locked_commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+          "locked_version": "0.7.1",
+          "mode": "pinned-git",
+          "release_tag": null,
+          "repository": "OpenTLV/opentlv",
+          "verified": false,
+          "version": "0.7.1"
+        }
+      ],
+      "core_selections": 1,
+      "tests": {
+        "default": 203
+      },
+      "sanitizer": {
+        "sanitizer": "address",
+        "core_instrumented": true
+      },
+      "seconds": 141,
+      "log_sha256": "3829c6e81066d1bc7b1ff3727efd5bade4e3d94b7b51c80b56cb495b2dc27de7"
+    },
+    "full-linux-stable": {
+      "tier": "full",
+      "configuration": "linux-stable",
+      "commit": "13f0bc531ce5d9396845ff6468516a57d29a9450",
+      "dirty": true,
+      "hosted": false,
+      "definitions_sha256": "7e68a242cbb24176b5111ab5fed9ae13d27f6fd95d2531f893fa2b83ae5b5d34",
+      "runtime": {
+        "rustc": "1.99.1",
+        "host": "x86_64-unknown-linux-gnu",
+        "rustc_commit": "58cf8f9c35b355199727627d07ae34a4e2846d67",
+        "llvm": "23.1.1",
+        "system": "Linux",
+        "machine": "x86_64"
+      },
+      "c_compiler": [
+        {
+          "id": "GNU",
+          "version": "13.3.0"
+        }
+      ],
+      "core": [
+        {
+          "commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+          "dirty": false,
+          "locked_commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+          "locked_version": "0.7.1",
+          "mode": "pinned-git",
+          "release_tag": null,
+          "repository": "OpenTLV/opentlv",
+          "verified": false,
+          "version": "0.7.1"
+        }
+      ],
+      "core_selections": 14,
+      "tests": {
+        "default": 217,
+        "none": 201,
+        "lldp": 202,
+        "nfc": 201,
+        "document": 216
+      },
+      "lint": true,
+      "docs": true,
+      "examples": [
+        "parse",
+        "quick_start",
+        "reader",
+        "validate",
+        "write",
+        "writer"
+      ],
+      "query": {
+        "fixtures": 171,
+        "comparisons": 0,
+        "executions": 2133,
+        "unavailable": 0
+      },
+      "package": {
+        "opentlv-sys": "1cf4610c2d2daf7ea45a9c19fc9c2062260fc84d9dd694f92ef0aedbea89c26f",
+        "opentlv": "d629fa102593ac2dc3d8c39b8606cd02eb0349b09088ca4d2bc4752b1a0d2b9e"
+      },
+      "linking": {
+        "static": {
+          "tests": 217,
+          "quick_start": true
+        },
+        "dylib": {
+          "tests": 217,
+          "quick_start": true
+        }
+      },
+      "seconds": 1401,
+      "log_sha256": "a9e123a891e7b5fda8412ad849beadb1b1081779044940012ae4990fe6ea4d2e"
+    },
+    "full-windows-msrv": {
+      "tier": "full",
+      "configuration": "windows-msrv",
+      "commit": "13f0bc531ce5d9396845ff6468516a57d29a9450",
+      "dirty": true,
+      "hosted": false,
+      "definitions_sha256": "7e68a242cbb24176b5111ab5fed9ae13d27f6fd95d2531f893fa2b83ae5b5d34",
+      "runtime": {
+        "rustc": "1.82.0",
+        "host": "x86_64-pc-windows-msvc",
+        "rustc_commit": "f6e511eec7342f59a25f7c0534f1dbea00d01b14",
+        "llvm": "19.1.1",
+        "system": "Windows",
+        "machine": "AMD64"
+      },
+      "c_compiler": [
+        {
+          "id": "MSVC",
+          "version": "19.44.35222.0"
+        }
+      ],
+      "core": [
+        {
+          "commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+          "dirty": false,
+          "locked_commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+          "locked_version": "0.7.1",
+          "mode": "pinned-git",
+          "release_tag": null,
+          "repository": "OpenTLV/opentlv",
+          "verified": false,
+          "version": "0.7.1"
+        }
+      ],
+      "core_selections": 2,
+      "tests": {
+        "default": 217,
+        "none": 201
+      },
+      "seconds": 242,
+      "log_sha256": "53d8a0f4246370f7615d70c2c337c912c7512dd1d22c606154294f7092b5b810"
+    },
+    "full-windows-stable": {
+      "tier": "full",
+      "configuration": "windows-stable",
+      "commit": "13f0bc531ce5d9396845ff6468516a57d29a9450",
+      "dirty": true,
+      "hosted": false,
+      "definitions_sha256": "7e68a242cbb24176b5111ab5fed9ae13d27f6fd95d2531f893fa2b83ae5b5d34",
+      "runtime": {
+        "rustc": "1.99.1",
+        "host": "x86_64-pc-windows-msvc",
+        "rustc_commit": "58cf8f9c35b355199727627d07ae34a4e2846d67",
+        "llvm": "23.1.1",
+        "system": "Windows",
+        "machine": "AMD64"
+      },
+      "c_compiler": [
+        {
+          "id": "MSVC",
+          "version": "19.44.35222.0"
+        }
+      ],
+      "core": [
+        {
+          "commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+          "dirty": false,
+          "locked_commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+          "locked_version": "0.7.1",
+          "mode": "pinned-git",
+          "release_tag": null,
+          "repository": "OpenTLV/opentlv",
+          "verified": false,
+          "version": "0.7.1"
+        }
+      ],
+      "core_selections": 12,
+      "tests": {
+        "default": 217,
+        "none": 201,
+        "lldp": 202,
+        "nfc": 201,
+        "document": 216
+      },
+      "lint": true,
+      "docs": true,
+      "examples": [
+        "parse",
+        "quick_start",
+        "reader",
+        "validate",
+        "write",
+        "writer"
+      ],
+      "query": {
+        "fixtures": 171,
+        "comparisons": 0,
+        "executions": 2133,
+        "unavailable": 0
+      },
+      "package": {
+        "opentlv-sys": "ca0c17afce0b99280ed9f0927ef023be0046a19eeecbf34c2759db790fe572d3",
+        "opentlv": "6550de4d1d2bef601bfc85ac5a73ee76a22a69fa0431358e9b73b6512b2db5ea"
+      },
+      "linking": {
+        "static": {
+          "tests": 217,
+          "quick_start": true
+        },
+        "dylib": "unsupported"
+      },
+      "seconds": 921,
+      "log_sha256": "7a4203681615b242e8f67effa5c025e9c34afb316ab2f51447ef558031bba9d9"
+    },
+    "main-linux-stable": {
+      "tier": "main",
+      "configuration": "linux-stable",
+      "commit": "13f0bc531ce5d9396845ff6468516a57d29a9450",
+      "dirty": true,
+      "hosted": false,
+      "definitions_sha256": "7e68a242cbb24176b5111ab5fed9ae13d27f6fd95d2531f893fa2b83ae5b5d34",
+      "runtime": {
+        "rustc": "1.99.1",
+        "host": "x86_64-unknown-linux-gnu",
+        "rustc_commit": "58cf8f9c35b355199727627d07ae34a4e2846d67",
+        "llvm": "23.1.1",
+        "system": "Linux",
+        "machine": "x86_64"
+      },
+      "c_compiler": [
+        {
+          "id": "GNU",
+          "version": "13.3.0"
+        }
+      ],
+      "core": [
+        {
+          "commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+          "dirty": false,
+          "locked_commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+          "locked_version": "0.7.1",
+          "mode": "pinned-git",
+          "release_tag": null,
+          "repository": "OpenTLV/opentlv",
+          "verified": false,
+          "version": "0.7.1"
+        }
+      ],
+      "core_selections": 2,
+      "tests": {},
+      "smoke": true,
+      "seconds": 136,
+      "log_sha256": "fb5e91503116e4d66257942343701f8d3a5739f256b8d821b9087e6b212a2737"
+    },
+    "pr-linux-stable": {
+      "tier": "pr",
+      "configuration": "linux-stable",
+      "commit": "13f0bc531ce5d9396845ff6468516a57d29a9450",
+      "dirty": true,
+      "hosted": false,
+      "definitions_sha256": "7e68a242cbb24176b5111ab5fed9ae13d27f6fd95d2531f893fa2b83ae5b5d34",
+      "runtime": {
+        "rustc": "1.99.1",
+        "host": "x86_64-unknown-linux-gnu",
+        "rustc_commit": "58cf8f9c35b355199727627d07ae34a4e2846d67",
+        "llvm": "23.1.1",
+        "system": "Linux",
+        "machine": "x86_64"
+      },
+      "c_compiler": [
+        {
+          "id": "GNU",
+          "version": "13.3.0"
+        }
+      ],
+      "core": [
+        {
+          "commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+          "dirty": false,
+          "locked_commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+          "locked_version": "0.7.1",
+          "mode": "pinned-git",
+          "release_tag": null,
+          "repository": "OpenTLV/opentlv",
+          "verified": false,
+          "version": "0.7.1"
+        }
+      ],
+      "core_selections": 5,
+      "tests": {
+        "default": 217,
+        "none": 201
+      },
+      "lint": true,
+      "docs": true,
+      "examples": [
+        "parse",
+        "quick_start",
+        "reader",
+        "validate",
+        "write",
+        "writer"
+      ],
+      "query": {
+        "fixtures": 171,
+        "comparisons": 0,
+        "executions": 2133,
+        "unavailable": 0
+      },
+      "seconds": 753,
+      "log_sha256": "114065ffbefba9c6fd51bfcad1bc2efae5804a5a3964a9fa229ab321b25b242c"
+    }
+  }
+}

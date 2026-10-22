@@ -1,0 +1,194 @@
+{
+  "toolchains": {
+    "stable": "1.99.1",
+    "msrv": "1.82.0",
+    "sanitizer": "nightly-2026-10-21"
+  },
+  "platforms": [
+    {
+      "id": "linux",
+      "os": "ubuntu-24.04",
+      "system": "Linux"
+    },
+    {
+      "id": "windows",
+      "os": "windows-latest",
+      "system": "Windows"
+    },
+    {
+      "id": "macos",
+      "os": "macos-latest",
+      "system": "Darwin"
+    }
+  ],
+  "features": {
+    "default": null,
+    "none": [],
+    "lldp": [
+      "lldp"
+    ],
+    "nfc": [
+      "nfc"
+    ],
+    "document": [
+      "document"
+    ]
+  },
+  "tests": {
+    "default": {
+      "codec": 16,
+      "core_dependency": 15,
+      "corpus": 5,
+      "definition": 1,
+      "diagnostic": 3,
+      "diagnostic_vocabulary": 12,
+      "doc:opentlv": 14,
+      "doc:opentlv_sys": 0,
+      "document": 8,
+      "emv_format": 1,
+      "fixed_abi": 1,
+      "incremental_native": 1,
+      "lldp": 1,
+      "nfc_type2": 1,
+      "opentlv": 26,
+      "opentlv_sys": 2,
+      "program": 11,
+      "query_extensions": 8,
+      "query_schema": 9,
+      "reader": 13,
+      "schema": 26,
+      "tree_reader": 11,
+      "tree_writer": 5,
+      "validation": 12,
+      "writer": 15
+    },
+    "none": {
+      "codec": 16,
+      "core_dependency": 15,
+      "corpus": 5,
+      "definition": 1,
+      "diagnostic": 3,
+      "diagnostic_vocabulary": 12,
+      "doc:opentlv": 13,
+      "doc:opentlv_sys": 0,
+      "document": 0,
+      "emv_format": 1,
+      "fixed_abi": 1,
+      "incremental_native": 1,
+      "lldp": 0,
+      "nfc_type2": 1,
+      "opentlv": 26,
+      "opentlv_sys": 2,
+      "program": 8,
+      "query_extensions": 8,
+      "query_schema": 6,
+      "reader": 13,
+      "schema": 26,
+      "tree_reader": 11,
+      "tree_writer": 5,
+      "validation": 12,
+      "writer": 15
+    },
+    "lldp": {
+      "codec": 16,
+      "core_dependency": 15,
+      "corpus": 5,
+      "definition": 1,
+      "diagnostic": 3,
+      "diagnostic_vocabulary": 12,
+      "doc:opentlv": 13,
+      "doc:opentlv_sys": 0,
+      "document": 0,
+      "emv_format": 1,
+      "fixed_abi": 1,
+      "incremental_native": 1,
+      "lldp": 1,
+      "nfc_type2": 1,
+      "opentlv": 26,
+      "opentlv_sys": 2,
+      "program": 8,
+      "query_extensions": 8,
+      "query_schema": 6,
+      "reader": 13,
+      "schema": 26,
+      "tree_reader": 11,
+      "tree_writer": 5,
+      "validation": 12,
+      "writer": 15
+    },
+    "nfc": {
+      "codec": 16,
+      "core_dependency": 15,
+      "corpus": 5,
+      "definition": 1,
+      "diagnostic": 3,
+      "diagnostic_vocabulary": 12,
+      "doc:opentlv": 13,
+      "doc:opentlv_sys": 0,
+      "document": 0,
+      "emv_format": 1,
+      "fixed_abi": 1,
+      "incremental_native": 1,
+      "lldp": 0,
+      "nfc_type2": 1,
+      "opentlv": 26,
+      "opentlv_sys": 2,
+      "program": 8,
+      "query_extensions": 8,
+      "query_schema": 6,
+      "reader": 13,
+      "schema": 26,
+      "tree_reader": 11,
+      "tree_writer": 5,
+      "validation": 12,
+      "writer": 15
+    },
+    "document": {
+      "codec": 16,
+      "core_dependency": 15,
+      "corpus": 5,
+      "definition": 1,
+      "diagnostic": 3,
+      "diagnostic_vocabulary": 12,
+      "doc:opentlv": 14,
+      "doc:opentlv_sys": 0,
+      "document": 8,
+      "emv_format": 1,
+      "fixed_abi": 1,
+      "incremental_native": 1,
+      "lldp": 0,
+      "nfc_type2": 1,
+      "opentlv": 26,
+      "opentlv_sys": 2,
+      "program": 11,
+      "query_extensions": 8,
+      "query_schema": 9,
+      "reader": 13,
+      "schema": 26,
+      "tree_reader": 11,
+      "tree_writer": 5,
+      "validation": 12,
+      "writer": 15
+    }
+  },
+  "examples": [
+    "parse",
+    "quick_start",
+    "reader",
+    "validate",
+    "write",
+    "writer"
+  ],
+  "query": {
+    "fixtures": 171,
+    "comparisons": 0,
+    "executions": 2133,
+    "unavailable": 0
+  },
+  "sanitizer": {
+    "rustflags": "-Zsanitizer=address",
+    "cc": "clang-18",
+    "cflags": "-fsanitize=address -fno-omit-frame-pointer",
+    "asan_options": "detect_leaks=1"
+  }
+}

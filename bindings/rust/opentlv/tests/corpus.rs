@@ -99,7 +99,7 @@ fn canonical_formats_are_consistent_on_every_der_seed() {
                     error
                         .location
                         .offset()
-                        .map_or(true, |offset| offset <= data.len()),
+                        .is_none_or(|offset| offset <= data.len()),
                     "{name} {format:?}: offset past end"
                 );
             }

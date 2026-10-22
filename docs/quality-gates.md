@@ -1,0 +1,231 @@
+# Rust quality gates
+
+Rust follows the PR, Main and Full entry points of the standalone Lua and
+Python repositories. Full is reusable by a future release workflow; this
+repository does not publish crates or create tags through these workflows.
+Core's in-tree Rust workflow keeps testing its own copy until the Core cleanup.
+
+| Entry point | Trigger | Required work |
+| --- | --- | --- |
+| `rust-pr.yml` | Pull request to `main` | Linux with pinned stable Rust: rustfmt, Clippy, build, the default and reduced-feature test suites (including the C ABI probe), examples, the shared Query corpus, Rustdoc, Core provenance, infrastructure regressions and CodeQL |
+| `rust-main.yml` | Push to `main` | Linux with pinned stable Rust: workspace build, `quick_start` smoke and Core provenance |
+| `rust-full.yml` | Manual dispatch or `workflow_call` | All seven configurations below, Cargo packaging, prebuilt static and shared linking, AddressSanitizer, source quality and CodeQL |
+
+PR has no path filters, so a documentation-only pull request still produces its
+required check. Feature branch pushes do not duplicate PR builds. Main does not
+repeat the matrix or source analysis. Full has no push, tag or schedule trigger
+and never publishes. A failed configuration does not cancel the remaining Full
+matrix. PR/Main superseded runs can be cancelled.
+
+## Supported configurations
+
+[`ci/matrix.json`](../ci/matrix.json) holds the toolchains, platforms, Cargo
+feature sets and the test inventory used by both the workflow planner and the
+evidence verifier.
+
+| Configuration | Runner | Toolchain | Feature sets | Additional checks |
+| --- | --- | --- | --- | --- |
+| `linux-stable` | Ubuntu 24.04 | 1.99.1 | all five | rustfmt, Clippy, Rustdoc, examples, Query corpus, packaging, linking |
+| `windows-stable` | Windows latest, MSVC | 1.99.1 | all five | as Linux; shared linking unsupported |
+| `macos-stable` | macOS latest | 1.99.1 | all five | as Linux |
+| `linux-msrv`, `windows-msrv`, `macos-msrv` | as above | 1.82.0 | `default`, `none` | |
+| `linux-sanitizer` | Ubuntu 24.04, Clang 18 | `nightly-2026-10-21` | `default` | AddressSanitizer and LeakSanitizer |
+
+PR runs `linux-stable` with the `default` and `none` feature sets and without
+packaging or linking. Main runs only the `linux-stable` smoke.
+
+- **Toolchains.** Stable is pinned to the exact release, so new Clippy lints or
+  compiler warnings arrive through a reviewed update of the matrix, not a
+  floating `stable`. `rust-version` was 1.70 when imported from Core, but the
+  safe crate never compiled with it: taking the address of an extern static
+  without `unsafe` requires 1.82. The workspace now declares 1.82, and every
+  MSRV configuration proves it with the full default and reduced-feature
+  suites. Clippy reads `rust-version`, so it now suggests 1.82 APIs; the one
+  resulting finding in `opentlv/tests/corpus.rs` uses `Option::is_none_or`. Clippy, rustfmt and Rustdoc run only on pinned stable, where their
+  lint sets are defined.
+- **Feature sets.** `default` (`lldp`, `nfc` and `document`), `none`
+  (`--no-default-features`) and each feature alone. These are the existing
+  Cargo features; no feature or default changed. Clippy checks `default` and
+  `none`.
+- **Platforms.** The hosted Ubuntu and Windows runners are x86-64 and the macOS
+  runner is Apple silicon. Each record stores the Rust host triple, the C
+  compiler that built Core and the runner architecture. 32-bit and
+  cross-compiled targets are not tested.
+
+## Test ownership
+
+Rust owns the public Rust API, ownership and lifetime guarantees (including the
+compile-fail Rustdoc examples), Rust error mapping, FFI interoperability, the
+Rust/C ABI layout and native linking. The imported test suites stay as they are;
+no test framework or unrelated test rewrite is introduced.
+
+Core owns TLV parsing and writing, format, schema, codec and Query semantics,
+its regression corpus, fuzzing, its own ABI checks and performance tests. Core
+tests, examples and other bindings remain disabled in the Core builds of
+`build.rs` and the linking checks. Two existing Rust tests read Core-owned data
+from the selected Core tree instead of copies: the fuzz seed replay in
+`opentlv/tests/corpus.rs`, and the shared Query corpus that Core's
+`tests/query/run.py` drives through the `query_conformance` example. No Core
+test suite is copied or run here, and establishing this CI identified no Core
+behavior that only these tests cover; any such gap belongs in a Core issue.
+
+The C ABI probe (`opentlv-sys/tests/fixed_abi.rs` with
+`tests/abi_probe/`) is unchanged. It builds a C program with CMake and compares
+the size, alignment and every member offset of the Fixed format structures with
+the `#[repr(C)]` mirrors. It runs in every `default` and reduced-feature suite,
+on every platform and toolchain.
+
+## Checks
+
+Each configuration runs [`scripts/ci.py`](../scripts/ci.py) in a fresh work
+directory with its own Cargo target directories, the pinned toolchain from
+`RUSTUP_TOOLCHAIN` and an environment without inherited Core overrides,
+`RUSTFLAGS` or `CC`/`CFLAGS`. Every Cargo command uses `--locked` and, except
+Rustdoc, `RUSTFLAGS=-D warnings`.
+
+- **Formatting and Clippy.** `cargo fmt --all --check` and
+  `cargo clippy --workspace --all-targets -- -D warnings` for `default` and
+  `none`.
+- **Build and tests.** `cargo build --workspace --all-targets`, then
+  `cargo test --workspace` for each feature set. The runner counts the tests of
+  every target, including Rustdoc tests, and compares them with the inventory.
+  A missing, extra or renamed target, a different count, or any failed,
+  ignored, measured or filtered test fails.
+- **Examples.** The six runnable examples. `query_conformance` is the native
+  driver of the Query corpus; a new example fails until it is added.
+- **Query corpus.** Core's `tests/query/run.py` of the selected Core tree
+  drives `query_conformance` with `--property-cases 0`: 171 fixtures with 2133
+  native executions and no unavailable providers. The driver is rebuilt with
+  the default features first, because Cargo leaves the example binary of the
+  last test build, possibly a reduced-feature one, in `target/debug/examples`.
+- **Rustdoc.** `cargo doc --workspace --no-deps` with
+  `RUSTDOCFLAGS=-D warnings`. Three broken intra-doc links in `codec.rs` were
+  repaired; the rendered text is unchanged.
+- **Packaging.** `cargo package --workspace` builds both crates from their
+  `.crate` archives. `opentlv` resolves `opentlv-sys` from the packaged archive,
+  not the path dependency. Each archive must contain exactly the crate's tracked
+  files and Cargo's generated `Cargo.toml`, `Cargo.toml.orig`, `Cargo.lock` and
+  `.cargo_vcs_info.json`; in hosted CI the latter must name the checkout
+  commit. The archive SHA-256 digests are recorded. Publication remains a later
+  migration step; the dependency on `opentlv-sys` now also states its version
+  so that `opentlv` can be packaged at all.
+- **Native linking.** Core from the selected tree is built once as a static
+  and once as a shared library, with the options of `build.rs`. The default
+  test suite and `quick_start` then run against each through `OPENTLV_LIB_DIR`
+  and `OPENTLV_LINK_KIND`, with the shared library on `LD_LIBRARY_PATH` or
+  `DYLD_LIBRARY_PATH`. On Windows the shared library is recorded as
+  `unsupported`: the bindings do not import Core's exported data symbols from a
+  DLL, so the link fails, as in the [migration
+  baseline](validation/standalone-build.md). Fixing that is not part of this
+  CI change.
+- **AddressSanitizer.** The pinned nightly builds the Rust code with
+  `-Zsanitizer=address` for the explicit host target, so build scripts stay
+  uninstrumented. Clang 18 builds Core with
+  `-fsanitize=address -fno-omit-frame-pointer`, checked in each Core
+  `CMakeCache.txt`. The library and integration tests of the default features
+  run with `detect_leaks=1`; Rustdoc tests are not instrumented and are excluded
+  from this inventory only. Memory and thread sanitizers, Miri (which cannot
+  execute the C library), and sanitizers on Windows and macOS are not run.
+- **Core provenance.** Every `core-selection.json` written by an
+  `opentlv-sys` build script in the work directory is checked against the
+  lock: repository, commit, version, release tag and a clean tree. With the
+  current `release_tag: null` this requires `pinned-git` with
+  `verified: false`, which is exact source identity, not an authenticated Core
+  release. Core must have been resolved inside the work directory, so a local
+  `OPENTLV_CORE_SOURCE` is never accepted; `build.rs` also rejects it in CI.
+
+Source quality runs [`scripts/check_quality.py`](../scripts/check_quality.py)
+(Python syntax, workflow structure and whitespace of all files except the
+preserved migration evidence), the existing release-verifier tests and the CI
+regression tests with `python -m unittest discover -s tests`, and actionlint.
+CodeQL analyzes Rust and Python from source.
+
+Each build configuration also executes the workflow's build and gate shell
+steps with a stub runner before building. These eight regression cases verify
+optional release arguments, quoting, logs and failure propagation, including
+through `tee`. Both commands use nonempty arrays so `set -u` also works with
+macOS Bash 3.2. For local shell-specific checks, set `OPENTLV_TEST_BASH` to the
+desired Bash executable and run `tests/test_ci_shell.py`.
+
+## Dependency verification
+
+The `opentlv-sys` build script remains the sole Core selection mechanism; CI
+adds no second resolver. A release caller must invoke:
+
+```yaml
+jobs:
+  full:
+    uses: ./.github/workflows/rust-full.yml
+    with:
+      require_verified_core: true
+```
+
+That mode requires Full CI and rejects the current null release lock before
+building. Once an approved release is locked, every Cargo command runs with
+`OPENTLV_REQUIRE_VERIFIED_CORE=1`. Each selection must then be
+`verified-binary` or `verified-source`, and its `verification.json` must name
+the locked release tag, a release ID, the manifest SHA-256 and the
+`core-release.yml` signer. Failed attestations, checksums or producer evidence
+stop the build in `build.rs`; they never fall back to Git. Testing fixtures is
+not evidence that a real published Core attestation was consumed.
+
+## Evidence and required check
+
+Successful records include the repository, checkout SHA, run ID and attempt,
+the matrix configuration, the Rust release, host triple and LLVM version, the
+runner system and architecture, the C compiler that built Core, every Core
+selection, per-target test counts for each feature set, the results of the
+configured checks, the crate digests, the elapsed time and hashes of all CI
+definitions, sources, tests and dependency configuration. Local runs explicitly
+record `hosted: false` and their checkout's dirty state.
+
+`Rust quality gate` runs even after failed prerequisites. It requires the exact
+matrix, all applicable job results and, per configuration, exactly the
+configured checks with the inventory results. Main explicitly permits only the
+source-quality and CodeQL jobs to be skipped. Missing, duplicate, stale,
+foreign, cancelled, unexpectedly skipped or unsuccessful evidence fails. Success
+evidence is removed before each attempt, so a failed rerun cannot reuse an old
+success. The gate CLI accepts only an official clean hosted checkout.
+
+After the first hosted PR run, configure branch protection/rulesets to require
+the check ending in `Rust quality gate` from GitHub Actions; use the exact
+displayed reusable-workflow context (normally `checks / Rust quality gate`).
+Do not require individual Full matrix jobs on every PR. This change does not
+alter repository settings. A workflow file alone does not enforce merging rules.
+
+Artifacts include attempt-scoped records and build logs. The gate uploads
+`quality.json` only after acceptance. Timing collection uses the same
+run/attempt, excludes itself and retries delayed API completion metadata.
+Reported job seconds are elapsed runner time, not billed minutes. This is the
+first standalone CI baseline; no hosted speedup or measured latency is claimed.
+
+## Changing the inventory
+
+Intentional changes to tests, examples, features, toolchains or the pinned
+Core corpus must update [`ci/matrix.json`](../ci/matrix.json) in the same
+change, with reviewed evidence. Updating the stable toolchain or the sanitizer
+nightly is a deliberate matrix change; raising the MSRV also changes
+`rust-version`.
+
+## Local validation
+
+The runner installs the configured toolchain with rustup; use an isolated
+`RUSTUP_HOME` and `CARGO_HOME` to leave your global setup unchanged. It needs
+Python 3.11 or newer, CMake, a C compiler, Git and network access to GitHub and
+crates.io:
+
+```sh
+python -m pip install -r requirements-dev.txt
+python -B scripts/check_quality.py
+python -B -m unittest discover -s tests
+actionlint
+python -B scripts/ci.py matrix --tier full
+python -B scripts/ci.py build --tier full --configuration linux-stable \
+  --work build/ci-full-linux --output build/full-linux-stable.json
+```
+
+Choose a configuration that matches the host system, such as `windows-msrv` or
+`macos-stable`; `linux-sanitizer` needs `clang-18`. Every invocation requires a
+new `--work` directory.
+
+See [local validation and remaining hosted acceptance](validation/ci.md).

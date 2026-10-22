@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Marek Cingel
+name: Rust Main CI
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  attestations: read
+  actions: read
+concurrency:
+  group: rust-main-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    uses: ./.github/workflows/rust-checks.yml
+    permissions:
+      contents: read
+      attestations: read
+      actions: read
+      security-events: write
+    with:
+      tier: main

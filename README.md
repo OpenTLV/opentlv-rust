@@ -8,7 +8,9 @@ The Rust bindings are being migrated out of Core
 repository contains the Cargo workspace imported from Core in
 [issue #1](https://github.com/OpenTLV/opentlv-rust/issues/1). Since
 [issue #2](https://github.com/OpenTLV/opentlv-rust/issues/2) it builds standalone
-against an explicitly pinned Core dependency. Hosted CI, packaging, layout
+against an explicitly pinned Core dependency, and since
+[issue #3](https://github.com/OpenTLV/opentlv-rust/issues/3) it has its own
+[PR, Main and Full CI](docs/quality-gates.md). Crate publication, layout
 normalization, documentation integration and Core cleanup are later migration
 steps. Until that cleanup, Core keeps its in-tree
 [`bindings/rust`](https://github.com/OpenTLV/opentlv/tree/main/bindings/rust)
@@ -20,12 +22,16 @@ and the workflow that tests it.
 | --- | --- |
 | `bindings/rust/` | Cargo workspace with the `opentlv-sys` and `opentlv` crates, their tests and seven examples |
 | `bindings/rust/opentlv-sys/core/` | Core dependency lock, selection module, release verifier and toolchain probe used by `build.rs` |
-| `tests/` | Tests for the release verifier |
+| `.github/workflows/` | PR, Main and Full CI, source quality and CodeQL |
+| `ci/matrix.json` | CI toolchains, platforms, feature sets and test inventory |
+| `scripts/ci.py` | Runs one CI configuration, or checks the evidence of all of them |
+| `tests/` | Tests for the release verifier and the CI infrastructure |
 | `docs/guides/rust.md` | Preserved Rust user guide |
 | `docs/development/rust.md` | Preserved Rust developer guide |
 | `docs/migration.md` | Migration baseline, source import and validation results |
 | `docs/migration/` | Source inventory, original CI configuration and validation evidence |
-| `docs/validation/` | Standalone build validation |
+| `docs/quality-gates.md` | CI entry points, supported configurations, test ownership and evidence |
+| `docs/validation/` | Standalone build and CI validation |
 | `scripts/verify_baseline.py` | Verifies the inventory against the pinned Core tree |
 | `scripts/verify_migration.py` | Verifies the imported files against the inventory and the pinned Core tree |
 
@@ -37,7 +43,7 @@ links.
 
 ## Building
 
-Requirements: a Rust toolchain (the crates declare 1.70), CMake 3.16 or newer,
+Requirements: Rust 1.82 or newer, CMake 3.16 or newer,
 a C99 compiler and Git. On Windows, use the MSVC Rust toolchain with Visual
 Studio. The first build of each configuration downloads Core from GitHub.
 
@@ -49,6 +55,17 @@ cargo test --workspace
 
 The Cargo features `lldp`, `nfc` and `document` (all on by default) and the
 native linking modes are the same as in Core.
+
+Before a pull request, run the checks of the PR CI from `bindings/rust`:
+
+```sh
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+```
+
+The [quality gates](docs/quality-gates.md) list every CI check, the supported
+toolchains and platforms, and how to run a complete CI configuration locally.
 
 ### Core dependency
 
