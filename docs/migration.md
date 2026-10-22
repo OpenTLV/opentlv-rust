@@ -1,11 +1,13 @@
-# Rust migration baseline
+# Rust migration record
 
 This record fixes the pre-migration state of the Rust bindings in Core for
 [OpenTLV/opentlv#671](https://github.com/OpenTLV/opentlv/issues/671), part of the
 [Rust binding migration epic](https://github.com/OpenTLV/opentlv/issues/670).
-It is the reference for every later migration step. No Rust sources are
-imported yet; the source transfer is the next migration issue and must be
-compared against this baseline.
+It is the reference for every later migration step. The baseline sections
+below describe the state before any Rust source was imported and stay
+unchanged. The source transfer for
+[opentlv-rust#1](https://github.com/OpenTLV/opentlv-rust/issues/1) is recorded
+in [Source import](#source-import) and compared against this baseline.
 
 ## Provenance
 
@@ -301,9 +303,133 @@ with `OPENTLV_LIB_DIR` pointing at the library directory and
 the loader path. [validation.json](migration/validation.json) has the exact
 commands.
 
+## Source import
+
+[opentlv-rust#1](https://github.com/OpenTLV/opentlv-rust/issues/1) imports all
+69 inventoried files from the source commit. The import copies committed Git
+blobs and preserves their bytes and original copyright and SPDX notices. It
+does not transplant Git history; the source commit and the history command
+above keep the original history retrievable.
+
+| Source | Destination | Files |
+| --- | --- | ---: |
+| `bindings/rust/` (complete tree) | Same path | 66 |
+| `docs/guides/rust.md`, `docs/development/rust.md` | Same paths | 2 |
+| `.github/workflows/rust.yml` | `docs/migration/original-rust.yml` | 1 |
+
+### Preserved contracts
+
+- Both crates, their names, versions (`0.7.1`), metadata and the
+  `Cargo.lock` are unchanged.
+- Public Rust API, FFI declarations, ownership and lifetime behavior are
+  unchanged.
+- Cargo features `lldp`, `nfc` and `document`, and their defaults, are
+  unchanged.
+- `build.rs` and all three native linking modes are unchanged, including the
+  known prebuilt shared-library failure on Windows MSVC.
+- Unit, integration, doc and ABI probe tests and all seven examples are copied
+  without changes.
+- The generated diagnostic vocabulary files are copied as they are; their
+  generator stays in Core.
+- No Core file is changed or removed.
+
+### Migration-specific differences
+
+These are the only changes outside the imported files:
+
+- The workspace stays at `bindings/rust/`. Keeping the original layout keeps
+  every Core-relative path in `build.rs`, `fixed_abi.rs` and `corpus.rs`
+  unchanged. Layout normalization is
+  [opentlv-rust#5](https://github.com/OpenTLV/opentlv-rust/issues/5).
+- The original workflow is kept as `docs/migration/original-rust.yml`. It is
+  historical evidence, not an active workflow; standalone CI is
+  [opentlv-rust#3](https://github.com/OpenTLV/opentlv-rust/issues/3).
+- `.gitignore` ignores `/bindings/rust/target/`, as Core does for the same
+  path.
+- The README, this record, the changelog and `scripts/verify_migration.py` are
+  new.
+
+The imported workspace still resolves Core through `../../..` from its crates.
+In this repository that is the repository root, which has no Core sources, so
+the source build, the C ABI probe and the corpus seed replay do not work here
+yet. Do not run Cargo in `bindings/rust` before the standalone build and
+verified Core dependency of
+[opentlv-rust#2](https://github.com/OpenTLV/opentlv-rust/issues/2) exist.
+
+The preserved guides describe the original Core checkout. Their commands and
+links to other Core documents keep that context and are not standalone
+instructions. For working cross-links, use the pinned
+[user guide](https://github.com/OpenTLV/opentlv/blob/476f1fbecde6b056419e43c9a6cea4d1ca8df1cf/docs/guides/rust.md)
+and
+[developer guide](https://github.com/OpenTLV/opentlv/blob/476f1fbecde6b056419e43c9a6cea4d1ca8df1cf/docs/development/rust.md).
+Documentation integration is
+[opentlv-rust#6](https://github.com/OpenTLV/opentlv-rust/issues/6).
+
+### Verifying the import
+
+With a sibling Core checkout that contains the source commit:
+
+```sh
+python -B scripts/verify_migration.py --core ../opentlv
+```
+
+The verifier first runs the baseline verification. It then compares every
+imported file byte-for-byte with its original Git blob and with the SHA-256
+hash and size in the frozen inventory, and rejects missing, extra or modified
+files in `bindings/rust`. Only Cargo's `bindings/rust/target/` is ignored. It
+does not build or run anything. Checks on temporary copies confirmed that it
+rejects a modified source file, an extra file in `bindings/rust` and a missing
+guide, and accepts Cargo build output.
+
+### Imported-source validation
+
+The runtime comparison repeated the complete baseline matrix on 2026-10-22,
+on the same machine and with the same toolchain as the baseline. Core at the
+source commit was exported with `git archive` (with `core.autocrlf=false`)
+into the ignored `build/1/c/` directory. The 69 imported files were copied
+over their source paths, and an `opentlv-source.txt` with `version=0.7.1` and
+the source commit was added. That file is Core's archive version metadata; it
+keeps the linked library at `0.7.1` instead of reading the enclosing
+repository's Git tags. The overlay changed no file, so the build consumed
+exactly the imported bytes in the original Core build context.
+
+| Check | Default features (source build) | `--no-default-features` (source build) | Prebuilt static | Prebuilt shared |
+| --- | --- | --- | --- | --- |
+| `cargo fmt --all --check` | Passed | | | |
+| `cargo clippy --workspace --all-targets -- -D warnings` | Passed | | | |
+| `cargo build --workspace --all-targets` | Passed | Passed | | |
+| `cargo test --workspace` | 202 passed | 186 passed | 202 passed | Link failure |
+| Examples | 6 passed | | `quick_start` passed | Link failure |
+| Shared Query corpus | 171 fixtures passed | | | |
+| `cargo doc --workspace --no-deps` | Passed, 3 warnings | | | |
+
+Every step has the same exit code as the baseline. Per-target test counts,
+example output, the Query corpus summary (2133 native executions) and the three
+Rustdoc warnings are identical. The prebuilt shared-library run fails with the
+same unresolved data symbols as the baseline: 6 in the tests and 12 in
+`quick_start`. `Cargo.lock` was unchanged after the run and the Core checkout
+stayed clean.
+
+On disk, the imported files are LF on Windows (`eol=lf` in `.gitattributes`),
+while the baseline Core checkout uses `core.autocrlf=true`. No source includes
+files with `include_str!` or `include_bytes!`, and `cargo fmt` passed in both
+runs.
+
+The [machine-readable report](migration/import-validation.json) records exact
+commands, working directories, environment overrides, exit codes, durations,
+per-target test counts and log hashes. The
+[compact log](migration/windows-imported.log) has the same sections as the
+baseline log. Full logs remain in the ignored local `build/1/` directory.
+
+These results compare the imported sources with the baseline in the original
+Core build context. They are not standalone build, hosted CI, MSRV, Linux or
+macOS validation.
+
 ## Follow-up boundaries
 
-This baseline does not import, change or remove any Rust source, test,
-example, feature, linking mode or Core file. The source transfer, standalone
-Cargo build and Core dependency, CI, packaging, layout normalization,
-documentation integration and Core cleanup are separate migration issues.
+The baseline does not import, change or remove any Rust source, test,
+example, feature, linking mode or Core file. The source import adds the files
+listed in [Source import](#source-import) without changing them. The
+standalone Cargo build and Core dependency, CI, packaging, layout
+normalization, documentation integration and Core cleanup are separate
+migration issues.

@@ -1,0 +1,167 @@
+=== default/fmt (exit 0) ===
+
+=== default/clippy (exit 0) ===
+
+=== default/build (exit 0) ===
+
+=== default/test (exit 0) ===
+src/lib.rs: 26 passed, 0 failed, 0 ignored
+tests/codec.rs: 16 passed, 0 failed, 0 ignored
+tests/corpus.rs: 5 passed, 0 failed, 0 ignored
+tests/definition.rs: 1 passed, 0 failed, 0 ignored
+tests/diagnostic.rs: 3 passed, 0 failed, 0 ignored
+tests/diagnostic_vocabulary.rs: 12 passed, 0 failed, 0 ignored
+tests/document.rs: 8 passed, 0 failed, 0 ignored
+tests/emv_format.rs: 1 passed, 0 failed, 0 ignored
+tests/incremental_native.rs: 1 passed, 0 failed, 0 ignored
+tests/lldp.rs: 1 passed, 0 failed, 0 ignored
+tests/nfc_type2.rs: 1 passed, 0 failed, 0 ignored
+tests/program.rs: 11 passed, 0 failed, 0 ignored
+tests/query_extensions.rs: 8 passed, 0 failed, 0 ignored
+tests/query_schema.rs: 9 passed, 0 failed, 0 ignored
+tests/reader.rs: 13 passed, 0 failed, 0 ignored
+tests/schema.rs: 26 passed, 0 failed, 0 ignored
+tests/tree_reader.rs: 11 passed, 0 failed, 0 ignored
+tests/tree_writer.rs: 5 passed, 0 failed, 0 ignored
+tests/validation.rs: 12 passed, 0 failed, 0 ignored
+tests/writer.rs: 15 passed, 0 failed, 0 ignored
+src/lib.rs: 2 passed, 0 failed, 0 ignored
+tests/fixed_abi.rs: 1 passed, 0 failed, 0 ignored
+doc-tests opentlv: 14 passed, 0 failed, 0 ignored
+doc-tests opentlv_sys: 0 passed, 0 failed, 0 ignored
+total: 202 passed
+
+=== default/example-parse (exit 0) ===
+tag=[6F] length=10 value=[84, 03, 41, 42, 43, A5, 03, 50, 01, 01]
+  tag=[84] length=3 value=[41, 42, 43]
+  tag=[A5] length=3 value=[50, 01, 01]
+    tag=[50] length=1 value=[01]
+
+=== default/example-quick_start (exit 0) ===
+Hello, world!
+
+=== default/example-reader (exit 0) ===
+OpenTLV 0.7.1
+[6F] fci_template: [84, 07, A0, 00, 00, 00, 03, 10, 10, 50, 04, 56, 49, 53, 41]
+  [84] df_name: [A0, 00, 00, 00, 03, 10, 10]
+  [50] application_label: [56, 49, 53, 41]
+truncated input: truncated input (Truncated)
+
+=== default/example-validate (exit 0) ===
+Document conforms to the schema
+Incomplete document rejected: schema constraint violated
+
+=== default/example-write (exit 0) ===
+wrote 12 bytes: [6F, 0A, 84, 03, 41, 42, 43, A5, 03, 50, 01, 01]
+
+=== default/example-writer (exit 0) ===
+encoded 15 bytes: [6F, 0D, 84, 05, A0, 00, 00, 00, 03, 50, 04, 56, 49, 53, 41]
+[6F] -> 13 value bytes
+buffer too short, position 0
+
+=== default/query-corpus (exit 0) ===
+171 Query fixtures and 0 generated comparisons passed (2133 native executions, 0 unavailable-provider fixtures)
+
+=== default/rustdoc (exit 0) ===
+warning: unresolved link to `CodecFailure::from(crate::Error::InvalidValue)`
+   --> opentlv\src\codec.rs:548:11
+warning: unresolved link to `CodecFailure::from(crate::Error::InvalidValue)`
+   --> opentlv\src\codec.rs:851:11
+warning: unresolved link to `CodecFailure::from(crate::Error::BufferTooShort)`
+   --> opentlv\src\codec.rs:861:11
+warning: `opentlv` (lib doc) generated 3 warnings
+
+=== no-default-features/build (exit 0) ===
+
+=== no-default-features/test (exit 0) ===
+src/lib.rs: 26 passed, 0 failed, 0 ignored
+tests/codec.rs: 16 passed, 0 failed, 0 ignored
+tests/corpus.rs: 5 passed, 0 failed, 0 ignored
+tests/definition.rs: 1 passed, 0 failed, 0 ignored
+tests/diagnostic.rs: 3 passed, 0 failed, 0 ignored
+tests/diagnostic_vocabulary.rs: 12 passed, 0 failed, 0 ignored
+tests/document.rs: 0 passed, 0 failed, 0 ignored
+tests/emv_format.rs: 1 passed, 0 failed, 0 ignored
+tests/incremental_native.rs: 1 passed, 0 failed, 0 ignored
+tests/lldp.rs: 0 passed, 0 failed, 0 ignored
+tests/nfc_type2.rs: 1 passed, 0 failed, 0 ignored
+tests/program.rs: 8 passed, 0 failed, 0 ignored
+tests/query_extensions.rs: 8 passed, 0 failed, 0 ignored
+tests/query_schema.rs: 6 passed, 0 failed, 0 ignored
+tests/reader.rs: 13 passed, 0 failed, 0 ignored
+tests/schema.rs: 26 passed, 0 failed, 0 ignored
+tests/tree_reader.rs: 11 passed, 0 failed, 0 ignored
+tests/tree_writer.rs: 5 passed, 0 failed, 0 ignored
+tests/validation.rs: 12 passed, 0 failed, 0 ignored
+tests/writer.rs: 15 passed, 0 failed, 0 ignored
+src/lib.rs: 2 passed, 0 failed, 0 ignored
+tests/fixed_abi.rs: 1 passed, 0 failed, 0 ignored
+doc-tests opentlv: 13 passed, 0 failed, 0 ignored
+doc-tests opentlv_sys: 0 passed, 0 failed, 0 ignored
+total: 186 passed
+
+=== prebuilt-static/core-configure (exit 0) ===
+
+=== prebuilt-static/core-build (exit 0) ===
+
+=== prebuilt-static/test (exit 0) ===
+src/lib.rs: 26 passed, 0 failed, 0 ignored
+tests/codec.rs: 16 passed, 0 failed, 0 ignored
+tests/corpus.rs: 5 passed, 0 failed, 0 ignored
+tests/definition.rs: 1 passed, 0 failed, 0 ignored
+tests/diagnostic.rs: 3 passed, 0 failed, 0 ignored
+tests/diagnostic_vocabulary.rs: 12 passed, 0 failed, 0 ignored
+tests/document.rs: 8 passed, 0 failed, 0 ignored
+tests/emv_format.rs: 1 passed, 0 failed, 0 ignored
+tests/incremental_native.rs: 1 passed, 0 failed, 0 ignored
+tests/lldp.rs: 1 passed, 0 failed, 0 ignored
+tests/nfc_type2.rs: 1 passed, 0 failed, 0 ignored
+tests/program.rs: 11 passed, 0 failed, 0 ignored
+tests/query_extensions.rs: 8 passed, 0 failed, 0 ignored
+tests/query_schema.rs: 9 passed, 0 failed, 0 ignored
+tests/reader.rs: 13 passed, 0 failed, 0 ignored
+tests/schema.rs: 26 passed, 0 failed, 0 ignored
+tests/tree_reader.rs: 11 passed, 0 failed, 0 ignored
+tests/tree_writer.rs: 5 passed, 0 failed, 0 ignored
+tests/validation.rs: 12 passed, 0 failed, 0 ignored
+tests/writer.rs: 15 passed, 0 failed, 0 ignored
+src/lib.rs: 2 passed, 0 failed, 0 ignored
+tests/fixed_abi.rs: 1 passed, 0 failed, 0 ignored
+doc-tests opentlv: 14 passed, 0 failed, 0 ignored
+doc-tests opentlv_sys: 0 passed, 0 failed, 0 ignored
+total: 202 passed
+
+=== prebuilt-static/example-quick_start (exit 0) ===
+Hello, world!
+
+=== prebuilt-dylib/core-configure (exit 0) ===
+
+=== prebuilt-dylib/core-build (exit 0) ===
+
+=== prebuilt-dylib/test (exit 101) ===
+error: linking with `link.exe` failed: exit code: 1120
+  = note: opentlv-f2daa7840b89afea.3kzy1haiyi7km1vvxh0zmm5sz.02k3xxy.rcgu.o : error LNK2019: unresolved external symbol tlv_format_ber referenced in function _RNvMNtCsfAxwQYL2HLj_7opentlv6formatNtB2_6Format3raw
+          opentlv-f2daa7840b89afea.3kzy1haiyi7km1vvxh0zmm5sz.02k3xxy.rcgu.o : error LNK2019: unresolved external symbol tlv_format_emv referenced in function _RNvMNtCsfAxwQYL2HLj_7opentlv6formatNtB2_6Format3raw
+          opentlv-f2daa7840b89afea.3kzy1haiyi7km1vvxh0zmm5sz.02k3xxy.rcgu.o : error LNK2019: unresolved external symbol tlv_format_cer referenced in function _RNvMNtCsfAxwQYL2HLj_7opentlv6formatNtB2_6Format3raw
+          opentlv-f2daa7840b89afea.3kzy1haiyi7km1vvxh0zmm5sz.02k3xxy.rcgu.o : error LNK2019: unresolved external symbol tlv_format_der referenced in function _RNvMNtCsfAxwQYL2HLj_7opentlv6formatNtB2_6Format3raw
+          opentlv-f2daa7840b89afea.3kzy1haiyi7km1vvxh0zmm5sz.02k3xxy.rcgu.o : error LNK2019: unresolved external symbol tlv_format_lldp referenced in function _RNvMNtCsfAxwQYL2HLj_7opentlv6formatNtB2_6Format3raw
+          opentlv-f2daa7840b89afea.3kzy1haiyi7km1vvxh0zmm5sz.02k3xxy.rcgu.o : error LNK2019: unresolved external symbol tlv_format_nfc_type2 referenced in function _RNvMNtCsfAxwQYL2HLj_7opentlv6formatNtB2_6Format3raw
+          D:\Projects\marekcingel\OpenTLV\opentlv-rust\build\1\ty\debug\deps\opentlv-f2daa7840b89afea.exe : fatal error LNK1120: 6 unresolved externals
+error: could not compile `opentlv` (lib test) due to 1 previous error
+
+=== prebuilt-dylib/example-quick_start (exit 101) ===
+error: linking with `link.exe` failed: exit code: 1120
+  = note: libopentlv-da7741faa1ee9089.rlib(opentlv-da7741faa1ee9089.1uj3smcfddimhy25rb4jz59jw.175p6ah.rcgu.o) : error LNK2019: unresolved external symbol tlv_format_ber referenced in function _RNvMNtCs1yoa9NfkJdI_7opentlv6formatNtB2_6Format3raw
+          libopentlv-da7741faa1ee9089.rlib(opentlv-da7741faa1ee9089.1uj3smcfddimhy25rb4jz59jw.175p6ah.rcgu.o) : error LNK2019: unresolved external symbol tlv_format_emv referenced in function _RNvMNtCs1yoa9NfkJdI_7opentlv6formatNtB2_6Format3raw
+          libopentlv-da7741faa1ee9089.rlib(opentlv-da7741faa1ee9089.1uj3smcfddimhy25rb4jz59jw.175p6ah.rcgu.o) : error LNK2019: unresolved external symbol tlv_format_cer referenced in function _RNvMNtCs1yoa9NfkJdI_7opentlv6formatNtB2_6Format3raw
+          libopentlv-da7741faa1ee9089.rlib(opentlv-da7741faa1ee9089.1uj3smcfddimhy25rb4jz59jw.175p6ah.rcgu.o) : error LNK2019: unresolved external symbol tlv_format_der referenced in function _RNvMNtCs1yoa9NfkJdI_7opentlv6formatNtB2_6Format3raw
+          libopentlv-da7741faa1ee9089.rlib(opentlv-da7741faa1ee9089.1uj3smcfddimhy25rb4jz59jw.175p6ah.rcgu.o) : error LNK2019: unresolved external symbol tlv_format_lldp referenced in function _RNvMNtCs1yoa9NfkJdI_7opentlv6formatNtB2_6Format3raw
+          libopentlv-da7741faa1ee9089.rlib(opentlv-da7741faa1ee9089.1uj3smcfddimhy25rb4jz59jw.175p6ah.rcgu.o) : error LNK2019: unresolved external symbol tlv_format_nfc_type2 referenced in function _RNvMNtCs1yoa9NfkJdI_7opentlv6formatNtB2_6Format3raw
+          libopentlv-da7741faa1ee9089.rlib(opentlv-da7741faa1ee9089.1uj3smcfddimhy25rb4jz59jw.175p6ah.rcgu.o) : error LNK2019: unresolved external symbol tlv_cer_default_limits referenced in function _RNvMs2_NtCs1yoa9NfkJdI_7opentlv10validationNtNtB7_6format6Format14default_limits
+          libopentlv-da7741faa1ee9089.rlib(opentlv-da7741faa1ee9089.1uj3smcfddimhy25rb4jz59jw.175p6ah.rcgu.o) : error LNK2019: unresolved external symbol tlv_der_default_limits referenced in function _RNvMs2_NtCs1yoa9NfkJdI_7opentlv10validationNtNtB7_6format6Format14default_limits
+          libopentlv-da7741faa1ee9089.rlib(opentlv-da7741faa1ee9089.8oevjvkk2ap5nmcm5ikhf7e9i.175p6ah.rcgu.o) : error LNK2019: unresolved external symbol tlv_asn1_query_date referenced in function _RNvMsa_NtCs1yoa9NfkJdI_7opentlv7programNtB5_12QueryProgram5build
+          libopentlv-da7741faa1ee9089.rlib(opentlv-da7741faa1ee9089.8oevjvkk2ap5nmcm5ikhf7e9i.175p6ah.rcgu.o) : error LNK2019: unresolved external symbol tlv_asn1_query_tags referenced in function _RNvMsa_NtCs1yoa9NfkJdI_7opentlv7programNtB5_12QueryProgram5build
+          libopentlv-da7741faa1ee9089.rlib(opentlv-da7741faa1ee9089.078hp4jk0z03k2sfr5bylk1v7.175p6ah.rcgu.o) : error LNK2019: unresolved external symbol tlv_emv_codec_amount referenced in function _RNvMsa_NtCs1yoa9NfkJdI_7opentlv5codecNtB5_5Codec6amount
+          libopentlv-da7741faa1ee9089.rlib(opentlv-da7741faa1ee9089.3idsykilzf07ytflzbt7okwdb.175p6ah.rcgu.o) : error LNK2019: unresolved external symbol tlv_emv_structure_schema referenced in function _RNvMs9_NtCs1yoa9NfkJdI_7opentlv6schemaNtB5_15StructureSchema3emv
+          D:\Projects\marekcingel\OpenTLV\opentlv-rust\build\1\ty\debug\examples\quick_start.exe : fatal error LNK1120: 12 unresolved externals
+error: could not compile `opentlv` (example "quick_start") due to 1 previous error

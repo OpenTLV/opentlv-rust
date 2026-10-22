@@ -1,0 +1,985 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "source_repository": "https://github.com/OpenTLV/opentlv",
+  "source_commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+  "imported_from": {
+    "repository": "https://github.com/OpenTLV/opentlv-rust",
+    "base_commit": "10525c49ab770cab4239852bcf22ce6cb482a237",
+    "worktree": "Imported files uncommitted; byte-identical to the baseline inventory"
+  },
+  "core_worktree_after": "clean",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "toolchain": {
+    "rustc": [
+      "rustc 1.98.1 (48a229cea 2026-09-01)",
+      "binary: rustc",
+      "commit-hash: 48a229ceaefd4985c50990b14116b6d856af0985",
+      "commit-date: 2026-09-01",
+      "host: x86_64-pc-windows-msvc",
+      "release: 1.98.1",
+      "LLVM version: 22.1.8"
+    ],
+    "cargo": [
+      "cargo 1.98.1 (797e8a9bc 2026-08-05)"
+    ],
+    "cmake": "cmake version 3.31.7",
+    "python": "3.11.4 (tags/v3.11.4:d2340ef, Jun  7 2023, 05:45:37) [MSC v.1934 64 bit (AMD64)]",
+    "git": "git version 2.49.0.windows.1"
+  },
+  "context": {
+    "archive_sha256": "0b927283a4f0e78158fc2b841e70cf31e553dc766cc4cfee7692f0ef43a24675",
+    "overlaid_files": 69,
+    "overlay_changed_files": 0,
+    "cargo_lock_sha256": "e784a9e3516331c91eb6004e5df1cb45343e21a392d3a23a5479455637b78165",
+    "cargo_lock_sha256_after": "e784a9e3516331c91eb6004e5df1cb45343e21a392d3a23a5479455637b78165"
+  },
+  "configurations": {
+    "default": [
+      {
+        "name": "fmt",
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--check"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c\\bindings\\rust",
+        "env": {
+          "CARGO_TERM_COLOR": "never",
+          "CARGO_TARGET_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\td",
+          "RUSTFLAGS": "-D warnings"
+        },
+        "exit_code": 0,
+        "seconds": 0.72,
+        "log": "build/1/default/fmt.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c\\bindings\\rust",
+        "env": {
+          "CARGO_TERM_COLOR": "never",
+          "CARGO_TARGET_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\td",
+          "RUSTFLAGS": "-D warnings"
+        },
+        "exit_code": 0,
+        "seconds": 24.69,
+        "log": "build/1/default/clippy.log",
+        "log_sha256": "794dab45f4182660ecb69cbb0b87fcc90baa723a743a78e809d1cd9ce43079cc"
+      },
+      {
+        "name": "build",
+        "command": [
+          "cargo",
+          "build",
+          "--workspace",
+          "--all-targets"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c\\bindings\\rust",
+        "env": {
+          "CARGO_TERM_COLOR": "never",
+          "CARGO_TARGET_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\td",
+          "RUSTFLAGS": "-D warnings"
+        },
+        "exit_code": 0,
+        "seconds": 39.67,
+        "log": "build/1/default/build.log",
+        "log_sha256": "2d7acf2126ecfc892533b2b2d7582f6b9507acf110001d6e65d1cb594b268ce5"
+      },
+      {
+        "name": "test",
+        "command": [
+          "cargo",
+          "test",
+          "--workspace"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c\\bindings\\rust",
+        "env": {
+          "CARGO_TERM_COLOR": "never",
+          "CARGO_TARGET_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\td",
+          "RUSTFLAGS": "-D warnings"
+        },
+        "exit_code": 0,
+        "seconds": 39.94,
+        "log": "build/1/default/test.log",
+        "log_sha256": "91268d0f1855223ebfc558f52bc214c65e65f4dddb23af38d17ae5398d5fda5f",
+        "tests": [
+          {
+            "target": "src/lib.rs",
+            "passed": 26,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/codec.rs",
+            "passed": 16,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/corpus.rs",
+            "passed": 5,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/definition.rs",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/diagnostic.rs",
+            "passed": 3,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/diagnostic_vocabulary.rs",
+            "passed": 12,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/document.rs",
+            "passed": 8,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/emv_format.rs",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/incremental_native.rs",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/lldp.rs",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/nfc_type2.rs",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/program.rs",
+            "passed": 11,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/query_extensions.rs",
+            "passed": 8,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/query_schema.rs",
+            "passed": 9,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/reader.rs",
+            "passed": 13,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/schema.rs",
+            "passed": 26,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/tree_reader.rs",
+            "passed": 11,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/tree_writer.rs",
+            "passed": 5,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/validation.rs",
+            "passed": 12,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/writer.rs",
+            "passed": 15,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "src/lib.rs",
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/fixed_abi.rs",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "doc-tests opentlv",
+            "passed": 14,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "doc-tests opentlv_sys",
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "name": "example-parse",
+        "command": [
+          "cargo",
+          "run",
+          "-q",
+          "-p",
+          "opentlv",
+          "--example",
+          "parse"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c\\bindings\\rust",
+        "env": {
+          "CARGO_TERM_COLOR": "never",
+          "CARGO_TARGET_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\td",
+          "RUSTFLAGS": "-D warnings"
+        },
+        "exit_code": 0,
+        "seconds": 26.75,
+        "log": "build/1/default/example-parse.log",
+        "log_sha256": "afed06c1572177cbb3b305e2f45eab7246c912ecd1f0cabcb2b1092221125ef6"
+      },
+      {
+        "name": "example-quick_start",
+        "command": [
+          "cargo",
+          "run",
+          "-q",
+          "-p",
+          "opentlv",
+          "--example",
+          "quick_start"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c\\bindings\\rust",
+        "env": {
+          "CARGO_TERM_COLOR": "never",
+          "CARGO_TARGET_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\td",
+          "RUSTFLAGS": "-D warnings"
+        },
+        "exit_code": 0,
+        "seconds": 1.08,
+        "log": "build/1/default/example-quick_start.log",
+        "log_sha256": "d9014c4624844aa5bac314773d6b689ad467fa4e1d1a50a1b8a99d5a95f72ff5"
+      },
+      {
+        "name": "example-reader",
+        "command": [
+          "cargo",
+          "run",
+          "-q",
+          "-p",
+          "opentlv",
+          "--example",
+          "reader"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c\\bindings\\rust",
+        "env": {
+          "CARGO_TERM_COLOR": "never",
+          "CARGO_TARGET_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\td",
+          "RUSTFLAGS": "-D warnings"
+        },
+        "exit_code": 0,
+        "seconds": 0.92,
+        "log": "build/1/default/example-reader.log",
+        "log_sha256": "ac83ca95065cdc7e783ae940eeaf76351cdca31c43ac24ebbe0a9eb74ebd34d5"
+      },
+      {
+        "name": "example-validate",
+        "command": [
+          "cargo",
+          "run",
+          "-q",
+          "-p",
+          "opentlv",
+          "--example",
+          "validate"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c\\bindings\\rust",
+        "env": {
+          "CARGO_TERM_COLOR": "never",
+          "CARGO_TARGET_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\td",
+          "RUSTFLAGS": "-D warnings"
+        },
+        "exit_code": 0,
+        "seconds": 1.0,
+        "log": "build/1/default/example-validate.log",
+        "log_sha256": "e673e71c08ece83be8a3abc995998e610e388d1bae01d622844c7d37a1b8a1be"
+      },
+      {
+        "name": "example-write",
+        "command": [
+          "cargo",
+          "run",
+          "-q",
+          "-p",
+          "opentlv",
+          "--example",
+          "write"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c\\bindings\\rust",
+        "env": {
+          "CARGO_TERM_COLOR": "never",
+          "CARGO_TARGET_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\td",
+          "RUSTFLAGS": "-D warnings"
+        },
+        "exit_code": 0,
+        "seconds": 0.89,
+        "log": "build/1/default/example-write.log",
+        "log_sha256": "70d30e8023c801dc128e2c538b399f68e202970a24f3b446403007598f8eb473"
+      },
+      {
+        "name": "example-writer",
+        "command": [
+          "cargo",
+          "run",
+          "-q",
+          "-p",
+          "opentlv",
+          "--example",
+          "writer"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c\\bindings\\rust",
+        "env": {
+          "CARGO_TERM_COLOR": "never",
+          "CARGO_TARGET_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\td",
+          "RUSTFLAGS": "-D warnings"
+        },
+        "exit_code": 0,
+        "seconds": 0.95,
+        "log": "build/1/default/example-writer.log",
+        "log_sha256": "097ab296fd14c15f842ad3906b92b67ce81a250c924e9b40d822cdb85297809a"
+      },
+      {
+        "name": "query-corpus",
+        "command": [
+          "C:\\Users\\Cingel.Marek\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+          "-B",
+          "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c\\tests\\query\\run.py",
+          "--native",
+          "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\td\\debug\\examples\\query_conformance.exe",
+          "--property-cases",
+          "0"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c\\bindings\\rust",
+        "env": {
+          "CARGO_TERM_COLOR": "never"
+        },
+        "exit_code": 0,
+        "seconds": 15.58,
+        "log": "build/1/default/query-corpus.log",
+        "log_sha256": "adbb0dae2cee9133d87a6750bca47180f9c5c0b1f26d858b9886571dd3ca6ba2"
+      },
+      {
+        "name": "rustdoc",
+        "command": [
+          "cargo",
+          "doc",
+          "--workspace",
+          "--no-deps"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c\\bindings\\rust",
+        "env": {
+          "CARGO_TERM_COLOR": "never",
+          "CARGO_TARGET_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\td",
+          "RUSTFLAGS": ""
+        },
+        "exit_code": 0,
+        "seconds": 27.39,
+        "log": "build/1/default/rustdoc.log",
+        "log_sha256": "ef337e2ed481ef23168377255ae93fb4dabcf07b220659db5915f17a7184e3d3"
+      }
+    ],
+    "no-default-features": [
+      {
+        "name": "build",
+        "command": [
+          "cargo",
+          "build",
+          "--workspace",
+          "--all-targets",
+          "--no-default-features"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c\\bindings\\rust",
+        "env": {
+          "CARGO_TERM_COLOR": "never",
+          "CARGO_TARGET_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\tn",
+          "RUSTFLAGS": "-D warnings"
+        },
+        "exit_code": 0,
+        "seconds": 32.73,
+        "log": "build/1/no-default-features/build.log",
+        "log_sha256": "9f966cdeeb5553d86a5e087fdc29235abbf93a4c042ba2533485180e4205d999"
+      },
+      {
+        "name": "test",
+        "command": [
+          "cargo",
+          "test",
+          "--workspace",
+          "--no-default-features"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c\\bindings\\rust",
+        "env": {
+          "CARGO_TERM_COLOR": "never",
+          "CARGO_TARGET_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\tn",
+          "RUSTFLAGS": "-D warnings"
+        },
+        "exit_code": 0,
+        "seconds": 35.03,
+        "log": "build/1/no-default-features/test.log",
+        "log_sha256": "da74c78614b084947cbf5e56700fa22471bf5acbb0d69a1e76deccd578091b14",
+        "tests": [
+          {
+            "target": "src/lib.rs",
+            "passed": 26,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/codec.rs",
+            "passed": 16,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/corpus.rs",
+            "passed": 5,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/definition.rs",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/diagnostic.rs",
+            "passed": 3,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/diagnostic_vocabulary.rs",
+            "passed": 12,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/document.rs",
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/emv_format.rs",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/incremental_native.rs",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/lldp.rs",
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/nfc_type2.rs",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/program.rs",
+            "passed": 8,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/query_extensions.rs",
+            "passed": 8,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/query_schema.rs",
+            "passed": 6,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/reader.rs",
+            "passed": 13,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/schema.rs",
+            "passed": 26,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/tree_reader.rs",
+            "passed": 11,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/tree_writer.rs",
+            "passed": 5,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/validation.rs",
+            "passed": 12,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/writer.rs",
+            "passed": 15,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "src/lib.rs",
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/fixed_abi.rs",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "doc-tests opentlv",
+            "passed": 13,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "doc-tests opentlv_sys",
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      }
+    ],
+    "prebuilt-static": [
+      {
+        "name": "core-configure",
+        "command": [
+          "cmake",
+          "-S",
+          "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c",
+          "-B",
+          "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\ps",
+          "-DCMAKE_BUILD_TYPE=Release",
+          "-DOPENTLV_READER=ON",
+          "-DOPENTLV_WRITER=ON",
+          "-DOPENTLV_QUERY=ON",
+          "-DOPENTLV_SCHEMA=ON",
+          "-DOPENTLV_CODEC=ON",
+          "-DOPENTLV_DOCUMENT=ON",
+          "-DOPENTLV_NFC=ON",
+          "-DOPENTLV_LLDP=ON",
+          "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
+          "-DOPENTLV_BUILD_CXX=OFF",
+          "-DOPENTLV_BUILD_TESTS=OFF",
+          "-DOPENTLV_BUILD_EXAMPLES=OFF",
+          "-DOPENTLV_WARNINGS_AS_ERRORS=OFF",
+          "-DOPENTLV_BUILD_SHARED_LIBS=OFF"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c",
+        "env": {
+          "CARGO_TERM_COLOR": "never"
+        },
+        "exit_code": 0,
+        "seconds": 5.36,
+        "log": "build/1/prebuilt-static/core-configure.log",
+        "log_sha256": "32e160766be180ff78dd3972c3eacdecf768cb011cae6d455e34c2d0dfb25316"
+      },
+      {
+        "name": "core-build",
+        "command": [
+          "cmake",
+          "--build",
+          "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\ps",
+          "--target",
+          "tlv",
+          "--config",
+          "Release"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c",
+        "env": {
+          "CARGO_TERM_COLOR": "never"
+        },
+        "exit_code": 0,
+        "seconds": 11.91,
+        "log": "build/1/prebuilt-static/core-build.log",
+        "log_sha256": "b05b8a605fa7ade346ff38353e8e13f7fe4edab550cfe7cc6f3372aaaa554a0d"
+      },
+      {
+        "name": "test",
+        "command": [
+          "cargo",
+          "test",
+          "--workspace"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c\\bindings\\rust",
+        "env": {
+          "CARGO_TERM_COLOR": "never",
+          "CARGO_TARGET_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\ts",
+          "RUSTFLAGS": "-D warnings",
+          "OPENTLV_LIB_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\ps\\tlv\\Release",
+          "OPENTLV_LINK_KIND": "static"
+        },
+        "exit_code": 0,
+        "seconds": 49.81,
+        "log": "build/1/prebuilt-static/test.log",
+        "log_sha256": "0a15c05335a82febff9a09b993ce0f95515840471ce92fd1f5703f71a2b28664",
+        "tests": [
+          {
+            "target": "src/lib.rs",
+            "passed": 26,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/codec.rs",
+            "passed": 16,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/corpus.rs",
+            "passed": 5,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/definition.rs",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/diagnostic.rs",
+            "passed": 3,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/diagnostic_vocabulary.rs",
+            "passed": 12,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/document.rs",
+            "passed": 8,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/emv_format.rs",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/incremental_native.rs",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/lldp.rs",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/nfc_type2.rs",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/program.rs",
+            "passed": 11,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/query_extensions.rs",
+            "passed": 8,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/query_schema.rs",
+            "passed": 9,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/reader.rs",
+            "passed": 13,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/schema.rs",
+            "passed": 26,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/tree_reader.rs",
+            "passed": 11,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/tree_writer.rs",
+            "passed": 5,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/validation.rs",
+            "passed": 12,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/writer.rs",
+            "passed": 15,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "src/lib.rs",
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "tests/fixed_abi.rs",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "doc-tests opentlv",
+            "passed": 14,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "target": "doc-tests opentlv_sys",
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "name": "example-quick_start",
+        "command": [
+          "cargo",
+          "run",
+          "-q",
+          "-p",
+          "opentlv",
+          "--example",
+          "quick_start"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c\\bindings\\rust",
+        "env": {
+          "CARGO_TERM_COLOR": "never",
+          "CARGO_TARGET_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\ts",
+          "RUSTFLAGS": "-D warnings",
+          "OPENTLV_LIB_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\ps\\tlv\\Release",
+          "OPENTLV_LINK_KIND": "static"
+        },
+        "exit_code": 0,
+        "seconds": 4.86,
+        "log": "build/1/prebuilt-static/example-quick_start.log",
+        "log_sha256": "d9014c4624844aa5bac314773d6b689ad467fa4e1d1a50a1b8a99d5a95f72ff5"
+      }
+    ],
+    "prebuilt-dylib": [
+      {
+        "name": "core-configure",
+        "command": [
+          "cmake",
+          "-S",
+          "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c",
+          "-B",
+          "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\py",
+          "-DCMAKE_BUILD_TYPE=Release",
+          "-DOPENTLV_READER=ON",
+          "-DOPENTLV_WRITER=ON",
+          "-DOPENTLV_QUERY=ON",
+          "-DOPENTLV_SCHEMA=ON",
+          "-DOPENTLV_CODEC=ON",
+          "-DOPENTLV_DOCUMENT=ON",
+          "-DOPENTLV_NFC=ON",
+          "-DOPENTLV_LLDP=ON",
+          "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
+          "-DOPENTLV_BUILD_CXX=OFF",
+          "-DOPENTLV_BUILD_TESTS=OFF",
+          "-DOPENTLV_BUILD_EXAMPLES=OFF",
+          "-DOPENTLV_WARNINGS_AS_ERRORS=OFF",
+          "-DOPENTLV_BUILD_SHARED_LIBS=ON"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c",
+        "env": {
+          "CARGO_TERM_COLOR": "never"
+        },
+        "exit_code": 0,
+        "seconds": 7.42,
+        "log": "build/1/prebuilt-dylib/core-configure.log",
+        "log_sha256": "2f5cbc40e000f7fca41dc996bb8755323ac8102dc5fa26e04cfde889f4d6b8db"
+      },
+      {
+        "name": "core-build",
+        "command": [
+          "cmake",
+          "--build",
+          "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\py",
+          "--target",
+          "tlv",
+          "--config",
+          "Release"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c",
+        "env": {
+          "CARGO_TERM_COLOR": "never"
+        },
+        "exit_code": 0,
+        "seconds": 25.27,
+        "log": "build/1/prebuilt-dylib/core-build.log",
+        "log_sha256": "aa7e0297108ff7333d7f357b63d1db11cebeca95182f511ee596417ebffaef27"
+      },
+      {
+        "name": "test",
+        "command": [
+          "cargo",
+          "test",
+          "--workspace"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c\\bindings\\rust",
+        "env": {
+          "CARGO_TERM_COLOR": "never",
+          "CARGO_TARGET_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\ty",
+          "RUSTFLAGS": "-D warnings",
+          "OPENTLV_LIB_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\py\\tlv\\Release",
+          "OPENTLV_LINK_KIND": "dylib",
+          "PATH": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\py\\tlv\\Release;<inherited PATH>"
+        },
+        "exit_code": 101,
+        "seconds": 7.41,
+        "log": "build/1/prebuilt-dylib/test.log",
+        "log_sha256": "a48e1c25a6100996883628e91c756fea6efb3c68b6bfd84f800b6756c6641ea5",
+        "tests": []
+      },
+      {
+        "name": "example-quick_start",
+        "command": [
+          "cargo",
+          "run",
+          "-q",
+          "-p",
+          "opentlv",
+          "--example",
+          "quick_start"
+        ],
+        "cwd": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\c\\bindings\\rust",
+        "env": {
+          "CARGO_TERM_COLOR": "never",
+          "CARGO_TARGET_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\ty",
+          "RUSTFLAGS": "-D warnings",
+          "OPENTLV_LIB_DIR": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\py\\tlv\\Release",
+          "OPENTLV_LINK_KIND": "dylib",
+          "PATH": "D:\\Projects\\marekcingel\\OpenTLV\\opentlv-rust\\build\\1\\py\\tlv\\Release;<inherited PATH>"
+        },
+        "exit_code": 101,
+        "seconds": 7.92,
+        "log": "build/1/prebuilt-dylib/example-quick_start.log",
+        "log_sha256": "6c1be25383598bdd9ce206e58d88dda173243d843faed8c54d514122543f4ac8"
+      }
+    ]
+  },
+  "scope": "Imported files overlaid on a Core archive at the source commit; rerun of the #671 Windows matrix in the original Core build context, not standalone validation",
+  "comparison": {
+    "baseline": "validation.json and windows-baseline.log",
+    "exit_codes": "Identical for all 22 steps",
+    "tests": {
+      "default": "202 passed",
+      "no-default-features": "186 passed",
+      "prebuilt-static": "202 passed",
+      "prebuilt-dylib": "Link failure"
+    },
+    "per_target_test_counts": "Identical",
+    "example_and_query_output": "Identical",
+    "rustdoc_warnings": "Identical 3 unresolved intra-doc links in opentlv/src/codec.rs",
+    "prebuilt_dylib_unresolved_symbols": "Identical: 6 in tests, 12 in quick_start"
+  }
+}
