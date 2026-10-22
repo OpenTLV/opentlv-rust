@@ -1,5 +1,22 @@
 # Rust migration record
 
+This document records the historical baseline and the
+[#1](https://github.com/OpenTLV/opentlv-rust/issues/1) import. The standalone
+build of [#2](https://github.com/OpenTLV/opentlv-rust/issues/2) later changed
+`opentlv-sys/build.rs`, `opentlv-sys/tests/fixed_abi.rs`,
+`opentlv/tests/corpus.rs` and `opentlv/Cargo.toml` so that they reach Core
+through a pinned dependency instead of `../../..`. It preserved the crates,
+features, linking modes, API, tests, examples and the frozen inventory. Use the
+[README](../README.md#building) to build and the
+[standalone build validation](validation/standalone-build.md) for its results.
+To verify the original import, rather than today's working tree, against
+this record:
+
+```sh
+python -B scripts/verify_migration.py --core ../opentlv \
+  --import-ref 95d6299099af7a7d774ed89ee223f2cda5035aa9
+```
+
 This record fixes the pre-migration state of the Rust bindings in Core for
 [OpenTLV/opentlv#671](https://github.com/OpenTLV/opentlv/issues/671), part of the
 [Rust binding migration epic](https://github.com/OpenTLV/opentlv/issues/670).

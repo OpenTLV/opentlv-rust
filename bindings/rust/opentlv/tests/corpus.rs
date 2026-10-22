@@ -23,8 +23,8 @@ const MAX_TAG_SIZE: usize = 16;
 /// `path` is relative to `tests/fuzz/`, e.g. `corpus/read` or
 /// `builtins/asn1/corpus/der`, matching where each fuzz harness's own corpus lives.
 fn seeds(path: &str) -> Vec<(String, Vec<u8>)> {
-    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../tests/fuzz")
+    let dir = PathBuf::from(env!("OPENTLV_CORE_SOURCE_DIR"))
+        .join("tests/fuzz")
         .join(path);
     let mut seeds: Vec<_> = fs::read_dir(&dir)
         .unwrap_or_else(|e| panic!("cannot read corpus {}: {e}", dir.display()))

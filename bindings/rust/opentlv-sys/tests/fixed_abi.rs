@@ -58,7 +58,7 @@ fn fixed_and_diagnostic_layouts_match_c() {
         .arg(&build)
         .arg(format!(
             "-DOPENTLV_SOURCE_DIR={}",
-            manifest.join("../../..").display()
+            env!("OPENTLV_CORE_SOURCE_DIR")
         ));
     if cfg!(all(target_os = "windows", target_env = "msvc")) {
         configure.arg("-A").arg(if cfg!(target_arch = "x86") {
