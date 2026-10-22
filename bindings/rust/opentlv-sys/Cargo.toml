@@ -1,0 +1,16 @@
+[package]
+name = "opentlv-sys"
+description = "Raw FFI bindings to the OpenTLV C API"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+links = "tlv"
+build = "build.rs"
+
+[features]
+default = ["lldp", "document", "nfc"]
+lldp = []
+nfc = []
+document = []

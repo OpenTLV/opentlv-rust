@@ -1,0 +1,17 @@
+[package]
+name = "opentlv"
+description = "Safe Rust bindings for OpenTLV"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+default = ["lldp", "document", "nfc"]
+lldp = ["opentlv-sys/lldp"]
+nfc = ["opentlv-sys/nfc"]
+document = ["opentlv-sys/document"]
+
+[dependencies]
+opentlv-sys = { path = "../opentlv-sys", default-features = false }
