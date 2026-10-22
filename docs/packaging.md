@@ -18,7 +18,7 @@ the `opentlv` build script was added by the
 [standalone build](validation/standalone-build.md).
 
 Both crates inherit this metadata from `[workspace.package]` in
-`bindings/rust/Cargo.toml`:
+the root `Cargo.toml`:
 
 | Field | Value |
 | --- | --- |
@@ -71,7 +71,7 @@ Inside the workspace, Cargo uses the `path`; in the package, Cargo removes the
 ## Core compatibility
 
 Each `opentlv-sys` version pins exactly one Core dependency, recorded in
-[`core/core-artifact.json`](../bindings/rust/opentlv-sys/core/core-artifact.json),
+[`core/core-artifact.json`](../opentlv-sys/core/core-artifact.json),
 which is part of the package:
 
 | Crates | Core version | Core commit | Core release |
@@ -115,7 +115,7 @@ the manifests, the shared version, the unchanged features against the
 migration baseline, the license copies and the Core compatibility table
 without building.
 
-To inspect the packages locally, from `bindings/rust`:
+To inspect the packages locally, from the repository root:
 
 ```sh
 cargo metadata --format-version 1 --no-deps

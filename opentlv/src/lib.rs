@@ -15,12 +15,12 @@
 //!
 //! # Setup
 //!
-//! Add the crate by path from an OpenTLV checkout; the build script builds and
-//! links the C library with CMake (see `docs/guides/rust.md`).
+//! Add the crate by path from an opentlv-rust checkout; the build script builds
+//! and links the C library with CMake (see `docs/guides/rust.md`).
 //!
 //! ```toml
 //! [dependencies]
-//! opentlv = { path = "OpenTLV/bindings/rust/opentlv" }
+//! opentlv = { path = "opentlv-rust/opentlv" }
 //! ```
 //!
 //! # Reading and writing

@@ -13,7 +13,7 @@ EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
 
 def main():
-    for directory in ("bindings", "scripts", "tests"):
+    for directory in ("opentlv-sys", "opentlv", "scripts", "tests"):
         for path in (ROOT / directory).rglob("*.py"):
             if "__pycache__" not in path.parts and "target" not in path.parts:
                 ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))

@@ -7,7 +7,7 @@
 //! JavaScript "parse" examples parse the same bytes and report the same
 //! fields.
 //!
-//! Run with `cargo run --example parse` from `bindings/rust`.
+//! Run with `cargo run --example parse` from the repository root.
 
 use opentlv::{Format, Reader, Result};
 

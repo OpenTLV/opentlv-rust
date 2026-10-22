@@ -6,7 +6,7 @@
 //! write.rs for a nested BER document, and the C `quick_start.c` and C++
 //! `quick_start.cpp` examples for the same round trip in those languages.
 //!
-//! Run with `cargo run --example quick_start` from `bindings/rust`.
+//! Run with `cargo run --example quick_start` from the repository root.
 
 use opentlv::{ByteOrder, FixedFormat, FixedFormatConfig, Reader, Tag, Writer};
 

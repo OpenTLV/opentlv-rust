@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Move the Cargo workspace from the inherited `bindings/rust/` to the repository root, with `opentlv-sys/` and `opentlv/` as top-level crates; CI, the packaging check, tests and documentation use the new paths, and a regression test rejects the old layout in the build configuration. Crate sources, public API, Cargo features, `Cargo.lock`, native linking and the frozen migration inventory are unchanged. (#5)
+
 ### Fixed
 
 - Declare Rust 1.82, the oldest toolchain that compiles the safe crate, as `rust-version` instead of the never-working 1.70, and use `Option::is_none_or` where Clippy now suggests it; give `opentlv`'s `opentlv-sys` dependency a version so both crates can be packaged; repair three broken Rustdoc links in `codec.rs`. (#3)

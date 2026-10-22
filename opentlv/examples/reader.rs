@@ -4,7 +4,7 @@
 //! Reads a BER-TLV buffer with `Reader`, descends into a constructed element and
 //! decodes values with the EMV dictionary.
 //!
-//! Run with `cargo run --example reader` from `bindings/rust`.
+//! Run with `cargo run --example reader` from the repository root.
 
 use opentlv::emv::{self, Context};
 use opentlv::{Format, Reader, Result};

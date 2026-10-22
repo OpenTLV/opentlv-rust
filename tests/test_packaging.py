@@ -11,7 +11,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 import ci  # noqa: E402
 from ci_contract import CRATES, REPOSITORY  # noqa: E402
-from ci_support import ROOT, WORKSPACE, read  # noqa: E402
+from ci_support import ROOT, read  # noqa: E402
 
 INHERITED = ('version', 'edition', 'rust-version', 'license', 'repository', 'keywords')
 
@@ -22,8 +22,8 @@ def manifest(path):
 
 class Packaging(unittest.TestCase):
     def setUp(self):
-        self.workspace = manifest(WORKSPACE / 'Cargo.toml')['workspace']['package']
-        self.crates = {crate: manifest(WORKSPACE / crate / 'Cargo.toml') for crate in CRATES}
+        self.workspace = manifest(ROOT / 'Cargo.toml')['workspace']['package']
+        self.crates = {crate: manifest(ROOT / crate / 'Cargo.toml') for crate in CRATES}
 
     def test_shared_identity_metadata(self):
         self.assertEqual(self.workspace['license'], 'MIT')
@@ -40,7 +40,7 @@ class Packaging(unittest.TestCase):
     def test_crates_are_versioned_together(self):
         version = self.workspace['version']
         locked = {item['name']: item['version']
-                  for item in manifest(WORKSPACE / 'Cargo.lock')['package']}
+                  for item in manifest(ROOT / 'Cargo.lock')['package']}
         self.assertEqual(locked, {crate: version for crate in CRATES})
         self.assertEqual(self.crates['opentlv']['dependencies'], {'opentlv-sys': {
             'version': '=' + version, 'path': '../opentlv-sys', 'default-features': False}})
@@ -60,15 +60,15 @@ class Packaging(unittest.TestCase):
     def test_packages_carry_license_and_readme(self):
         license_text = (ROOT / 'LICENSE').read_bytes()
         for crate in CRATES:
-            self.assertEqual((WORKSPACE / crate / 'LICENSE').read_bytes(), license_text, crate)
-            self.assertTrue((WORKSPACE / crate / 'README.md').is_file(), crate)
+            self.assertEqual((ROOT / crate / 'LICENSE').read_bytes(), license_text, crate)
+            self.assertTrue((ROOT / crate / 'README.md').is_file(), crate)
 
     def test_core_compatibility_is_recorded(self):
-        lock = read(WORKSPACE / 'opentlv-sys/core/core-artifact.json')
+        lock = read(ROOT / 'opentlv-sys/core/core-artifact.json')
         version = self.workspace['version']
         row = (f"| {version} | {lock['version']} | `{lock['commit']}` | "
                f"{lock['release_tag'] or 'none locked'} |")
-        for path in (ROOT / 'docs/packaging.md', WORKSPACE / 'opentlv-sys/README.md'):
+        for path in (ROOT / 'docs/packaging.md', ROOT / 'opentlv-sys/README.md'):
             self.assertIn(row, path.read_text(encoding='utf-8'), path)
 
 

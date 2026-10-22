@@ -13,9 +13,10 @@ against an explicitly pinned Core dependency, and since
 [PR, Main and Full CI](docs/quality-gates.md). Since
 [issue #4](https://github.com/OpenTLV/opentlv-rust/issues/4) both crates are
 prepared as independent Cargo packages with their own
-[versioning](docs/packaging.md); they are not published yet. Crate
-publication, layout normalization, documentation integration and Core cleanup
-are later migration steps. Until that cleanup, Core keeps its in-tree
+[versioning](docs/packaging.md); they are not published yet. Since
+[issue #5](https://github.com/OpenTLV/opentlv-rust/issues/5) the Cargo
+workspace is at the repository root. Crate publication, documentation
+integration and Core cleanup are later migration steps. Until that cleanup, Core keeps its in-tree
 [`bindings/rust`](https://github.com/OpenTLV/opentlv/tree/main/bindings/rust)
 and the workflow that tests it.
 
@@ -23,9 +24,11 @@ and the workflow that tests it.
 
 | Path | Content |
 | --- | --- |
-| `bindings/rust/` | Cargo workspace with the `opentlv-sys` and `opentlv` crates, their tests and seven examples |
-| `bindings/rust/*/README.md`, `bindings/rust/*/LICENSE` | Package readme and license text of each crate |
-| `bindings/rust/opentlv-sys/core/` | Core dependency lock, selection module, release verifier and toolchain probe used by `build.rs` |
+| `Cargo.toml`, `Cargo.lock` | Cargo workspace of the two crates |
+| `opentlv-sys/` | Raw FFI crate: sources, `build.rs`, tests and the C ABI probe |
+| `opentlv-sys/core/` | Core dependency lock, selection module, release verifier and toolchain probe used by `build.rs` |
+| `opentlv/` | Safe Rust crate: sources, tests and seven examples |
+| `opentlv-sys/README.md`, `opentlv/README.md`, `*/LICENSE` | Package readme and license text of each crate |
 | `.github/workflows/` | PR, Main and Full CI, source quality and CodeQL |
 | `ci/matrix.json` | CI toolchains, platforms, feature sets and test inventory |
 | `scripts/ci.py` | Runs one CI configuration, or checks the evidence of all of them |
@@ -36,7 +39,7 @@ and the workflow that tests it.
 | `docs/migration/` | Source inventory, original CI configuration and validation evidence |
 | `docs/quality-gates.md` | CI entry points, supported configurations, test ownership and evidence |
 | `docs/packaging.md` | Package identities, versioning, Core compatibility and crates.io prerequisites |
-| `docs/validation/` | Standalone build, CI and packaging validation |
+| `docs/validation/` | Standalone build, CI, packaging and layout validation |
 | `scripts/verify_baseline.py` | Verifies the inventory against the pinned Core tree |
 | `scripts/verify_migration.py` | Verifies the imported files against the inventory and the pinned Core tree |
 
@@ -53,7 +56,6 @@ a C99 compiler and Git. On Windows, use the MSVC Rust toolchain with Visual
 Studio. The first build of each configuration downloads Core from GitHub.
 
 ```sh
-cd bindings/rust
 cargo build --workspace
 cargo test --workspace
 ```
@@ -61,7 +63,7 @@ cargo test --workspace
 The Cargo features `lldp`, `nfc` and `document` (all on by default) and the
 native linking modes are the same as in Core.
 
-Before a pull request, run the checks of the PR CI from `bindings/rust`:
+Before a pull request, run the checks of the PR CI from the repository root:
 
 ```sh
 cargo fmt --all --check
@@ -74,7 +76,7 @@ toolchains and platforms, and how to run a complete CI configuration locally.
 
 ### Core dependency
 
-[`core-artifact.json`](bindings/rust/opentlv-sys/core/core-artifact.json) pins
+[`core-artifact.json`](opentlv-sys/core/core-artifact.json) pins
 Core:
 
 | Field | Value |
@@ -90,7 +92,7 @@ file:
 | Mode | Selected when | Verification |
 | --- | --- | --- |
 | `pinned-git` | Default while `release_tag` is `null` | Clones `OpenTLV/opentlv` into `OUT_DIR` once, checks out the locked commit and requires a matching commit, version tag and clean tree. Git commit IDs identify the content; no archive is involved. |
-| `verified-binary` or `verified-source` | `release_tag` is set, or `OPENTLV_REQUIRE_VERIFIED_CORE=1` | [`verified_core.py`](bindings/rust/opentlv-sys/core/verified_core.py) checks the release and that its tag resolves to the locked commit. It verifies the GitHub Artifact Attestations of the manifest, `SHA256SUMS` and every downloaded archive (signer `core-release.yml`, source digest of the locked commit), along with the archive checksums, Core's Full CI evidence and the configuration bound to the source. It uses a static Verified Binary only when it matches the target, the C compiler of a CMake probe, the MSVC runtime or declared Linux PIC and glibc, and the Core components of the enabled Cargo features. Otherwise it uses the Verified Source, if `allow_verified_source` permits. It never falls back to Git. Needs Python 3.11 or newer and an authenticated [GitHub CLI](https://cli.github.com/). |
+| `verified-binary` or `verified-source` | `release_tag` is set, or `OPENTLV_REQUIRE_VERIFIED_CORE=1` | [`verified_core.py`](opentlv-sys/core/verified_core.py) checks the release and that its tag resolves to the locked commit. It verifies the GitHub Artifact Attestations of the manifest, `SHA256SUMS` and every downloaded archive (signer `core-release.yml`, source digest of the locked commit), along with the archive checksums, Core's Full CI evidence and the configuration bound to the source. It uses a static Verified Binary only when it matches the target, the C compiler of a CMake probe, the MSVC runtime or declared Linux PIC and glibc, and the Core components of the enabled Cargo features. Otherwise it uses the Verified Source, if `allow_verified_source` permits. It never falls back to Git. Needs Python 3.11 or newer and an authenticated [GitHub CLI](https://cli.github.com/). |
 | `local-source` | `OPENTLV_CORE_SOURCE` is set | Records the commit, version and dirty state of the local checkout without verifying them, and prints a Cargo warning. Rejected when `CI` or `GITHUB_ACTIONS` is set, or with `OPENTLV_REQUIRE_VERIFIED_CORE`. |
 
 After building Core, or before linking a Verified Binary, the build script
@@ -122,24 +124,24 @@ python -B <Core>/tests/query/run.py --native target/debug/examples/query_conform
 To test the dependency selection itself:
 
 ```sh
-cd bindings/rust && cargo test -p opentlv-sys --test core_dependency
-python -B -m unittest discover -s tests     # from the repository root
+cargo test -p opentlv-sys --test core_dependency
+python -B -m unittest discover -s tests
 ```
 
 ### Local Core development
 
 To build against a local Core checkout, for example the sibling `opentlv`
 checkout of the [workspace](https://github.com/OpenTLV/opentlv-workspace), set
-`OPENTLV_CORE_SOURCE` to the absolute path of its repository root. From
-`bindings/rust`:
+`OPENTLV_CORE_SOURCE` to the absolute path of its repository root. From the
+repository root:
 
 ```sh
-export OPENTLV_CORE_SOURCE="$(cd ../../../opentlv && pwd)"
+export OPENTLV_CORE_SOURCE="$(cd ../opentlv && pwd)"
 cargo test --workspace
 ```
 
 ```powershell
-$env:OPENTLV_CORE_SOURCE = (Resolve-Path ../../../opentlv).Path
+$env:OPENTLV_CORE_SOURCE = (Resolve-Path ../opentlv).Path
 cargo test --workspace
 ```
 
@@ -159,11 +161,13 @@ python -B scripts/verify_migration.py --core ../opentlv \
 
 This needs Python 3.11 or newer and Git. It runs the baseline verification,
 then checks every file of the import commit byte-for-byte against its original
-Git blob and rejects missing, extra or modified files in `bindings/rust`. It
-does not build anything. Without `--import-ref` it checks the working tree,
-which no longer matches: the standalone build intentionally changed
-`opentlv-sys/build.rs`, `opentlv-sys/tests/fixed_abi.rs`,
-`opentlv/tests/corpus.rs` and `opentlv/Cargo.toml`, and added files. See the
+Git blob and rejects missing, extra or modified files in the imported
+`bindings/rust`. It does not build anything. Without `--import-ref` it checks
+the working tree, which no longer matches: the standalone build intentionally
+changed `opentlv-sys/build.rs`, `opentlv-sys/tests/fixed_abi.rs`,
+`opentlv/tests/corpus.rs` and `opentlv/Cargo.toml`, and added files, and the
+[layout normalization](docs/validation/layout.md) moved the workspace out of
+`bindings/rust`. See the
 [migration record](docs/migration.md) for the baseline and imported-source
 results and the [standalone build validation](docs/validation/standalone-build.md).
 

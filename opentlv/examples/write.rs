@@ -5,7 +5,7 @@
 //! innermost elements first and using each encoded result as the next
 //! level's value: the standard way to build constructed TLV bottom-up.
 //!
-//! Run with `cargo run --example write` from `bindings/rust`.
+//! Run with `cargo run --example write` from the repository root.
 
 use opentlv::{Format, Result, Tag, Writer};
 
