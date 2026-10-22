@@ -15,4 +15,4 @@ nfc = ["opentlv-sys/nfc"]
 document = ["opentlv-sys/document"]
 
 [dependencies]
-opentlv-sys = { path = "../opentlv-sys", default-features = false }
+opentlv-sys = { version = "0.7.1", path = "../opentlv-sys", default-features = false }

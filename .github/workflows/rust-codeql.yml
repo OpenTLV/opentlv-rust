@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Marek Cingel
+name: Rust CodeQL
+on:
+  workflow_call:
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      # Rust and Python are analyzed from source; no Core build is needed.
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: rust, python
+          build-mode: none
+          queries: security-extended
+      - uses: github/codeql-action/analyze@v3
