@@ -1,0 +1,565 @@
+{
+  "schema": 1,
+  "source_repository": "https://github.com/OpenTLV/opentlv",
+  "source_commit": "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf",
+  "source_describe": "0.7.1-31-g476f1fbe",
+  "core_version": "0.7.1",
+  "history": {
+    "path": "bindings/rust",
+    "commits": 83,
+    "first_commit": "babcdc386a65d5bb20e4a1cc7ed170653f174bce",
+    "last_commit": "b9b51b1fa6f64f0af6363b06e411774aed39284b"
+  },
+  "workspace": {
+    "manifest": "bindings/rust/Cargo.toml",
+    "resolver": "2",
+    "members": [
+      "opentlv-sys",
+      "opentlv"
+    ],
+    "package": {
+      "version": "0.7.1",
+      "edition": "2021",
+      "rust-version": "1.70",
+      "license": "MIT",
+      "repository": "https://github.com/marekcingel/OpenTLV"
+    },
+    "lockfile_version": 3,
+    "locked_packages": {
+      "opentlv": "0.7.1",
+      "opentlv-sys": "0.7.1"
+    }
+  },
+  "crates": {
+    "opentlv-sys": {
+      "manifest": "bindings/rust/opentlv-sys/Cargo.toml",
+      "description": "Raw FFI bindings to the OpenTLV C API",
+      "links": "tlv",
+      "build": "build.rs",
+      "features": {
+        "default": [
+          "lldp",
+          "document",
+          "nfc"
+        ],
+        "lldp": [],
+        "nfc": [],
+        "document": []
+      },
+      "dependencies": {}
+    },
+    "opentlv": {
+      "manifest": "bindings/rust/opentlv/Cargo.toml",
+      "description": "Safe Rust bindings for OpenTLV",
+      "links": null,
+      "build": null,
+      "features": {
+        "default": [
+          "lldp",
+          "document",
+          "nfc"
+        ],
+        "lldp": [
+          "opentlv-sys/lldp"
+        ],
+        "nfc": [
+          "opentlv-sys/nfc"
+        ],
+        "document": [
+          "opentlv-sys/document"
+        ]
+      },
+      "dependencies": {
+        "opentlv-sys": {
+          "path": "../opentlv-sys",
+          "default-features": false
+        }
+      }
+    }
+  },
+  "files": [
+    {
+      "path": ".github/workflows/rust.yml",
+      "blob": "3d09d28bbcd9a8cb660d1eef46fd58527dab19bd",
+      "sha256": "d335aa3ebb4acbc386dba3aa0d50778105a770eb82819266d0726eab8a8cb896",
+      "bytes": 2754,
+      "category": "ci"
+    },
+    {
+      "path": "bindings/rust/Cargo.lock",
+      "blob": "fa3efe7c1e89376fec3a63d1d9847fbbafca43bd",
+      "sha256": "e784a9e3516331c91eb6004e5df1cb45343e21a392d3a23a5479455637b78165",
+      "bytes": 238,
+      "category": "workspace"
+    },
+    {
+      "path": "bindings/rust/Cargo.toml",
+      "blob": "48bbcf81efaa59525ebec77d630689746b09f349",
+      "sha256": "a5a6af503b83a8b2efd358c3dc9eb226a21d673395f664e0769d4d04bb2c4ba4",
+      "bytes": 212,
+      "category": "workspace"
+    },
+    {
+      "path": "bindings/rust/opentlv-sys/Cargo.toml",
+      "blob": "69a8a61ab04c90cf9b9c766b1aa5a86ede299e38",
+      "sha256": "a0e213d9b1f18124d355d0bb2ce97b59693a2bd19b9b79f26a9c46a0fdfaa1e9",
+      "bytes": 334,
+      "category": "opentlv-sys build"
+    },
+    {
+      "path": "bindings/rust/opentlv-sys/build.rs",
+      "blob": "6f62a9cff8801e08257d8103ef7f9196ef265578",
+      "sha256": "c5393efc799340cf4fb2bb591f9b36470adb44ece79ca79a8cff3cfb8de0228a",
+      "bytes": 3959,
+      "category": "opentlv-sys build"
+    },
+    {
+      "path": "bindings/rust/opentlv-sys/src/codec_diagnostic.rs",
+      "blob": "e3db30aece559e4a78eff81c07c1c7353c7b43e2",
+      "sha256": "307bb9380f91ca4191c14ba4f986b28b7cdeba40ada5f8f83b9b2853a1aa9dba",
+      "bytes": 1298,
+      "category": "opentlv-sys source"
+    },
+    {
+      "path": "bindings/rust/opentlv-sys/src/diagnostic_strings.rs",
+      "blob": "2f16ceee3c8af09b9bd82ae203ad0475ad38c4b4",
+      "sha256": "c5d6b94cf8f10f7c1543633fa1453b0286b682cdf48bdde9c93593becb010837",
+      "bytes": 1900,
+      "category": "opentlv-sys source"
+    },
+    {
+      "path": "bindings/rust/opentlv-sys/src/document.rs",
+      "blob": "0761e51de9b065ad834598758ef271e7ad042689",
+      "sha256": "6abb0f7d63b4724c53e0299f5822294457bbd88731d8fd4ae02e63a2ae35023d",
+      "bytes": 5468,
+      "category": "opentlv-sys source"
+    },
+    {
+      "path": "bindings/rust/opentlv-sys/src/lib.rs",
+      "blob": "23f5979791d0b6c8f45c07ae2e4b7fe755670f10",
+      "sha256": "679b4443c41ca604ff9a185ea6bed7972f93303ee9ad1642ed30904bae97c784",
+      "bytes": 57898,
+      "category": "opentlv-sys source"
+    },
+    {
+      "path": "bindings/rust/opentlv-sys/src/program.rs",
+      "blob": "c5098a194cb064722984e3f34982ebf2bac4c831",
+      "sha256": "74ccffcaee637c34fff58a174125c42c24ac5311783dbf085e2e0a0bd928d9de",
+      "bytes": 14785,
+      "category": "opentlv-sys source"
+    },
+    {
+      "path": "bindings/rust/opentlv-sys/src/schema_report.rs",
+      "blob": "3e905721b7c25312cf3af166602dfe7809feb8dc",
+      "sha256": "6c0e1fd30ee9d02222a14c071931f573d17a5664c65c309e3b960c96c59dbbff",
+      "bytes": 3856,
+      "category": "opentlv-sys source"
+    },
+    {
+      "path": "bindings/rust/opentlv-sys/tests/abi_probe/CMakeLists.txt",
+      "blob": "796cbbe9d05b815a598cbaa938e174e18a621eb1",
+      "sha256": "d3c9d55e43359abd333581d1ec0e47400a7b794ad4a763de2f6cb8dd7d874436",
+      "bytes": 1279,
+      "category": "opentlv-sys ABI probe"
+    },
+    {
+      "path": "bindings/rust/opentlv-sys/tests/abi_probe/main.c",
+      "blob": "8f5def08e966de431d4ada78dd127b803b3501c1",
+      "sha256": "874c66d465df0e708e89a93cc773bf445b6382253a30fc205c575341539314e9",
+      "bytes": 344,
+      "category": "opentlv-sys ABI probe"
+    },
+    {
+      "path": "bindings/rust/opentlv-sys/tests/abi_probe/values.c",
+      "blob": "24d2be9873235718c2b185c4e4e64d41c1b81d0f",
+      "sha256": "659e7590ddeaae38e9f78e12ea3fa0a9a2e10d392827b85a19c392ca37af0699",
+      "bytes": 10030,
+      "category": "opentlv-sys ABI probe"
+    },
+    {
+      "path": "bindings/rust/opentlv-sys/tests/fixed_abi.rs",
+      "blob": "b027c2e45cb0ff0d8a8ca614744778409ffbe2c1",
+      "sha256": "1eff0026c09d8d0a0ac62d279b09eb2ac2e4eeeaa27c7792bc07969b07b1e8f6",
+      "bytes": 9624,
+      "category": "opentlv-sys test"
+    },
+    {
+      "path": "bindings/rust/opentlv/Cargo.toml",
+      "blob": "64576302737af4cb69337d04d3c7539e87d93bf3",
+      "sha256": "b3e6b85ac090c7b814221e2a4e966dea315118505837d2920379cd6d16b3b667",
+      "bytes": 431,
+      "category": "opentlv build"
+    },
+    {
+      "path": "bindings/rust/opentlv/examples/parse.rs",
+      "blob": "02af3fe208c9d7d658e24a5f2f62146791c6e1e3",
+      "sha256": "b23f4b02043f1f0f1ce7af84a39d60668e234516b1a0a15b82fce0cccf4a9f2c",
+      "bytes": 1699,
+      "category": "opentlv example"
+    },
+    {
+      "path": "bindings/rust/opentlv/examples/query_conformance.rs",
+      "blob": "0e0963f2fb17caa72259f8004105bb49435820e1",
+      "sha256": "9d9472979d1265b8a5e9c35c64f0da5cecf558ca79b951e8a360959de1f49cd9",
+      "bytes": 6983,
+      "category": "opentlv example"
+    },
+    {
+      "path": "bindings/rust/opentlv/examples/quick_start.rs",
+      "blob": "68c879bfa4bc317786e46d8a067e07da3e2bd4bc",
+      "sha256": "b4b12c5c27b8cd4752113c4c6fd47833238012605e7e42a081aaf0966ad82608",
+      "bytes": 1115,
+      "category": "opentlv example"
+    },
+    {
+      "path": "bindings/rust/opentlv/examples/reader.rs",
+      "blob": "671a3eec3524be0e13cdd4e7f920cf64d1498bf0",
+      "sha256": "92e92f163428d89863cbb5389374249ada0819d4a2349e445d30922623c3f33e",
+      "bytes": 1720,
+      "category": "opentlv example"
+    },
+    {
+      "path": "bindings/rust/opentlv/examples/validate.rs",
+      "blob": "af3c2fe15bbfbbe8addf9821447808707d42a630",
+      "sha256": "bc1a968b4c790ed043bcfcb729eb67d0f5dbb114e4098aa2940d33d0a85211df",
+      "bytes": 1998,
+      "category": "opentlv example"
+    },
+    {
+      "path": "bindings/rust/opentlv/examples/write.rs",
+      "blob": "2c0af81e9aa9b5417319d1225975486e1844fa68",
+      "sha256": "b764c7c7da2598250bf8c147de83c8ad7e8c4348a2491f82ec8104fd6ce1a946",
+      "bytes": 1572,
+      "category": "opentlv example"
+    },
+    {
+      "path": "bindings/rust/opentlv/examples/writer.rs",
+      "blob": "c00b24be317fdef6512145f837056eb8ced5a767",
+      "sha256": "5bac64b7e31b12fef2337778bcd69a9674d5f7467eed522ded47af0038b436ac",
+      "bytes": 1612,
+      "category": "opentlv example"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/codec.rs",
+      "blob": "cc37d809eda0aff6e84def86b386b8368eb61693",
+      "sha256": "10a8f84449600511241df3ff80404fe7d774dc567ba7ae752879d9da5ef536ed",
+      "bytes": 36264,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/definition.rs",
+      "blob": "3042bf479823361272af6f0dbb30c1ba6a5f7496",
+      "sha256": "fc8558dfb33a4f7edf8f048cd91ccc8b0f77ca9044742fbad97aedaf78bc4af0",
+      "bytes": 3067,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/diagnostic_kind.rs",
+      "blob": "d60912a02685c3725f98a62065b74541e1d30deb",
+      "sha256": "ceb64370b55d6add22487e2336748cc3abdf40a85015b35987b6f48cff79f662",
+      "bytes": 22829,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/document.rs",
+      "blob": "3f9f8e4d9ec047647ff2c3e637f70e65764d811c",
+      "sha256": "655fb2b5410c3e0a1da1d325b53f17365a19cea7fcb47d7b55c97aef888e7a9f",
+      "bytes": 27314,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/element.rs",
+      "blob": "8f92c1c3063e04c8bf5bae4489af0e1814a98ed7",
+      "sha256": "3bf6d970b86ca49dcec7901fd116c9b3d669d37aade25d94ea6ce7a393cea936",
+      "bytes": 5246,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/emv.rs",
+      "blob": "4931b771ddbdd5f6892a5cad64325813d87d68fc",
+      "sha256": "ce559272f1f76b709562108c01401522a36d891adf82fb1f46cc25ead8f8be45",
+      "bytes": 7380,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/error.rs",
+      "blob": "c3d9f497677c2afea082201e842ca56ec023e6b9",
+      "sha256": "4458ca8838ee6abed2146cdf8a68e14ee3172e6bf0b3038b1354d4d203f302fe",
+      "bytes": 8458,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/fixed_format.rs",
+      "blob": "6e9e533e4a716872414ed172b3bd326c198e40a1",
+      "sha256": "0b132b727ab0e2a9988b9151d845e2b292a7d7417e740481a451206941b21c29",
+      "bytes": 9415,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/format.rs",
+      "blob": "f7d72de21de364d3ea5c1caceea5da92c4d7c181",
+      "sha256": "c4c7252b89ab12cda255e8280e98b511b403642478a73891a895a5baba75289f",
+      "bytes": 3140,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/lib.rs",
+      "blob": "6fa42d3db722ef996dee60690c76721f027593b2",
+      "sha256": "3013c4afa4466204aec0fd60db35ed75645b912c802b6d8e6982e6fdac7bf655",
+      "bytes": 5984,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/location.rs",
+      "blob": "11c5a167403a192f80e3dd25d51072654ec1f299",
+      "sha256": "8ae5f2581ba86a37509be928367d427a377d40c121fc70d6e7a23eaa9ce69e70",
+      "bytes": 3501,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/program.rs",
+      "blob": "c44ac436cc4ff57ce534f43261941c2b0311f2b0",
+      "sha256": "c8176975ac62f4006494d16ecc6d584f590ab9ea7c3de9640e7c527c44fd370c",
+      "bytes": 57227,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/program/providers.rs",
+      "blob": "d6fe9c049ff35abc07456419f5d5d29a900432f1",
+      "sha256": "d39969c7f977806d27bcae4103d522220f5fb15da4791073b2af65607f54fddf",
+      "bytes": 9617,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/program/schema.rs",
+      "blob": "e508bc474a79056ca87788bcef6e883b350e3043",
+      "sha256": "baccff87d81f59db94db6c9be2f83035f9cb4450d283687c2f5036e3cd620a6e",
+      "bytes": 12642,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/query.rs",
+      "blob": "22de7ecae9063b0460e9bdef013fa73e642cf24e",
+      "sha256": "05dfa007ecfdabd1fb008d7e37aa076751ecceace674129193408e648953ae3a",
+      "bytes": 5947,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/reader.rs",
+      "blob": "0c724b12264cce8189f4a6fae37df1407a872aee",
+      "sha256": "1a89932999c570593571ca113e42222aeb4d8a5dc0d55faa3fa82ed39cb42344",
+      "bytes": 10622,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/reader_diagnostic.rs",
+      "blob": "3f00bda91af377891d3cc0f3d50c8d12b328377c",
+      "sha256": "fd460921fb17f8a9cda57cd76ad21d6a23056fd138ec08c112cd306c2a798163",
+      "bytes": 6947,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/schema.rs",
+      "blob": "9ed437b9c1fbc9f8b4e33db20bf7a95df8cdbfe1",
+      "sha256": "c4537ba05e62bb8aa818af47c3cdec46b664697d8c46521f372a4cbecf4f8883",
+      "bytes": 34250,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/source.rs",
+      "blob": "b5ccd29ea9542ca094ea9e8e312d0eb15cd1b16e",
+      "sha256": "e5f33918698881fcfe133e3473352f10c1753c5f714e28b13f44672e1968facc",
+      "bytes": 5605,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/tag.rs",
+      "blob": "400925f65061ebb0c1eed3a6c4ba7af1bcd037b1",
+      "sha256": "bf2fe743061e9ff697867805946a48648555576793f2d15eff29a1994e455f8c",
+      "bytes": 6771,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/tree_reader.rs",
+      "blob": "6c2bd5dab93665f8455cbc721ff637ec83409538",
+      "sha256": "6c34945796a77f47e47965316609942286ae74ae28dd4ef8cc76f6bad96e9d90",
+      "bytes": 10717,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/tree_writer.rs",
+      "blob": "5b7fc11d6db483a04bca90dae8a8be8a73652302",
+      "sha256": "fcbea98f2e9512c1540b18296937ebe4c0cdd6d42192eb59843a4c47f77193d6",
+      "bytes": 23069,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/validation.rs",
+      "blob": "ccc9a6eb0c5c6505c73f4aaa47edfe00e8a2abaa",
+      "sha256": "117ef9e726dba7485aac5b0dffd4c91f26a5f081623d2c5fab58c15b6442074f",
+      "bytes": 14916,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/visitor.rs",
+      "blob": "f8e41c9fd24f1c03479e7593241faa478b80e201",
+      "sha256": "8a1de2113af80ca7105a84cbc166396116b45c87525798d1161dff38fa890f31",
+      "bytes": 4020,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/src/writer.rs",
+      "blob": "64cbe4807e5f8004cb2ef338c5fdc29c55fda185",
+      "sha256": "6cfb7b06d427382586df40fb135386308d478be706c34f21839ea40a4f399ffa",
+      "bytes": 14047,
+      "category": "opentlv source"
+    },
+    {
+      "path": "bindings/rust/opentlv/tests/codec.rs",
+      "blob": "3d6ee0645ed5c0e5219b7cedc211a9167267a276",
+      "sha256": "5778cae8ee267ce578b4e0ad6c0010972a168d859e2de22f1765b2c39dcc7827",
+      "bytes": 12320,
+      "category": "opentlv test"
+    },
+    {
+      "path": "bindings/rust/opentlv/tests/corpus.rs",
+      "blob": "491cf9fbe9719c49cb9b2a6dbff28ca319906307",
+      "sha256": "9e086bd94a22489b33c555cf66b0d604545828f2bd8d0ccb89f246b46d810cc7",
+      "bytes": 8619,
+      "category": "opentlv test"
+    },
+    {
+      "path": "bindings/rust/opentlv/tests/definition.rs",
+      "blob": "ece25e00a00373a35548ca0536c392616c38ad78",
+      "sha256": "978e1d42aa3f3e17f699064c34aab2501022fb4ce35c85fe70ae110e3f17d540",
+      "bytes": 1147,
+      "category": "opentlv test"
+    },
+    {
+      "path": "bindings/rust/opentlv/tests/diagnostic.rs",
+      "blob": "2512a1339e7fd217113b22fd0774394ef0cf2368",
+      "sha256": "f1b5709949b46fd7a63809a2ecad838eb36ce656b25b7ab6446ddaf4d9739026",
+      "bytes": 2968,
+      "category": "opentlv test"
+    },
+    {
+      "path": "bindings/rust/opentlv/tests/diagnostic_vocabulary.rs",
+      "blob": "edac40f28d38e3e5050fc3258259411e6532cf93",
+      "sha256": "aaf64846e429a195cab4b4c055c910d7a7efdf21f1912892d84644f58c86085b",
+      "bytes": 8228,
+      "category": "opentlv test"
+    },
+    {
+      "path": "bindings/rust/opentlv/tests/document.rs",
+      "blob": "b54e9406353818cc438502c42211df191fd34de1",
+      "sha256": "184e21158f69a3ec90d1cb00373280f6d23f18f33916495118adb06ac4ed92ea",
+      "bytes": 7674,
+      "category": "opentlv test"
+    },
+    {
+      "path": "bindings/rust/opentlv/tests/emv_format.rs",
+      "blob": "3db4a73142012ffe6de8904496432dbe5b06d59e",
+      "sha256": "88d21e52d154f1ea2c5e95e8d083f3210b5017420f8edb320c482e3c9b21fa5c",
+      "bytes": 924,
+      "category": "opentlv test"
+    },
+    {
+      "path": "bindings/rust/opentlv/tests/incremental_native.rs",
+      "blob": "89369f5a543ccb9c349b02edb32dfbed25c3438c",
+      "sha256": "266358bafce66e79a41a9d54aa66c3bed2cf4f133dd32190316a2ffb11ba05dd",
+      "bytes": 2759,
+      "category": "opentlv test"
+    },
+    {
+      "path": "bindings/rust/opentlv/tests/lldp.rs",
+      "blob": "401af8ebf5754fa69410163f820028b4768ef597",
+      "sha256": "48b05515f9e32c150e84143de956ab7bbd09c2366b1d3def933edd8960978bfc",
+      "bytes": 1103,
+      "category": "opentlv test"
+    },
+    {
+      "path": "bindings/rust/opentlv/tests/nfc_type2.rs",
+      "blob": "306f34da7d61a7c48d3f95add83ffdb3cd3ede4f",
+      "sha256": "d7eb6f51e666778b74bc2b99b5969bca5d786b538bd62e91be20f78cbe8ee29d",
+      "bytes": 1525,
+      "category": "opentlv test"
+    },
+    {
+      "path": "bindings/rust/opentlv/tests/program.rs",
+      "blob": "d1f9dc081745a0a256aeae02979e502a56801d28",
+      "sha256": "5af914a8a8d17ca24c31143eab3e844705e98eb1384bdcc95611a70647ab8ceb",
+      "bytes": 15446,
+      "category": "opentlv test"
+    },
+    {
+      "path": "bindings/rust/opentlv/tests/query_extensions.rs",
+      "blob": "235168b53f92a91502b5903462461ce7553bf757",
+      "sha256": "4274844edf50a44828791410bd0b767d1f9e7baab2bc0e22c9d8432b4fafe68a",
+      "bytes": 10490,
+      "category": "opentlv test"
+    },
+    {
+      "path": "bindings/rust/opentlv/tests/query_schema.rs",
+      "blob": "b68b4608cabd0fb964a9321fb9b99cf924d451a2",
+      "sha256": "29a20a4b449a4bf02d44ed1c7da9c8f562c6ee29b29b24c987244516b5246553",
+      "bytes": 11171,
+      "category": "opentlv test"
+    },
+    {
+      "path": "bindings/rust/opentlv/tests/reader.rs",
+      "blob": "e8baefe5e37abcfd542e162968d18483964b3185",
+      "sha256": "9ab5b808f312c3f58de4ba1e51a5954195529d846d84ba4b1cf5555554c33795",
+      "bytes": 3905,
+      "category": "opentlv test"
+    },
+    {
+      "path": "bindings/rust/opentlv/tests/schema.rs",
+      "blob": "597a79827ab2f2241aabbe45c57621aa7a8df785",
+      "sha256": "5cb3112c5e2191cdd18007a8dfff9b016e85bf6c01da780e7317d820fa0cd20e",
+      "bytes": 18995,
+      "category": "opentlv test"
+    },
+    {
+      "path": "bindings/rust/opentlv/tests/tree_reader.rs",
+      "blob": "204157897ef76ab38c4738639d7ee25b4f137234",
+      "sha256": "60cfff1e3630af72eca1d75f507d676390f45ce9a8081c045c29e0a3c1bc4196",
+      "bytes": 7454,
+      "category": "opentlv test"
+    },
+    {
+      "path": "bindings/rust/opentlv/tests/tree_writer.rs",
+      "blob": "bb8de77c97cc323ff8dacc7cb855a5426979428b",
+      "sha256": "fb95a6b9449d20ba9aec7e821da2e99783ae4eff9723cf2cfd234da0f3f4cd68",
+      "bytes": 3667,
+      "category": "opentlv test"
+    },
+    {
+      "path": "bindings/rust/opentlv/tests/validation.rs",
+      "blob": "c5c508892fa16c88f37e641c637dabaa3b0a7a72",
+      "sha256": "1b726a1a2d344683aed993fe6b8754da00884eaa266061ed8825558e8fd770da",
+      "bytes": 7729,
+      "category": "opentlv test"
+    },
+    {
+      "path": "bindings/rust/opentlv/tests/writer.rs",
+      "blob": "3330e565d559cb38f0e4b57b0e803cc572823efa",
+      "sha256": "8254d80c373143d50470f562d5d25979b506308192ce7be8c498703fa616b8a3",
+      "bytes": 7069,
+      "category": "opentlv test"
+    },
+    {
+      "path": "docs/development/rust.md",
+      "blob": "c6812cd10778d69a8c3d692386d4c1e0757cdd8a",
+      "sha256": "68f312bd85fceb050ddfdc1db9a16fb77d212a9dd9b4d6d006eccf833752b5d9",
+      "bytes": 10673,
+      "category": "documentation"
+    },
+    {
+      "path": "docs/guides/rust.md",
+      "blob": "4c0396c032c81df88014bd257e90e9a14120b1f3",
+      "sha256": "c8302dd7eda2cb658bc533785e4b350d69f2a12fcae201fb7a709a73435a7d02",
+      "bytes": 12124,
+      "category": "documentation"
+    }
+  ]
+}
