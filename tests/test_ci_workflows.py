@@ -11,12 +11,18 @@ import unittest
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from ci_contract import matrix, policy  # noqa: E402
-from ci_support import ROOT, WORKSPACE, read, run  # noqa: E402
+from ci_contract import CRATES, matrix, policy  # noqa: E402
+from ci_support import ROOT, read, run  # noqa: E402
+from verify_baseline import SOURCE_DIRECTORY  # noqa: E402
 
 # Imported tests intentionally changed by issue #2 to read the selected Core tree.
-ADAPTED_TESTS = {'bindings/rust/opentlv-sys/tests/fixed_abi.rs',
-                 'bindings/rust/opentlv/tests/corpus.rs'}
+ADAPTED_TESTS = {'opentlv-sys/tests/fixed_abi.rs', 'opentlv/tests/corpus.rs'}
+# Issue #5 moved the workspace to the repository root; examples changed only their run hint.
+RUN_HINT = (b'from the repository root.', b'from `bindings/rust`.')
+# Active build configuration; the migration verifiers and records name Core's original paths.
+BUILD_CONFIGURATION = ('Cargo.toml', 'Cargo.lock', '.gitignore', '.gitattributes', *CRATES, 'ci',
+                       '.github', 'scripts/ci.py', 'scripts/ci_contract.py', 'scripts/ci_support.py',
+                       'scripts/ci_timings.py', 'scripts/check_quality.py', 'requirements-dev.txt')
 
 
 def workflow(name):
@@ -50,7 +56,7 @@ class Workflows(unittest.TestCase):
                         self.assertEqual(step['with']['if-no-files-found'], 'error')
 
     def test_matrix_tests_declared_msrv_and_platforms(self):
-        declared = tomllib.loads((WORKSPACE / 'Cargo.toml').read_text(encoding='utf-8'))[
+        declared = tomllib.loads((ROOT / 'Cargo.toml').read_text(encoding='utf-8'))[
             'workspace']['package']['rust-version']
         toolchains = policy()['toolchains']
         self.assertEqual(toolchains['msrv'], declared + '.0')
@@ -71,7 +77,7 @@ class TestOwnership(unittest.TestCase):
             self.assertNotIn('ctest', text)
             self.assertNotIn('gh workflow run', text)
         self.assertIn('"-DOPENTLV_BUILD_TESTS=OFF"',
-                      (WORKSPACE / 'opentlv-sys/build.rs').read_text(encoding='utf-8'))
+                      (ROOT / 'opentlv-sys/build.rs').read_text(encoding='utf-8'))
         # Core's Query corpus and fuzz seeds are read from the selected Core tree only.
         tracked = run('git', 'ls-files', '--cached', '--others', '--exclude-standard',
                       capture=True).splitlines()
@@ -84,15 +90,34 @@ class TestOwnership(unittest.TestCase):
         for entry in inventory['files']:
             path = entry['path']
             if '/tests/' in path or '/examples/' in path:
-                if path in ADAPTED_TESTS:
+                local = Path(path).relative_to(SOURCE_DIRECTORY).as_posix()
+                if local in ADAPTED_TESTS:
                     continue
-                data = (ROOT / path).read_bytes()
+                data = (ROOT / local).read_bytes()
+                if '/examples/' in path:
+                    data = data.replace(*RUN_HINT)
                 self.assertEqual(hashlib.sha256(data).hexdigest(), entry['sha256'], path)
                 checked += 1
         probe = [entry['path'] for entry in inventory['files'] if '/abi_probe/' in entry['path']]
         self.assertEqual(len(probe), 3)
         self.assertGreater(checked, len(probe))
         self.assertIn('fixed_abi', policy()['tests']['default'])
+
+
+class Layout(unittest.TestCase):
+    def test_root_workspace_without_monorepository_nesting(self):
+        workspace = tomllib.loads((ROOT / 'Cargo.toml').read_text(encoding='utf-8'))['workspace']
+        self.assertEqual(workspace['members'], list(CRATES))
+        for crate in CRATES:
+            self.assertTrue((ROOT / crate / 'Cargo.toml').is_file(), crate)
+        self.assertFalse((ROOT / SOURCE_DIRECTORY).exists())
+        tracked = run('git', 'ls-files', '--cached', '--others', '--exclude-standard', '--',
+                      *BUILD_CONFIGURATION, capture=True).splitlines()
+        self.assertIn('opentlv-sys/build.rs', tracked)
+        for path in tracked:
+            text = (ROOT / path).read_text(encoding='utf-8')
+            self.assertNotIn(SOURCE_DIRECTORY, text, path)
+            self.assertNotIn('../../..', text, path)
 
 
 if __name__ == '__main__':

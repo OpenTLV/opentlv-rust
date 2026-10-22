@@ -5,7 +5,7 @@
 //! times, in what nesting, and with what value lengths -- without decoding
 //! it. See `parse.rs` for the document this schema describes.
 //!
-//! Run with `cargo run --example validate` from `bindings/rust`.
+//! Run with `cargo run --example validate` from the repository root.
 
 use opentlv::{Error, Format, Kind, StructureRule, StructureSchema, Tag, ValidationLimits};
 

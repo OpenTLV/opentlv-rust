@@ -15,7 +15,7 @@ import unittest
 from unittest import mock
 import zipfile
 
-CORE = Path(__file__).resolve().parents[1] / 'bindings/rust/opentlv-sys/core'
+CORE = Path(__file__).resolve().parents[1] / 'opentlv-sys/core'
 sys.path.insert(0, str(CORE))
 import verified_core as verified  # noqa: E402
 

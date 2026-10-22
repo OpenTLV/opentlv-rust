@@ -14,7 +14,7 @@ import tarfile
 import time
 import tomllib
 
-from ci_support import ROOT, WORKSPACE, digest, read, require, run, stream, write
+from ci_support import ROOT, digest, read, require, run, stream, write
 from ci_contract import (CRATES, REPOSITORY, TIERS, cargo_tests, definition_hashes,
                          expected_tests, identity, lock, matrix, policy, validate_dependency,
                          validate_records)
@@ -53,7 +53,7 @@ class Cargo:
         self.env = env
 
     def __call__(self, *args, target="target", env=None):
-        return stream("cargo", *args, cwd=WORKSPACE,
+        return stream("cargo", *args, cwd=ROOT,
                       env={**self.env, "CARGO_TARGET_DIR": str(self.work / target), **(env or {})})
 
     def rustc(self):
@@ -128,7 +128,7 @@ def core_source(selected):
 
 def examples(cargo):
     names = policy()["examples"]
-    present = sorted(path.stem for path in (WORKSPACE / "opentlv/examples").glob("*.rs"))
+    present = sorted(path.stem for path in (ROOT / "opentlv/examples").glob("*.rs"))
     # query_conformance is the native driver of Core's Query corpus runner.
     require(present == sorted(names + ["query_conformance"]), "Example inventory differs")
     for name in names:
@@ -178,7 +178,7 @@ def package(cargo, record):
         require(not record["identity"]["hosted"], "Hosted packages require a clean checkout")
         arguments.append("--allow-dirty")
     cargo(*arguments)
-    version = tomllib.loads((WORKSPACE / "Cargo.toml").read_text(encoding="utf-8"))[
+    version = tomllib.loads((ROOT / "Cargo.toml").read_text(encoding="utf-8"))[
         "workspace"]["package"]["version"]
     output = cargo.work / "target/package"
     require(sorted(path.name for path in output.glob("*.crate")) ==
@@ -188,8 +188,8 @@ def package(cargo, record):
         path = output / f"{crate}-{version}.crate"
         prefix = f"{crate}-{version}/"
         tracked = run("git", "ls-files", "--cached", "--others", "--exclude-standard", "--",
-                      f"bindings/rust/{crate}", capture=True).splitlines()
-        expected = {name.removeprefix(f"bindings/rust/{crate}/") for name in tracked} | GENERATED
+                      crate, capture=True).splitlines()
+        expected = {name.removeprefix(f"{crate}/") for name in tracked} | GENERATED
         with tarfile.open(path) as archive:
             members = archive.getmembers()
             require(all(member.isfile() and member.name.startswith(prefix) for member in members),
@@ -200,7 +200,7 @@ def package(cargo, record):
             manifest = tomllib.load(archive.extractfile(prefix + "Cargo.toml"))
             require(archive.extractfile(prefix + "LICENSE").read() == (ROOT / "LICENSE").read_bytes(),
                     f"Packaged {crate} license differs from the repository license")
-        require(vcs.get("path_in_vcs") == f"bindings/rust/{crate}", "Wrong packaged crate path")
+        require(vcs.get("path_in_vcs") == crate, "Wrong packaged crate path")
         packaged_manifest(crate, version, manifest)
         if record["identity"]["hosted"]:
             require(vcs.get("git", {}).get("sha1") == record["identity"]["commit"],

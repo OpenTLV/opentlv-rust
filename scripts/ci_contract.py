@@ -6,14 +6,14 @@ import os
 from pathlib import Path
 import re
 
-from ci_support import ROOT, WORKSPACE, digest, read, require, run
+from ci_support import ROOT, digest, read, require, run
 
 REPOSITORY = "OpenTLV/opentlv-rust"
 CORE_REPOSITORY = "OpenTLV/opentlv"
 SIGNER = CORE_REPOSITORY + "/.github/workflows/core-release.yml"
 TIERS = ("pr", "main", "full")
 POLICY = ROOT / "ci/matrix.json"
-LOCK = WORKSPACE / "opentlv-sys/core/core-artifact.json"
+LOCK = ROOT / "opentlv-sys/core/core-artifact.json"
 # Optional per-configuration checks; build and Core provenance always run.
 CHECKS = ("smoke", "lint", "docs", "examples", "query", "package", "linking", "sanitizer")
 CRATES = ("opentlv-sys", "opentlv")
@@ -90,8 +90,8 @@ def cargo_tests(output):
 
 def definition_hashes():
     listed = run("git", "ls-files", "--cached", "--others", "--exclude-standard", "--",
-                 "requirements-dev.txt", "bindings", "ci", "scripts", "tests",
-                 ".github/workflows", capture=True).splitlines()
+                 "requirements-dev.txt", "Cargo.toml", "Cargo.lock", *CRATES, "ci", "scripts",
+                 "tests", ".github/workflows", capture=True).splitlines()
     paths = sorted({path for path in listed if (ROOT / path).is_file()})
     return {path: digest(ROOT / path) for path in paths}
 

@@ -5,7 +5,7 @@ universal library for parsing, encoding, and working with TLV and TLV-like
 binary formats.
 
 The crate wraps the OpenTLV C library through
-[`opentlv-sys`](https://github.com/OpenTLV/opentlv-rust/tree/main/bindings/rust/opentlv-sys)
+[`opentlv-sys`](https://github.com/OpenTLV/opentlv-rust/tree/main/opentlv-sys)
 with safe ownership and lifetime contracts: readers and writers, length and
 structure schemas, typed codecs, DER and CER canonical rules, Query and the EMV
 dictionary. No raw pointers appear in the public API.
@@ -33,7 +33,7 @@ checkout of [opentlv-rust](https://github.com/OpenTLV/opentlv-rust):
 
 ```toml
 [dependencies]
-opentlv = { path = "opentlv-rust/bindings/rust/opentlv" }
+opentlv = { path = "opentlv-rust/opentlv" }
 ```
 
 ## Build requirements

@@ -3,7 +3,7 @@
 Raw, unsafe FFI bindings to the [OpenTLV](https://github.com/OpenTLV/opentlv)
 C API, and the build script that builds or links the native `tlv` library
 (`links = "tlv"`). Use the safe
-[`opentlv`](https://github.com/OpenTLV/opentlv-rust/tree/main/bindings/rust/opentlv)
+[`opentlv`](https://github.com/OpenTLV/opentlv-rust/tree/main/opentlv)
 crate unless you need the C API directly. Only the part of the C API used by
 `opentlv` is declared.
 

@@ -5,7 +5,7 @@ on 2026-10-22. This records local evidence, not hosted CI or release acceptance.
 
 ## Dependency and preserved behavior
 
-The [lock](../../bindings/rust/opentlv-sys/core/core-artifact.json) selects Core
+The [lock](../../opentlv-sys/core/core-artifact.json) selects Core
 `0.7.1` at `476f1fbecde6b056419e43c9a6cea4d1ca8df1cf`, the
 [migration source commit](../migration.md#provenance), with no release tag.
 Every default build cloned that commit from GitHub into its own `OUT_DIR` and

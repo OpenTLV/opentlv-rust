@@ -4,7 +4,7 @@
 //! Encodes a nested BER-TLV structure into caller-owned buffers with `Writer`,
 //! then reads it back.
 //!
-//! Run with `cargo run --example writer` from `bindings/rust`.
+//! Run with `cargo run --example writer` from the repository root.
 
 use opentlv::{Error, Format, Reader, Result, Tag, Writer};
 

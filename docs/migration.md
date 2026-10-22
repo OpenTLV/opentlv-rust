@@ -6,7 +6,12 @@ build of [#2](https://github.com/OpenTLV/opentlv-rust/issues/2) later changed
 `opentlv-sys/build.rs`, `opentlv-sys/tests/fixed_abi.rs`,
 `opentlv/tests/corpus.rs` and `opentlv/Cargo.toml` so that they reach Core
 through a pinned dependency instead of `../../..`. It preserved the crates,
-features, linking modes, API, tests, examples and the frozen inventory. Use the
+features, linking modes, API, tests, examples and the frozen inventory. The
+[layout normalization](validation/layout.md) of
+[#5](https://github.com/OpenTLV/opentlv-rust/issues/5) then moved the
+workspace from `bindings/rust/` to the repository root. The inventory and this
+record keep the original `bindings/rust/` paths, which are Core's source paths
+and those of the import commit. Use the
 [README](../README.md#building) to build and the
 [standalone build validation](validation/standalone-build.md) for its results.
 To verify the original import, rather than today's working tree, against
