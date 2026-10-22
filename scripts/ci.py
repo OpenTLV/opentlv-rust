@@ -153,6 +153,25 @@ def query(cargo, source):
     return result
 
 
+def packaged_manifest(crate, version, manifest):
+    """Check the normalized manifest that a registry user of the archive receives."""
+    package = manifest["package"]
+    require((package["name"], package["version"], package["license"], package.get("readme")) ==
+            (crate, version, "MIT", "README.md"), f"Wrong packaged {crate} metadata")
+    require(package.get("repository") == f"https://github.com/{REPOSITORY}",
+            f"Wrong packaged {crate} repository")
+    tables = [manifest.get(key, {}) for key in ("dependencies", "dev-dependencies", "build-dependencies")]
+    tables += [target.get(key, {}) for target in manifest.get("target", {}).values()
+               for key in ("dependencies", "dev-dependencies", "build-dependencies")]
+    dependencies = {name: spec for table in tables for name, spec in table.items()}
+    require(not any("path" in spec for spec in dependencies.values()),
+            f"Packaged {crate} keeps a local dependency path")
+    # opentlv is released only together with the opentlv-sys version it was tested with.
+    expected = {"opentlv-sys": "=" + version} if crate == "opentlv" else {}
+    require({name: spec.get("version") for name, spec in dependencies.items()} == expected,
+            f"Wrong packaged {crate} dependencies")
+
+
 def package(cargo, record):
     arguments = ["package", "--workspace", "--locked"]
     if record["identity"]["dirty"]:
@@ -178,7 +197,11 @@ def package(cargo, record):
             require({member.name.removeprefix(prefix) for member in members} == expected,
                     f"Packaged {crate} files differ from its tracked sources")
             vcs = json.load(archive.extractfile(prefix + ".cargo_vcs_info.json"))
+            manifest = tomllib.load(archive.extractfile(prefix + "Cargo.toml"))
+            require(archive.extractfile(prefix + "LICENSE").read() == (ROOT / "LICENSE").read_bytes(),
+                    f"Packaged {crate} license differs from the repository license")
         require(vcs.get("path_in_vcs") == f"bindings/rust/{crate}", "Wrong packaged crate path")
+        packaged_manifest(crate, version, manifest)
         if record["identity"]["hosted"]:
             require(vcs.get("git", {}).get("sha1") == record["identity"]["commit"],
                     "Package was not built from the CI commit")

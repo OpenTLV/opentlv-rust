@@ -6,6 +6,8 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+keywords.workspace = true
+categories = ["external-ffi-bindings"]
 links = "tlv"
 build = "build.rs"
 

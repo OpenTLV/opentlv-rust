@@ -106,9 +106,12 @@ Rustdoc, `RUSTFLAGS=-D warnings`.
   not the path dependency. Each archive must contain exactly the crate's tracked
   files and Cargo's generated `Cargo.toml`, `Cargo.toml.orig`, `Cargo.lock` and
   `.cargo_vcs_info.json`; in hosted CI the latter must name the checkout
-  commit. The archive SHA-256 digests are recorded. Publication remains a later
-  migration step; the dependency on `opentlv-sys` now also states its version
-  so that `opentlv` can be packaged at all.
+  commit. Each archive's `LICENSE` must equal the repository license, and its
+  normalized `Cargo.toml` must keep the [package identity](packaging.md)
+  without a dependency `path`, with `opentlv` requiring exactly the
+  `opentlv-sys` version. The archive SHA-256 digests are recorded.
+  Publication remains a later migration step; the dependency on `opentlv-sys`
+  now also states its version so that `opentlv` can be packaged at all.
 - **Native linking.** Core from the selected tree is built once as a static
   and once as a shared library, with the options of `build.rs`. The default
   test suite and `quick_start` then run against each through `OPENTLV_LIB_DIR`

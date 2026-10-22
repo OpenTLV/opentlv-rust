@@ -7,4 +7,5 @@ version = "0.7.1"
 edition = "2021"
 rust-version = "1.82"
 license = "MIT"
-repository = "https://github.com/marekcingel/OpenTLV"
+repository = "https://github.com/OpenTLV/opentlv-rust"
+keywords = ["tlv", "ber", "asn1", "emv", "parser"]
