@@ -460,3 +460,134 @@ listed in [Source import](#source-import) without changing them. The
 standalone Cargo build and Core dependency, CI, packaging, layout
 normalization, documentation integration and Core cleanup are separate
 migration issues.
+
+## Migration completion
+
+[Issue #7](https://github.com/OpenTLV/opentlv-rust/issues/7) validated the
+completed migration across `opentlv`, `opentlv-rust`, `opentlv-workspace` and
+`opentlv-docs` on 2026-10-22, using the merged pull requests and hosted runs
+below. The sections above remain the frozen baseline and import record.
+
+### Identities
+
+| Item | Value |
+| --- | --- |
+| Original Core source commit | `476f1fbecde6b056419e43c9a6cea4d1ca8df1cf` (`0.7.1-31-g476f1fbe`) |
+| Import commit | `95d6299099af7a7d774ed89ee223f2cda5035aa9` ([#1](https://github.com/OpenTLV/opentlv-rust/issues/1)) |
+| Final validated Rust commit | `d4ba3ff27ff2a0a5934bdc9cb4bf54019c2274bc` (`main` after [#14](https://github.com/OpenTLV/opentlv-rust/issues/14)) |
+| Crates | `opentlv-sys` and `opentlv`, both `0.7.1`, unpublished |
+| Core dependency lock | `OpenTLV/opentlv` `0.7.1` at `476f1fbecde6b056419e43c9a6cea4d1ca8df1cf`, no release tag; every build records a clean `pinned-git` selection with `verified: false` |
+| Core cleanup | [OpenTLV/opentlv#679](https://github.com/OpenTLV/opentlv/issues/679), merged as `7596cdfeef4775609588b7424949aa917fbf4ecb` |
+
+### Implementation
+
+`python -B scripts/verify_migration.py --core ../opentlv --import-ref
+95d6299099af7a7d774ed89ee223f2cda5035aa9` passed: the 69 imported files match
+their Core blobs, and the 83-commit history, workspace metadata, crate
+versions and Cargo features match the inventory. A file-by-file comparison of
+`d4ba3ff` with Core's `bindings/rust` at the source commit found only the
+recorded changes:
+
+| Change | Recorded in |
+| --- | --- |
+| Core reached through the selected Core tree instead of `../../..` in `build.rs`, `fixed_abi.rs` and `corpus.rs` | [#2](https://github.com/OpenTLV/opentlv-rust/issues/2) |
+| `rust-version` 1.70 → 1.82, `is_none_or` in `corpus.rs`, `opentlv-sys` requirement with a version, three Rustdoc links in `codec.rs` | [CI validation](validation/ci.md#scope) |
+| `repository`, `keywords`, `categories`, exact `=0.7.1` requirement, crate README and LICENSE files | [Packaging validation](validation/packaging.md#scope) |
+| Workspace at the repository root; example and crate documentation comments name the repository root and an `opentlv-rust` checkout | [Layout validation](validation/layout.md) |
+| `FixedFormatConfig` Rustdoc link to `OpenTLV/opentlv` | [#6](https://github.com/OpenTLV/opentlv-rust/issues/6) |
+| Added Core selection module, lock, verifier, probe and `core_dependency.rs` tests | [#2](https://github.com/OpenTLV/opentlv-rust/issues/2) |
+
+The public API, FFI declarations, the `lldp`, `nfc` and `document` features
+and their defaults, native linking modes, `Cargo.lock`, the C ABI probe, the
+imported tests and all seven examples are unchanged. The default suite grows
+from 202 to 217 tests only by the 15 `core_dependency` tests; without default
+features it grows from 186 to 201.
+
+### Quality gates
+
+| Gate | Run | Commit | Result |
+| --- | --- | --- | --- |
+| PR CI | [39796625185](https://github.com/OpenTLV/opentlv-rust/actions/runs/39796625185) | `c9e3a90` | Passed |
+| Main CI | [39804845893](https://github.com/OpenTLV/opentlv-rust/actions/runs/39804845893) | `d4ba3ff` | Passed |
+| Full CI | [39810822148](https://github.com/OpenTLV/opentlv-rust/actions/runs/39810822148) | `d4ba3ff` | Passed: all seven configurations, packaging, static and shared linking, AddressSanitizer, source quality and CodeQL |
+
+Every Full configuration ran the C ABI probe in each feature-set suite,
+`cargo package --workspace --locked` with the archive checks of the
+[packaging validation](validation/packaging.md), and Rustdoc on pinned
+stable. A local rerun of the Full `windows-stable` configuration at `d4ba3ff`
+(Windows 11 x64, Rust 1.99.1, MSVC 19.44.35222.0) passed in 678 s with 217,
+201, 202, 201 and 216 tests for the `default`, `none`, `lldp`, `nfc` and
+`document` feature sets, six examples, 171 Query fixtures with 2133 native
+executions, packaging, and static linking; shared linking is recorded as
+unsupported on Windows. The first Full run,
+[39771040778](https://github.com/OpenTLV/opentlv-rust/actions/runs/39771040778)
+at `f6cc931`, predates packaging, layout and documentation changes and is not
+completion evidence.
+
+Test ownership follows the [quality gates](quality-gates.md#test-ownership):
+Rust owns API, lifetime, error-mapping, FFI, ABI and linking tests; the fuzz
+seed replay and the shared Query corpus read Core-owned data from the selected
+Core tree. No Core test suite is copied.
+
+### Core cleanup and compatibility
+
+Core `7596cdfe` contains no `bindings/rust`, Cargo workspace, Rust workflow or
+Rust user guide. Its remaining Rust references point to this repository, and it
+keeps the shared Query corpus, fuzz seeds and the diagnostic vocabulary
+generator with `--rust-output-root`. With that Core selected locally through
+`OPENTLV_CORE_SOURCE`, `d4ba3ff` passed all 217 default tests and the 171 Query
+fixtures, so the cleanup removed nothing the Rust tests read.
+
+### Documentation
+
+| Step | Evidence |
+| --- | --- |
+| Portal integration | [OpenTLV/opentlv-docs#74](https://github.com/OpenTLV/opentlv-docs/pull/74) selects the standalone manuals |
+| Notification | Main CI [39804845893](https://github.com/OpenTLV/opentlv-rust/actions/runs/39804845893) → notifier [39809300668](https://github.com/OpenTLV/opentlv-rust/actions/runs/39809300668) → Docs source update [39809324870](https://github.com/OpenTLV/opentlv-docs/actions/runs/39809324870) → [OpenTLV/opentlv-docs#76](https://github.com/OpenTLV/opentlv-docs/pull/76), merged with the Rust pin `d4ba3ff` |
+| Core pin after cleanup | [OpenTLV/opentlv-docs#75](https://github.com/OpenTLV/opentlv-docs/pull/75) selects Core `7596cdfe` after dropping the archived Core Rust user guide |
+
+The only earlier notification, for `2157a08`, reached Docs before the Rust
+source was registered and was rejected as expected. Issue #7 also presents
+Core's retained `development/rust.md` as current Core ownership guidance in
+the portal instead of an archived copy of the Rust guide.
+
+### Workspace
+
+`opentlv-workspace` registered this repository in
+[OpenTLV/opentlv-workspace#37](https://github.com/OpenTLV/opentlv-workspace/issues/37),
+pinned to the initial scaffold. Issue #7 pins it to `d4ba3ff` and adds a Rust
+smoke to both Workspace Full scenarios: `cargo run --locked -p opentlv
+--example quick_start` with Rust 1.99.1, after which the gate requires a clean
+Core selected inside the scenario's Cargo target at exactly the commit in
+`opentlv-sys/core/core-artifact.json`. Rust rejects its local Core override in
+CI, so the sibling scenario also uses the lock; building against a sibling
+Core remains the documented
+[local workspace development](development/rust.md#local-workspace-development)
+workflow.
+
+Workspace Full
+[39817682277](https://github.com/OpenTLV/opentlv-workspace/actions/runs/39817682277)
+passed both scenarios and the evidence gate for that change at
+`d446afd54031cf7168b952c6556e1b9d2992dcb5`. A local run on WSL Ubuntu 24.04
+x86-64 had passed before it in 147 s (sibling) and 159 s (remote): CLI, Lua,
+Rust and documentation checks passed, Rust printed `Hello, world!` and
+selected Core `476f1fbe` (`pinned-git`) in both.
+
+### Known limitations and follow-up work
+
+These are outside the migration and are tracked separately:
+
+- **Verified Core.** No approved Core release with schema-2 assets exists, so
+  the lock has no release tag and Verified Source and Verified Binary
+  selection, including GitHub Artifact Attestation verification, has not run
+  against a real release. Lock one once it exists.
+- **Core pin.** The lock stays at the migration source commit, which still
+  contains Core's former `bindings/rust`. Moving it past the cleanup is a
+  normal reviewed dependency update.
+- **Windows shared linking.** Prebuilt shared linking on Windows MSVC still
+  fails on the data symbols recorded in the
+  [baseline](#known-baseline-failures).
+- **CodeQL.** Full reports that CodeQL Action v3 is deprecated in December
+  2026; `rust-codeql.yml` needs v4.
+- **Deferred by the migration epic.** crates.io publication, a release
+  workflow, Cargo feature normalization and API evolution.

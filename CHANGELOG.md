@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Record the migration completion: original and final commits, the Core dependency identity, the baseline comparison, hosted PR, Main and Full runs, packaging, Core cleanup compatibility, documentation notification and workspace integration evidence, with known limitations and deferred follow-up work; the README and quality gates no longer describe Core's removed `bindings/rust` and Rust workflow as pending cleanup. (#7)
 - Own the Rust user and development guides as standalone manuals for the OpenTLV documentation portal: setup from an opentlv-rust checkout with Rust 1.82 and the pinned Core, all three Cargo features including `nfc`, the independent `0.7.1` crate version, the current CI, local workspace development and contribution routing, with examples linked from this repository and Core references routed to its current documentation; technical content and the frozen migration evidence are preserved. (#6)
 - Move the Cargo workspace from the inherited `bindings/rust/` to the repository root, with `opentlv-sys/` and `opentlv/` as top-level crates; CI, the packaging check, tests and documentation use the new paths, and a regression test rejects the old layout in the build configuration. Crate sources, public API, Cargo features, `Cargo.lock`, native linking and the frozen migration inventory are unchanged. (#5)
 
