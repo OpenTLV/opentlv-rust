@@ -8,9 +8,9 @@ only Rust CI.
 
 | Entry point | Trigger | Required work |
 | --- | --- | --- |
-| `rust-pr.yml` | Pull request to `main` | Linux with pinned stable Rust: rustfmt, Clippy, build, the default and reduced-feature test suites (including the C ABI probe), examples, the shared Query corpus, Rustdoc, Core provenance, infrastructure regressions and CodeQL |
+| `rust-pr.yml` | Pull request to `main` | Linux with pinned stable Rust: rustfmt, Clippy, build, the default and reduced-feature test suites (including the C ABI probe), examples, the shared Query corpus, Rustdoc, Core provenance, infrastructure regressions and CodeQL; informational Core API coverage |
 | `rust-main.yml` | Push to `main` | Linux with pinned stable Rust: workspace build, `quick_start` smoke and Core provenance, then documentation change detection |
-| `rust-full.yml` | Manual dispatch or `workflow_call` | All seven configurations below, Cargo packaging, prebuilt static and shared linking, AddressSanitizer, source quality and CodeQL |
+| `rust-full.yml` | Manual dispatch or `workflow_call` | All seven configurations below, Cargo packaging, prebuilt static and shared linking, AddressSanitizer, source quality and CodeQL; informational Core API coverage |
 | `docs-notify.yml` | Successful `Rust Main CI` on `main` | [Documentation portal notification](#documentation-portal-notifications) when documentation inputs changed |
 
 PR has no path filters, so a documentation-only pull request still produces its
@@ -212,6 +212,76 @@ optional release arguments, quoting, logs and failure propagation, including
 through `tee`. Both commands use nonempty arrays so `set -u` also works with
 macOS Bash 3.2. For local shell-specific checks, set `OPENTLV_TEST_BASH` to the
 desired Bash executable and run `tests/test_ci_shell.py`.
+
+## Core API coverage
+
+`Core API coverage` reports how much of the pinned Core's public API the safe
+`opentlv` crate uses. It runs in PR and Full, not Main. The job is
+informational: it uses `continue-on-error`, is not a `Rust quality gate`
+prerequisite and has no threshold yet. The coverage epic (#18) tracks raising
+it. `Rust timings` waits for it, so its duration is recorded.
+
+[`scripts/api_coverage.py`](../scripts/api_coverage.py) is the binding-agnostic
+script of the Python repository, with two changes: its default configuration is
+`ci/api-coverage.json`, and the report states that a referenced symbol does not
+prove functional parity. It fetches only the locked Core commit and reads every
+`TLV_API` function and data declaration under `tlv/include`. A declaration
+shape it does not recognize fails the report instead of being skipped. A symbol
+counts as referenced when its identifier appears in `opentlv/src` outside
+comments, including Rustdoc comments; calls through Core macros are not counted.
+Coverage is reported for core and `tlv/builtins` separately, in total and per
+header, with every unreferenced symbol listed. The Markdown summary goes to the
+job log and job summary. `api-coverage.json` is uploaded as an attempt-scoped
+artifact.
+
+`opentlv-sys` is not a reference directory. Its `extern` declarations make a
+symbol callable only through `unsafe` raw bindings, without the safe crate's
+ownership, error and lifetime guarantees, so a declaration alone does not count.
+For Core 0.7.1, 19 symbols such as `tlv_document_encode`, `tlv_query_compile`
+and `tlv_writer_preserve` are declared in `opentlv-sys` but not used by
+`opentlv`, and are reported as not referenced.
+
+On a pull request, the job also reads the Core lock at the base commit and lists
+the symbols added and removed between the two pins. Added symbols show whether
+the safe crate already references or ignores them. An unchanged pin is reported
+as such.
+
+[`ci/api-coverage.json`](../ci/api-coverage.json) is the configuration and
+ignore list. It names the Core lock `opentlv-sys/core/core-artifact.json` and
+the reference directory. Each ignore entry has a `reason` and matches header
+paths relative to `tlv/include` (`headers`) or symbol names (`symbols`); both
+accept `fnmatch` patterns. Ignored symbols are excluded from the counts, even
+when the safe crate references them, such as `tlv_tag_compare` in a test that
+compares `Tag` ordering with Core. The current entries are the endian, tag,
+value, size and copy primitives, which Rust represents natively, and the
+diagnostic producers (`tlv_diagnostic_init`, setters, path builders,
+`tlv_location_set` and `tlv_location_resolve`) for C format and codec
+implementations. Diagnostic consumers such as the `*_string` lookups and
+`tlv_diagnostic_path_string` remain counted. Patterns that match nothing in the
+pinned Core are reported, so stale entries are visible after a pin bump. Change
+the ignore list only for symbols the safe crate intentionally leaves unbound.
+
+The first report, for Core 0.7.1 at `476f1fbecde6`, references 136 of 254 core
+symbols (53.5 %) with 43 ignored, and 34 of 291 builtins symbols (11.7 %).
+Builtins-specific parity is outside the coverage epic. The report reads the
+headers, not a build, and is unaffected by Cargo features; with the default
+features `opentlv-sys/build.rs` builds Core with every component and builtin
+enabled.
+
+Run it locally from the repository root:
+
+```sh
+python -B scripts/api_coverage.py
+python -B scripts/api_coverage.py --core ../opentlv --commit HEAD --base-commit <old-sha>
+python -B scripts/api_coverage.py --base origin/main --output build/api-coverage.json
+```
+
+Without `--core`, the script caches the shallow Core fetch in
+`build/api-coverage/core.git`. `--core` reads an existing Core checkout instead;
+the requested commits must already be there. `--commit` measures a different
+Core revision than the lock. `--base` reads the lock at a binding revision, and
+`--base-commit` names a previous Core revision directly. The parsing, ignore
+and pin-diff logic is covered by `tests/test_api_coverage.py`.
 
 ## Dependency verification
 
