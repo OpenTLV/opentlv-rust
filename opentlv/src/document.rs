@@ -2,9 +2,18 @@
 // Copyright (c) 2026 Marek Cingel
 
 //! Owning C Document with lifetime-bound reads and exclusive mutation.
-use crate::{Error, FixedFormat, FormatRef, Query, ReaderDiagnostic, Result, Tag, TreeReader};
+use crate::{
+    Error, FixedFormat, FormatRef, Query, ReaderDiagnostic, Result, Tag, TreeReader, Visit,
+};
 use opentlv_sys as native;
-use std::{marker::PhantomData, mem::MaybeUninit, ptr, slice};
+use std::{
+    any::Any,
+    ffi::c_void,
+    marker::PhantomData,
+    mem::MaybeUninit,
+    panic::{catch_unwind, resume_unwind, AssertUnwindSafe},
+    ptr, slice,
+};
 
 /// Document failure, with a source offset or required output capacity when supplied by C.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -162,7 +171,6 @@ impl<'r, 'a> DocumentBuilder<'r, 'a> {
         })?;
         Ok(Document {
             raw,
-            format: self.reader.raw.input.format,
             lifetime: PhantomData,
         })
     }
@@ -204,7 +212,6 @@ impl Drop for DocumentBuilder<'_, '_> {
 /// ```
 pub struct Document<'f> {
     pub(crate) raw: *mut native::tlv_document_t,
-    format: *const native::tlv_format_t,
     lifetime: PhantomData<&'f native::tlv_format_t>,
 }
 
@@ -331,7 +338,6 @@ impl<'f> Document<'f> {
         })?;
         Ok(Self {
             raw,
-            format,
             lifetime: PhantomData,
         })
     }
@@ -423,7 +429,10 @@ impl<'f> Document<'f> {
     }
     /// Exact encoded size using the document's original Format.
     pub fn encoded_size(&self) -> Result<usize> {
-        self.measure(self.format)
+        let mut size = 0;
+        // SAFETY: immutable document, sized in the Format it was created with.
+        Error::check(unsafe { native::tlv_document_encoded_size(self.raw, &mut size) })?;
+        Ok(size)
     }
     /// Exact encoded size using a compatible destination Format.
     pub fn encoded_size_as<'g>(&self, format: impl Into<FormatRef<'g>>) -> Result<usize> {
@@ -442,7 +451,12 @@ impl<'f> Document<'f> {
     }
     /// Encode into caller-owned storage; capacity errors carry the required size.
     pub fn encode_into(&self, output: &mut [u8]) -> DocResult<usize> {
-        self.write(self.format, output)
+        let mut written = 0;
+        // SAFETY: output is exclusive and disjoint from owned document storage.
+        let code = unsafe {
+            native::tlv_document_encode(self.raw, output.as_mut_ptr(), output.len(), &mut written)
+        };
+        encoding_result(code, written)
     }
     /// Encode using a compatible destination Format, without modifying the document.
     pub fn encode_into_as<'g>(
@@ -477,18 +491,114 @@ impl<'f> Document<'f> {
     }
     /// Allocate and encode using the original Format.
     pub fn encode(&self) -> DocResult<Vec<u8>> {
-        self.encode_format(self.format)
+        let mut output = output_buffer(self.encoded_size()?)?;
+        let size = self.encode_into(&mut output)?;
+        output.truncate(size);
+        Ok(output)
     }
     /// Allocate and encode using a compatible destination Format.
     pub fn encode_as<'g>(&self, format: impl Into<FormatRef<'g>>) -> DocResult<Vec<u8>> {
-        self.encode_format(format.into().raw())
-    }
-    fn encode_format(&self, format: *const native::tlv_format_t) -> DocResult<Vec<u8>> {
+        let format = format.into().raw();
         let mut output = output_buffer(self.measure(format)?)?;
         let size = self.write(format, &mut output)?;
         output.truncate(size);
         Ok(output)
     }
+    /// Mutation revision: C increases it on every successful insert, erase or
+    /// Value replacement, including Query edits; failed edits keep it.
+    pub fn revision(&self) -> u64 {
+        // SAFETY: live owned document, constant-time read.
+        unsafe { native::tlv_document_revision(self.raw) }
+    }
+    /// Node retirement epoch: C increases it once per successful edit that
+    /// retires existing Nodes (an erase, or replacing a constructed Value that has
+    /// children). Insertions and primitive replacements keep it.
+    pub fn retire_epoch(&self) -> u64 {
+        // SAFETY: live owned document, constant-time read.
+        unsafe { native::tlv_document_retire_epoch(self.raw) }
+    }
+    /// The node a [`NodeHandle`] from this Document still denotes, or `None`
+    /// after it was erased or retired. C checks the address among the live
+    /// nodes and compares its never-reused identity, so a reused address is not
+    /// mistaken for the original node.
+    pub fn resolve(&self, handle: NodeHandle) -> Option<Node<'_, 'f>> {
+        self.located(handle).and_then(|raw| self.node(raw))
+    }
+    /// Like [`Document::resolve`], with exclusive mutation access.
+    pub fn resolve_mut(&mut self, handle: NodeHandle) -> Option<NodeMut<'_, 'f>> {
+        let raw = self.located(handle)?;
+        self.node_mut(raw)
+    }
+    fn located(&self, handle: NodeHandle) -> Option<*mut native::tlv_node_t> {
+        // SAFETY: C scans this live document's nodes and never dereferences the
+        // possibly stale address.
+        let identity = unsafe { native::tlv_document_node_identity(self.raw, handle.raw) };
+        (identity != 0 && identity == handle.identity).then_some(handle.raw)
+    }
+    /// Visit every path match in Document order through C's canonical matcher,
+    /// without allocating. The visitor's Nodes borrow this Document; `Visit::Stop`
+    /// ends successfully and `Visit::Error` fails with [`Error::Visitor`]. A
+    /// visitor panic resumes after C returns.
+    pub fn visit<'d, F>(&'d self, query: &Query, mut visitor: F) -> crate::ProgramResult<()>
+    where
+        F: FnMut(Node<'d, 'f>) -> Visit,
+    {
+        // SAFETY: all-zero diagnostic contains valid enums, NULL pointers and zero counts.
+        let mut diagnostic: native::tlv_query_diagnostic_t = unsafe { std::mem::zeroed() };
+        // SAFETY: the shared borrow excludes edits during traversal; C passes
+        // only live nodes of this document.
+        let code = unsafe {
+            visit_nodes(
+                |raw| visitor(self.node(raw).expect("C delivers non-null nodes")),
+                |function, context| {
+                    native::tlv_document_query_visit(
+                        self.raw,
+                        &query.raw,
+                        function,
+                        context,
+                        &mut diagnostic,
+                    )
+                },
+            )
+        };
+        crate::program::check(code, &diagnostic)
+    }
+}
+
+struct NodeVisit<F> {
+    callback: F,
+    panic: Option<Box<dyn Any + Send>>,
+}
+
+unsafe extern "C" fn visit_node<F: FnMut(*mut native::tlv_node_t) -> Visit>(
+    node: *mut native::tlv_node_t,
+    context: *mut c_void,
+) -> i32 {
+    // SAFETY: visit_nodes supplies this exact live state for a synchronous C call.
+    let state = unsafe { &mut *context.cast::<NodeVisit<F>>() };
+    match catch_unwind(AssertUnwindSafe(|| (state.callback)(node))) {
+        Ok(action) => action as i32,
+        Err(panic) => {
+            state.panic = Some(panic);
+            Visit::Error as i32
+        }
+    }
+}
+
+/// Run one native Document visit; a callback panic resumes after C has returned.
+pub(crate) unsafe fn visit_nodes<F: FnMut(*mut native::tlv_node_t) -> Visit>(
+    callback: F,
+    invoke: impl FnOnce(native::tlv_document_query_visitor_t, *mut c_void) -> i32,
+) -> i32 {
+    let mut state = NodeVisit {
+        callback,
+        panic: None,
+    };
+    let code = invoke(Some(visit_node::<F>), ptr::addr_of_mut!(state).cast());
+    if let Some(panic) = state.panic {
+        resume_unwind(panic);
+    }
+    code
 }
 impl Drop for Document<'_> {
     fn drop(&mut self) {
@@ -562,9 +672,31 @@ impl<'d, 'f> Node<'d, 'f> {
         self.document
             .node(unsafe { native::tlv_document_find(self.document.raw, self.raw, tag.raw()) })
     }
+    /// Detached handle that outlives this borrow; see [`Document::resolve`].
+    pub fn handle(&self) -> NodeHandle {
+        NodeHandle {
+            raw: self.raw,
+            identity: self.identity(),
+        }
+    }
+    /// Original input coordinates of a node parsed with
+    /// [`Document::parse_with_source_locations`]. Replacing its Value clears
+    /// them for the node and its ancestors, and an insert or erase for the
+    /// ancestors; inserted nodes have none.
+    pub fn source_location(&self) -> DocumentSourceLocation {
+        // SAFETY: live node borrowed from its document; C returns a copy.
+        let raw = unsafe { native::tlv_node_source_location(self.raw) };
+        DocumentSourceLocation {
+            offset: (raw.has_offset != 0).then_some(raw.offset),
+            header_size: (raw.has_header_size != 0).then_some(raw.header_size),
+        }
+    }
     /// Exact encoded size of this subtree in the document's original Format.
     pub fn encoded_size(&self) -> Result<usize> {
-        self.measure(self.document.format)
+        let mut size = 0;
+        // SAFETY: immutable node, sized in its document's Format.
+        Error::check(unsafe { native::tlv_node_encoded_size(self.raw, &mut size) })?;
+        Ok(size)
     }
     /// Exact encoded size of this subtree in a destination Format.
     pub fn encoded_size_as<'g>(&self, format: impl Into<FormatRef<'g>>) -> Result<usize> {
@@ -578,7 +710,12 @@ impl<'d, 'f> Node<'d, 'f> {
     }
     /// Encode this subtree into caller-owned output.
     pub fn encode_into(&self, output: &mut [u8]) -> DocResult<usize> {
-        self.write(self.document.format, output)
+        let mut written = 0;
+        // SAFETY: immutable node and disjoint exclusive output.
+        let code = unsafe {
+            native::tlv_node_encode(self.raw, output.as_mut_ptr(), output.len(), &mut written)
+        };
+        encoding_result(code, written)
     }
     /// Encode this subtree into caller-owned output using a destination Format.
     pub fn encode_into_as<'g>(
@@ -609,6 +746,32 @@ impl<'d, 'f> Node<'d, 'f> {
         output.truncate(size);
         Ok(output)
     }
+}
+
+/// Node position detached from any borrow, so it survives Document edits.
+///
+/// [`Document::resolve`] returns the node again while it is in the Document,
+/// and `None` once an erase or a constructed Value replacement has retired it.
+/// A handle is meaningful only for the Document that issued it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct NodeHandle {
+    raw: *mut native::tlv_node_t,
+    identity: u64,
+}
+impl NodeHandle {
+    /// The node's never-reused native identity within its Document.
+    pub fn identity(&self) -> u64 {
+        self.identity
+    }
+}
+
+/// Original Reader coordinates of a parsed node; `None` when not retained.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct DocumentSourceLocation {
+    /// Absolute element start in the original input.
+    pub offset: Option<usize>,
+    /// Original encoded header length.
+    pub header_size: Option<usize>,
 }
 
 /// Exclusive access to one node and its owning document.

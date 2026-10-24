@@ -73,6 +73,13 @@ pub type tlv_query_decode_t = Option<
 >;
 record!(tlv_query_hook_t { id: u32, function: c_int, scratch_size: usize, scratch_alignment: usize,
     context: *const c_void, decode: tlv_query_decode_t });
+/// Signed `int64_t` codec representation.
+pub const TLV_QUERY_CODEC_SIGNED: c_int = 0;
+/// Unsigned `uint64_t` codec representation, checked before int64 narrowing.
+pub const TLV_QUERY_CODEC_UNSIGNED: c_int = 1;
+/// Borrowed validated UTF-8 codec representation.
+pub const TLV_QUERY_CODEC_UTF8: c_int = 2;
+record!(tlv_query_codec_adapter_t { codec: *const tlv_codec_t, representation: c_int });
 record!(tlv_query_tag_adapter_t { id: u32, context: *const c_void,
     class_of: Option<unsafe extern "C" fn(*const c_void, *const tlv_tag_t, *mut i64) -> tlv_result_t>,
     number_of: Option<unsafe extern "C" fn(*const c_void, *const tlv_tag_t, *mut i64) -> tlv_result_t> });
@@ -324,6 +331,31 @@ extern "C" {
         size: usize,
         diagnostic: *mut tlv_query_diagnostic_t,
     ) -> tlv_result_t;
+    /// Validate and borrow a bounded native plan without the Query frontend.
+    pub fn tlv_query_plan_open(
+        image: *const c_void,
+        size: usize,
+        program: *mut *const tlv_query_program_t,
+        diagnostic: *mut tlv_query_diagnostic_t,
+    ) -> tlv_result_t;
+    /// Read the requirements of a validated plan.
+    pub fn tlv_query_plan_info(
+        program: *const tlv_query_program_t,
+        info: *mut tlv_query_program_info_t,
+    ) -> tlv_result_t;
+    /// Reset an execution in place, keeping its program, providers and budgets.
+    pub fn tlv_query_exec_reset(exec: *mut tlv_query_exec_t) -> tlv_result_t;
+    /// Generic provider decoding a Value with a `tlv_query_codec_adapter_t` context.
+    pub fn tlv_query_codec_decode(
+        context: *const c_void,
+        event: *const tlv_tree_event_t,
+        data: *const u8,
+        size: usize,
+        scratch: *mut c_void,
+        capacity: usize,
+        result: *mut tlv_query_result_t,
+        diagnostic: *mut tlv_codec_diagnostic_t,
+    ) -> tlv_result_t;
     pub fn tlv_query_exec_context(exec: *mut tlv_query_exec_t, ordinal: usize) -> tlv_result_t;
     pub fn tlv_query_exec_pruning(exec: *mut tlv_query_exec_t, enabled: c_int) -> tlv_result_t;
     pub fn tlv_query_exec_info(
@@ -396,6 +428,31 @@ extern "C" {
     pub fn tlv_document_query_next(
         exec: *mut tlv_query_exec_t,
         node: *mut *mut tlv_node_t,
+        diagnostic: *mut tlv_query_diagnostic_t,
+    ) -> tlv_result_t;
+    /// Visit the remaining finalized Document results of an evaluated execution.
+    #[cfg(feature = "document")]
+    pub fn tlv_document_query_program_visit(
+        exec: *mut tlv_query_exec_t,
+        visitor: tlv_document_query_visitor_t,
+        context: *mut c_void,
+        diagnostic: *mut tlv_query_diagnostic_t,
+    ) -> tlv_result_t;
+    /// Visit every path match of a parsed Query in Document order.
+    #[cfg(feature = "document")]
+    pub fn tlv_document_query_visit(
+        document: *const tlv_document_t,
+        query: *const tlv_query_t,
+        visitor: tlv_document_query_visitor_t,
+        context: *mut c_void,
+        diagnostic: *mut tlv_query_diagnostic_t,
+    ) -> tlv_result_t;
+    /// Discover the complete encoded snapshot size for Document Query Values.
+    #[cfg(feature = "document")]
+    pub fn tlv_document_query_value_size(
+        document: *const tlv_document_t,
+        staging: *mut tlv_tree_writer_workspace_t,
+        bytes: *mut usize,
         diagnostic: *mut tlv_query_diagnostic_t,
     ) -> tlv_result_t;
 }

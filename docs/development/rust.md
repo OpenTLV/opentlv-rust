@@ -107,12 +107,14 @@ need no `unsafe`.
 
 ## Schemas
 
-Both schema types wrap the C library's tables; validation runs in C.
+The schema types wrap the C library's tables; checks and validation run in C.
 
 | Type | Wraps | Purpose |
 | --- | --- | --- |
 | `LengthSchema` | `tlv_schema_t` | Per-tag length rules: `find` and `validate_length` |
 | `StructureSchema` | `tlv_structure_schema_t` | Required, optional, duplicate, kind and child-membership rules for a whole buffer |
+| `CheckedStructureSchema<'s>` | `tlv_schema_checked_t` | A `StructureSchema` checked once, for repeated validation |
+| `ValueConstraint` | `tlv_value_constraint_t` | Range, allowed-value or named-number constraint on a decoded scalar |
 
 `LengthSchema::new` and `StructureSchema::new` build owned tables from
 `LengthRule` and `StructureRule` values; `LengthSchema::emv`,
@@ -131,6 +133,18 @@ let schema = opentlv::StructureSchema::new(
 );
 schema.validate(&data, opentlv::Format::Ber, &opentlv::ValidationLimits::default())?;
 ```
+
+`StructureSchema::check_definition` checks every reachable rule table through
+`tlv_schema_check()` without input; a definition error has `definition_kind`
+and `definition_index` but no offset. `StructureSchema::check` does the same
+check through `tlv_schema_prepare()` and returns a `CheckedStructureSchema`
+that borrows the schema, whose tables are immutable. Its `validate` and
+`validate_diagnostics` call `tlv_schema_validate_checked()` and
+`tlv_schema_validate_all_checked()`. Schema diagnostics are initialized with
+`tlv_schema_diagnostic_init()`. `ValueConstraint` owns the allowed values and
+names its native definition borrows; construction runs
+`tlv_value_constraint_check()`, and `validate` and `name` call
+`tlv_value_constraint_validate()` and `tlv_value_constraint_name()`.
 
 ## Codecs and the EMV dictionary
 
@@ -301,4 +315,6 @@ The default-enabled `document` feature forwards to `opentlv-sys/document`.
 Source builds set `OPENTLV_DOCUMENT` to match. Prebuilt C libraries must enable
 that component when the Rust feature is enabled. Document runtime tests and a
 compile-fail lifetime example cover ownership, mutation, Query lookup, limits,
-destination-format output and resumable whole-stream/subtree builders.
+destination-format output and resumable whole-stream/subtree builders, and the
+revision and retirement epoch, `NodeHandle` resolution after edits, retained
+source locations and Query visits of Document nodes.

@@ -72,6 +72,57 @@ pub(crate) unsafe fn run<'a, F: FnMut(Element<'a>, usize, usize) -> Visit>(
     callback: F,
     matcher: *mut native::tlv_query_matcher_t,
 ) -> (Result<()>, Option<ReaderDiagnostic>) {
+    // SAFETY: caller retains input, Format and frames for the traversal.
+    unsafe {
+        traverse(callback, |opaque, diagnostic| {
+            if !matcher.is_null() {
+                native::tlv_query_visit(tree, matcher, Some(tree_callback::<F>), opaque, diagnostic)
+            } else if tree.is_null() {
+                native::tlv_reader_visit_diag(
+                    reader,
+                    Some(sequential_callback::<F>),
+                    opaque,
+                    diagnostic,
+                )
+            } else {
+                native::tlv_tree_reader_visit(tree, Some(tree_callback::<F>), opaque, diagnostic)
+            }
+        })
+    }
+}
+
+/// Visit the matches of `query` in complete `'a` input without a caller Reader.
+pub(crate) unsafe fn query_buffer<'a, F: FnMut(Element<'a>, usize, usize) -> Visit>(
+    data: &'a [u8],
+    format: *const native::tlv_format_t,
+    query: &native::tlv_query_t,
+    max_depth: usize,
+    max_elements: usize,
+    callback: F,
+) -> (Result<()>, Option<ReaderDiagnostic>) {
+    // SAFETY: caller retains the Format for 'a; C owns its traversal frames.
+    unsafe {
+        traverse(callback, |opaque, diagnostic| {
+            native::tlv_query_visit_buffer(
+                data.as_ptr(),
+                data.len(),
+                format,
+                query,
+                max_depth,
+                max_elements,
+                Some(tree_callback::<F>),
+                opaque,
+                diagnostic,
+            )
+        })
+    }
+}
+
+/// `invoke` runs one C traversal with the callback context and a diagnostic.
+unsafe fn traverse<'a, F: FnMut(Element<'a>, usize, usize) -> Visit>(
+    callback: F,
+    invoke: impl FnOnce(*mut c_void, *mut native::tlv_reader_diagnostic_t) -> i32,
+) -> (Result<()>, Option<ReaderDiagnostic>) {
     let mut context = Context {
         callback,
         panic: None,
@@ -79,33 +130,11 @@ pub(crate) unsafe fn run<'a, F: FnMut(Element<'a>, usize, usize) -> Visit>(
         lifetime: PhantomData,
     };
     let mut diagnostic = MaybeUninit::uninit();
-    // SAFETY: caller retains input, Format and frames; local state remains live during C.
+    // SAFETY: local state remains live during the synchronous C traversal.
     let (code, diagnostic) = unsafe {
         native::tlv_reader_diagnostic_init(diagnostic.as_mut_ptr());
         let opaque = (&mut context as *mut Context<'a, F>).cast();
-        let code = if !matcher.is_null() {
-            native::tlv_query_visit(
-                tree,
-                matcher,
-                Some(tree_callback::<F>),
-                opaque,
-                diagnostic.as_mut_ptr(),
-            )
-        } else if tree.is_null() {
-            native::tlv_reader_visit_diag(
-                reader,
-                Some(sequential_callback::<F>),
-                opaque,
-                diagnostic.as_mut_ptr(),
-            )
-        } else {
-            native::tlv_tree_reader_visit(
-                tree,
-                Some(tree_callback::<F>),
-                opaque,
-                diagnostic.as_mut_ptr(),
-            )
-        };
+        let code = invoke(opaque, diagnostic.as_mut_ptr());
         (code, diagnostic.assume_init())
     };
     // Never unwind through C; resume only after the C adapter has returned.

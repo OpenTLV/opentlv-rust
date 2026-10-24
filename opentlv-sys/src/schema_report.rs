@@ -111,6 +111,18 @@ extern "C" {
         report: *mut tlv_schema_diagnostic_report_t,
         diagnostic: *mut tlv_schema_diagnostic_t,
     ) -> tlv_result_t;
+    /// Report every violation against a prepared schema without repeating its check.
+    pub fn tlv_schema_validate_all_checked(
+        checked: *const tlv_schema_checked_t,
+        data: *const u8,
+        size: usize,
+        format: *const tlv_format_t,
+        max_depth: usize,
+        max_elements: usize,
+        unknown: c_int,
+        report: *mut tlv_schema_diagnostic_report_t,
+        diagnostic: *mut tlv_schema_diagnostic_t,
+    ) -> tlv_result_t;
 }
 
 /// Native definition owner and member index.

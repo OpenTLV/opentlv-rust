@@ -71,6 +71,10 @@
     {
       "reason": "`tlv_writer_write_element()` after the same argument and native-size checks, without diagnostics; `Writer::write_element()` re-encodes through `tlv_writer_write_element_diag()`.",
       "symbols": ["tlv_writer_copy_element"]
+    },
+    {
+      "reason": "NUL-terminated form of `tlv_query_parse_n()`; Rust strings carry their length, so `Query::parse` parses through `tlv_query_parse_n()`, which also rejects embedded NUL.",
+      "symbols": ["tlv_query_parse"]
     }
   ]
 }

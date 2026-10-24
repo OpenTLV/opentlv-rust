@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Marek Cingel
 
 //! Canonical C Query parsing and resumable matching.
-use crate::{Element, Error, Result, Tag, TreeReader, Visit};
+use crate::{Element, Error, FormatRef, ReaderError, Result, Tag, TreeReader, Visit};
 use opentlv_sys as native;
 use std::{mem::MaybeUninit, ptr};
 
@@ -91,6 +91,36 @@ impl Query {
     /// Start independent matching with an owned, stable copy of this query.
     pub fn matcher(&self) -> Result<QueryMatcher> {
         QueryMatcher::new(self)
+    }
+    /// Visit every element this path addresses in complete input, in document
+    /// order, through `tlv_query_visit_buffer()`: no Reader or matcher is opened
+    /// and C owns the traversal frames. The callback receives the Element, its
+    /// depth and absolute offset. All input is traversed unless it stops, so
+    /// malformed data after the last match is still reported. `max_elements`
+    /// bounds every traversed element, matching or not. Panics resume after C returns.
+    pub fn visit_buffer<'a>(
+        &self,
+        data: &'a [u8],
+        format: impl Into<FormatRef<'a>>,
+        max_depth: usize,
+        max_elements: usize,
+        callback: impl FnMut(Element<'a>, usize, usize) -> Visit,
+    ) -> std::result::Result<(), ReaderError> {
+        // SAFETY: input and Format are borrowed for 'a; the Query for the call.
+        let (result, diagnostic) = unsafe {
+            crate::visitor::query_buffer(
+                data,
+                format.into().raw(),
+                &self.raw,
+                max_depth,
+                max_elements,
+                callback,
+            )
+        };
+        result.map_err(|error| ReaderError {
+            error,
+            diagnostic: diagnostic.map(Box::new),
+        })
     }
 }
 
