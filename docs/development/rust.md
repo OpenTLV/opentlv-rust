@@ -39,6 +39,9 @@ The `opentlv` crate exposes these safe types; none of them exposes a raw pointer
 | `FixedFormatConfig` | `tlv_fixed_format_t` | Runtime-configurable tag width, length width (1-8 bytes) and length byte order; a plain `Copy` value the caller owns |
 | `FixedFormat<'a>` | `tlv_format_t` | Borrows a `&'a FixedFormatConfig`, mirroring the C `tlv_fixed_format_t`/`tlv_format_t` split directly; no heap allocation |
 | `ByteOrder` | `tlv_byte_order_t` | `Big` or `Little`, the length field's byte order for `FixedFormatConfig` |
+| `FormatRef<'a>` | `const tlv_format_t*` | A `Copy` borrow of a builtin, Fixed or composed descriptor, accepted by every format entry point; exposes `tlv_format_can_read()`, `tlv_format_can_write()`, `tlv_format_decode()`, `tlv_format_measure()` and `tlv_format_encode()` with `FormatError` detail |
+| `FixedIdentifier`, `VariableIdentifier`, `FixedLength`, `VariableLength`, `EscapedLength`, `PackedField`, `ConstructedBit` | `tlv/field/*.h`, `tlv_constructed_bit_t` | Immutable field encoding configurations; `PackedField` also reads and writes one bit field |
+| `ComposedFormat` | `tlv_format_t` and a `tlv/formats/*.h` composition | Built from a `FieldComposition` or `PackedLayout`; owns the descriptor, configuration and every borrowed table behind an `Arc`, so clones share one native identity |
 
 The C `tlv_tag_t` is a borrowed pointer and size (`opentlv_sys::tlv_tag_t`), so
 its layout does not depend on how the library was built. `Tag` owns its bytes
@@ -62,7 +65,8 @@ for element in reader {
 ```
 
 `Reader::new` uses BER;
-`Reader::with_format` takes a `Format` (`Ber`, `Emv`, `Cer`, `Der`, plus optional `Lldp` and `NfcType2`), and
+`Reader::with_format` takes a `Format` (`Ber`, `Emv`, `Cer`, `Der`, plus optional `Lldp` and `NfcType2`)
+or any other `FormatRef`, such as a borrowed `&ComposedFormat`, and
 `Reader::with_fixed_format` takes a borrowed `&FixedFormat` for a
 runtime-configurable tag width, length width and length byte order (wraps the C
 `tlv_fixed_format_t` and `tlv_fixed_format_init()`: `FixedFormatConfig::new(tag_size,

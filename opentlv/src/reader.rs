@@ -12,7 +12,7 @@ use opentlv_sys as native;
 use crate::element::Element;
 use crate::error::{Error, Result};
 use crate::fixed_format::FixedFormat;
-use crate::format::Format;
+use crate::format::{Format, FormatRef};
 
 /// Single-element read failure with owned C diagnostic fields.
 #[derive(Clone, Debug)]
@@ -31,7 +31,10 @@ impl std::error::Error for ReaderError {}
 
 /// Read one complete element and its original Layout through the C Reader.
 /// The consumed byte count is `decoded.encoded().len()`; trailing input is unread.
-pub fn read(data: &[u8], format: Format) -> std::result::Result<crate::Decoded<'_>, ReaderError> {
+pub fn read<'a>(
+    data: &'a [u8],
+    format: impl Into<FormatRef<'a>>,
+) -> std::result::Result<crate::Decoded<'a>, ReaderError> {
     read_once(Reader::with_format(data, format))
 }
 
@@ -40,7 +43,7 @@ pub fn read_fixed<'a>(
     data: &'a [u8],
     format: &'a FixedFormat<'_>,
 ) -> std::result::Result<crate::Decoded<'a>, ReaderError> {
-    read_once(Reader::with_fixed_format(data, format))
+    read(data, format)
 }
 
 fn read_once(mut reader: Reader<'_>) -> std::result::Result<crate::Decoded<'_>, ReaderError> {
@@ -81,16 +84,19 @@ impl<'a> Reader<'a> {
         Reader::with_format(data, Format::Ber)
     }
 
-    /// Creates a reader for the given wire format.
-    pub fn with_format(data: &'a [u8], format: Format) -> Reader<'a> {
+    /// Creates a reader for the given wire format: a builtin [`Format`], or a
+    /// `&`[`FixedFormat`], `&`[`OwnedFixedFormat`](crate::OwnedFixedFormat) or
+    /// `&`[`ComposedFormat`](crate::ComposedFormat) that outlives the reader.
+    pub fn with_format(data: &'a [u8], format: impl Into<FormatRef<'a>>) -> Reader<'a> {
+        let format = format.into();
         let mut raw = MaybeUninit::<native::tlv_reader_t>::uninit();
         // SAFETY: `raw` is writable; `data` is a valid slice (a non-null
-        // pointer even when empty); `format.raw()` points to a static format.
+        // pointer even when empty); `format` is borrowed for `'a`.
         let code = unsafe {
             native::tlv_reader_init(raw.as_mut_ptr(), data.as_ptr(), data.len(), format.raw())
         };
-        // Every argument is non-null and the built-in formats are complete, so
-        // initialization cannot fail.
+        // Every argument is non-null and every FormatRef descriptor can
+        // decode, so initialization cannot fail.
         assert_eq!(code, native::TLV_OK, "tlv_reader_init failed");
         Reader {
             // SAFETY: `tlv_reader_init` succeeded and initialized every field.
@@ -103,23 +109,9 @@ impl<'a> Reader<'a> {
     }
 
     /// Creates a reader for a [`FixedFormat`]; `format` must outlive the reader.
+    /// Equivalent to [`Reader::with_format`].
     pub fn with_fixed_format<'f>(data: &'a [u8], format: &'a FixedFormat<'f>) -> Reader<'a> {
-        let mut raw = MaybeUninit::<native::tlv_reader_t>::uninit();
-        // SAFETY: `raw` is writable; `data` is a valid slice (a non-null
-        // pointer even when empty); `format.raw()` points at storage
-        // owned by `format`, which the borrow checker keeps alive for `'a`.
-        let code = unsafe {
-            native::tlv_reader_init(raw.as_mut_ptr(), data.as_ptr(), data.len(), format.raw())
-        };
-        assert_eq!(code, native::TLV_OK, "tlv_reader_init failed");
-        Reader {
-            // SAFETY: `tlv_reader_init` succeeded and initialized every field.
-            raw: unsafe { raw.assume_init() },
-            failed: false,
-            diagnostic: None,
-            input: data,
-            _data: PhantomData,
-        }
+        Reader::with_format(data, format)
     }
 
     /// Returns the offset in the input of the next element to read.
@@ -140,9 +132,10 @@ impl<'a> Reader<'a> {
     }
 
     /// Creates a non-final reader. `NeedMoreData` permits `set_input` and retry.
-    pub fn incremental(data: &'a [u8], format: Format) -> Self {
+    pub fn incremental(data: &'a [u8], format: impl Into<FormatRef<'a>>) -> Self {
+        let format = format.into();
         let mut reader = Self::with_format(data, format);
-        // SAFETY: same live input and static Format as with_format.
+        // SAFETY: same live input and borrowed Format as with_format.
         let code = unsafe {
             native::tlv_reader_init_incremental(
                 &mut reader.raw,
@@ -156,19 +149,9 @@ impl<'a> Reader<'a> {
     }
 
     /// Creates a non-final reader borrowing a fixed descriptor and its configuration.
+    /// Equivalent to [`Reader::incremental`].
     pub fn incremental_fixed(data: &'a [u8], format: &'a FixedFormat<'_>) -> Self {
-        let mut reader = Self::with_fixed_format(data, format);
-        // SAFETY: input and format are borrowed for 'a by this signature.
-        let code = unsafe {
-            native::tlv_reader_init_incremental(
-                &mut reader.raw,
-                data.as_ptr(),
-                data.len(),
-                format.raw(),
-            )
-        };
-        assert_eq!(code, native::TLV_OK);
-        reader
+        Self::incremental(data, format)
     }
 
     /// Replaces the input window; undiscarded bytes must remain identical.

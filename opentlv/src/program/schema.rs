@@ -105,24 +105,29 @@ impl std::error::Error for QuerySchemaError {
 #[derive(Clone)]
 pub struct QuerySchema {
     rules: Vec<QueryRule>,
-    format: Format,
-    fixed_format: Option<crate::OwnedFixedFormat>,
+    format: FormatOwner,
 }
 impl QuerySchema {
     /// Own rules and a builtin wire Format. Empty rules explicitly skip validation.
     pub fn new(rules: Vec<QueryRule>, format: Format) -> Self {
         Self {
             rules,
-            format,
-            fixed_format: None,
+            format: FormatOwner::Builtin(format),
         }
     }
     /// Own contextual rules and a shared configurable Fixed descriptor.
     pub fn with_fixed_format(rules: Vec<QueryRule>, format: crate::OwnedFixedFormat) -> Self {
         Self {
             rules,
-            format: Format::Ber,
-            fixed_format: Some(format),
+            format: FormatOwner::Fixed(format),
+        }
+    }
+    /// Own contextual rules and a shared composed descriptor. Compile the rules
+    /// with a clone of the same owner, as with a Fixed descriptor.
+    pub fn with_composed_format(rules: Vec<QueryRule>, format: crate::ComposedFormat) -> Self {
+        Self {
+            rules,
+            format: FormatOwner::Composed(format),
         }
     }
     /// Borrow the immutable retained rule table.
@@ -148,9 +153,7 @@ impl QuerySchema {
             native::tlv_schema_query_validate_buffer(
                 input.as_ptr(),
                 input.len(),
-                self.fixed_format
-                    .as_ref()
-                    .map_or_else(|| self.format.raw(), |format| format.raw()),
+                self.format.raw(),
                 storage.rules.as_ptr(),
                 storage.rules.len(),
                 limits.depth,

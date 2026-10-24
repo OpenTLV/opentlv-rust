@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Marek Cingel
 //! Immutable compiled C Query programs with independent bounded continuations.
+use crate::format::FormatOwner;
 use crate::{Element, Error, Format, ReaderDiagnostic, TreeReader, Visit};
 use opentlv_sys as native;
 mod providers;
@@ -390,6 +391,9 @@ pub struct ProgramOptions {
     pub format: Format,
     /// Owned configurable Fixed descriptor; when present it replaces `format`.
     pub fixed_format: Option<crate::OwnedFixedFormat>,
+    /// Shared composed descriptor; when present it replaces `format`. Setting
+    /// both custom descriptors is rejected with `InvalidArg`.
+    pub composed_format: Option<crate::ComposedFormat>,
     /// Declared typed variables; names omit the dollar prefix.
     pub variables: BTreeMap<String, QueryType>,
     /// Owned scoped symbolic spellings mapped to raw Tag bytes.
@@ -426,6 +430,7 @@ impl Default for ProgramOptions {
         Self {
             format: Format::Ber,
             fixed_format: None,
+            composed_format: None,
             variables: BTreeMap::new(),
             names: BTreeMap::new(),
             resolver: None,
@@ -486,7 +491,7 @@ struct ProgramStorage {
     _hooks: Box<[native::tlv_query_hook_t]>,
     _providers: Box<[QueryProvider]>,
     _tags: Option<Box<providers::TagOwner>>,
-    _format: Option<crate::OwnedFixedFormat>,
+    _format: FormatOwner,
 }
 // SAFETY: the image is immutable; providers are either immutable builtin C storage
 // or owned Send + Sync Rust callbacks. Resolver contexts are compile-only.
@@ -631,9 +636,16 @@ impl QueryProgram {
         let mut hooks = unsafe {
             slice::from_raw_parts(native::tlv_query_builtin_hooks(&mut count), count).to_vec()
         };
-        let mut tags = if options.fixed_format.is_none()
-            && matches!(options.format, Format::Ber | Format::Cer | Format::Der)
-        {
+        let format_owner = match (&options.fixed_format, &options.composed_format) {
+            (None, None) => FormatOwner::Builtin(options.format),
+            (Some(format), None) => FormatOwner::Fixed(format.clone()),
+            (None, Some(format)) => FormatOwner::Composed(format.clone()),
+            (Some(_), Some(_)) => return Err(plain(native::TLV_ERR_INVALID_ARG).unwrap_err()),
+        };
+        let mut tags = if matches!(
+            format_owner,
+            FormatOwner::Builtin(Format::Ber | Format::Cer | Format::Der)
+        ) {
             hooks.push(unsafe { native::tlv_asn1_query_date });
             ptr::addr_of!(native::tlv_asn1_query_tags)
         } else {
@@ -647,7 +659,6 @@ impl QueryProgram {
         if let Some(owner) = &tag_owner {
             tags = &owner.native;
         }
-        let format_owner = options.fixed_format.clone();
         let providers = options.providers.clone().into_boxed_slice();
         for (index, provider) in providers.iter().enumerate() {
             if provider.id == 0
@@ -676,9 +687,7 @@ impl QueryProgram {
         }
         let hooks = hooks.into_boxed_slice();
         let environment = native::tlv_query_environment_t {
-            format: format_owner
-                .as_ref()
-                .map_or_else(|| options.format.raw(), |format| format.raw()),
+            format: format_owner.raw(),
             tags,
             hooks: hooks.as_ptr(),
             hook_count: hooks.len(),

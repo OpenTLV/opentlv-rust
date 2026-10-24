@@ -15,7 +15,6 @@ use opentlv_sys as native;
 
 use crate::emv::Context;
 use crate::error::{Error, Result};
-use crate::format::Format;
 use crate::tag::Tag;
 
 /// Length rule for one tag of a [`LengthSchema`].
@@ -593,18 +592,19 @@ impl fmt::Debug for StructureSchema {
 impl StructureSchema {
     /// Collect detailed expected/actual violations through the C validator.
     /// Zero capacity counts only; malformed input and invalid configuration return Err.
-    pub fn validate_diagnostics(
+    pub fn validate_diagnostics<'f>(
         &self,
         data: &[u8],
-        format: Format,
+        format: impl Into<crate::FormatRef<'f>>,
         limits: &ValidationLimits,
         unknown: UnknownPolicy,
         capacity: usize,
     ) -> std::result::Result<SchemaDiagnosticReport, SchemaError> {
-        self.validate_diagnostics_raw(data, format.raw(), limits, unknown, capacity)
+        self.validate_diagnostics_raw(data, format.into().raw(), limits, unknown, capacity)
     }
 
     /// Same validation using a borrowed configurable Fixed Format.
+    /// Equivalent to [`StructureSchema::validate_diagnostics`].
     pub fn validate_diagnostics_fixed(
         &self,
         data: &[u8],
@@ -613,7 +613,7 @@ impl StructureSchema {
         unknown: UnknownPolicy,
         capacity: usize,
     ) -> std::result::Result<SchemaDiagnosticReport, SchemaError> {
-        self.validate_diagnostics_raw(data, format.raw(), limits, unknown, capacity)
+        self.validate_diagnostics(data, format, limits, unknown, capacity)
     }
 
     fn validate_diagnostics_raw(
@@ -788,7 +788,7 @@ impl StructureSchema {
     /// Returns the built-in structural schema of common EMV Book 3 top-level
     /// data objects (FCI, application template, GPO response format 2).
     ///
-    /// Validate with [`Format::Ber`].
+    /// Validate with [`Format::Ber`](crate::Format::Ber).
     pub fn emv() -> StructureSchema {
         // SAFETY: only the address of an immutable static is taken; it lives
         // for the whole program and is never written.
@@ -819,23 +819,24 @@ impl StructureSchema {
     /// [`Error::Schema`] for other rule violations including length constraints,
     /// [`Error::InvalidSchema`] for a malformed definition, or a reader error
     /// such as [`Error::Limit`].
-    pub fn validate(
+    pub fn validate<'f>(
         &self,
         data: &[u8],
-        format: Format,
+        format: impl Into<crate::FormatRef<'f>>,
         limits: &ValidationLimits,
     ) -> std::result::Result<(), SchemaError> {
-        self.validate_raw(data, format.raw(), limits)
+        self.validate_raw(data, format.into().raw(), limits)
     }
 
     /// Same validation using a borrowed configurable Fixed Format.
+    /// Equivalent to [`StructureSchema::validate`].
     pub fn validate_fixed(
         &self,
         data: &[u8],
         format: &crate::FixedFormat<'_>,
         limits: &ValidationLimits,
     ) -> std::result::Result<(), SchemaError> {
-        self.validate_raw(data, format.raw(), limits)
+        self.validate(data, format, limits)
     }
 
     fn validate_raw(

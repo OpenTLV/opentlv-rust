@@ -20,6 +20,30 @@
         "tlv_location_set",
         "tlv_location_resolve"
       ]
+    },
+    {
+      "reason": "Callback implementations installed by bound descriptor initializers (`tlv_fixed_format_init()`, `tlv_fields_format_init()`, `tlv_tagged_fields_format_init()`, `tlv_tagged_binary_format_init()`, `tlv_escaped_format_init()` and `tlv_variable_format_init()`); Core calls them through the descriptor, so Rust has no separate path.",
+      "symbols": [
+        "tlv_binary_decode",
+        "tlv_binary_measure",
+        "tlv_binary_encode",
+        "tlv_fields_decode",
+        "tlv_fields_measure",
+        "tlv_fields_encode",
+        "tlv_tagged_binary_decode",
+        "tlv_tagged_binary_measure",
+        "tlv_tagged_binary_encode",
+        "tlv_tagged_fields_decode",
+        "tlv_tagged_fields_measure",
+        "tlv_tagged_fields_encode",
+        "tlv_escaped_decode",
+        "tlv_escaped_measure",
+        "tlv_escaped_encode",
+        "tlv_variable_decode",
+        "tlv_variable_measure",
+        "tlv_variable_encode",
+        "tlv_variable_is_constructed"
+      ]
     }
   ]
 }

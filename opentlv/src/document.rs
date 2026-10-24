@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Marek Cingel
 
 //! Owning C Document with lifetime-bound reads and exclusive mutation.
-use crate::{Error, FixedFormat, Format, Query, ReaderDiagnostic, Result, Tag, TreeReader};
+use crate::{Error, FixedFormat, FormatRef, Query, ReaderDiagnostic, Result, Tag, TreeReader};
 use opentlv_sys as native;
 use std::{marker::PhantomData, mem::MaybeUninit, ptr, slice};
 
@@ -190,7 +190,7 @@ impl Drop for DocumentBuilder<'_, '_> {
     }
 }
 
-/// C-owned mutable tree. Input is copied by C; a Fixed Format is borrowed.
+/// C-owned mutable tree. Input is copied by C; a Fixed or composed Format is borrowed.
 ///
 /// Immutable nodes and values borrow the document. Mutations require exclusive
 /// access, so retained reads cannot be invalidated by erasing or replacing nodes.
@@ -208,21 +208,36 @@ pub struct Document<'f> {
     lifetime: PhantomData<&'f native::tlv_format_t>,
 }
 
-impl Document<'static> {
+impl<'f> Document<'f> {
     /// Create an empty document with explicit depth and node limits.
-    pub fn new(format: Format, max_depth: usize, max_elements: usize) -> DocResult<Self> {
-        // SAFETY: builtin descriptor is static.
-        unsafe { Self::init(None, format.raw(), max_depth, max_elements, false) }
+    /// `format` is a builtin [`Format`](crate::Format), or a Fixed or composed
+    /// descriptor borrowed for the document's entire lifetime.
+    pub fn new(
+        format: impl Into<FormatRef<'f>>,
+        max_depth: usize,
+        max_elements: usize,
+    ) -> DocResult<Self> {
+        // SAFETY: the signature retains the descriptor and context for 'f.
+        unsafe { Self::init(None, format.into().raw(), max_depth, max_elements, false) }
     }
     /// Copy and parse input through the C Document engine.
     pub fn parse(
         data: &[u8],
-        format: Format,
+        format: impl Into<FormatRef<'f>>,
         max_depth: usize,
         max_elements: usize,
     ) -> DocResult<Self> {
-        // SAFETY: builtin descriptor is static; C copies all input.
-        unsafe { Self::init(Some(data), format.raw(), max_depth, max_elements, false) }
+        // SAFETY: the signature retains the descriptor and context for 'f; C
+        // copies all input.
+        unsafe {
+            Self::init(
+                Some(data),
+                format.into().raw(),
+                max_depth,
+                max_elements,
+                false,
+            )
+        }
     }
 
     /// Parse with original offsets/header lengths available to Document Query.
@@ -230,46 +245,52 @@ impl Document<'static> {
     /// unaffected nodes keep their original input coordinates.
     pub fn parse_with_source_locations(
         data: &[u8],
-        format: Format,
+        format: impl Into<FormatRef<'f>>,
         max_depth: usize,
         max_elements: usize,
     ) -> DocResult<Self> {
-        // SAFETY: builtin descriptor is static; C copies all input and metadata.
-        unsafe { Self::init(Some(data), format.raw(), max_depth, max_elements, true) }
+        // SAFETY: the signature retains the descriptor and context for 'f; C
+        // copies all input and metadata.
+        unsafe {
+            Self::init(
+                Some(data),
+                format.into().raw(),
+                max_depth,
+                max_elements,
+                true,
+            )
+        }
     }
-}
 
-impl<'f> Document<'f> {
     /// Create an empty document borrowing a Fixed Format for its entire lifetime.
+    /// Equivalent to [`Document::new`].
     pub fn with_fixed_format(
         format: &'f FixedFormat<'_>,
         max_depth: usize,
         max_elements: usize,
     ) -> DocResult<Self> {
-        // SAFETY: signature retains descriptor and context for 'f.
-        unsafe { Self::init(None, format.raw(), max_depth, max_elements, false) }
+        Self::new(format, max_depth, max_elements)
     }
     /// Parse copied input while borrowing the Fixed descriptor and context.
+    /// Equivalent to [`Document::parse`].
     pub fn parse_fixed(
         data: &[u8],
         format: &'f FixedFormat<'_>,
         max_depth: usize,
         max_elements: usize,
     ) -> DocResult<Self> {
-        // SAFETY: signature retains descriptor and context for 'f.
-        unsafe { Self::init(Some(data), format.raw(), max_depth, max_elements, false) }
+        Self::parse(data, format, max_depth, max_elements)
     }
 
     /// Parse with original source coordinates, borrowing only the Fixed Format.
-    /// See `Document::parse_with_source_locations` for edit invalidation.
+    /// Equivalent to [`Document::parse_with_source_locations`].
     pub fn parse_fixed_with_source_locations(
         data: &[u8],
         format: &'f FixedFormat<'_>,
         max_depth: usize,
         max_elements: usize,
     ) -> DocResult<Self> {
-        // SAFETY: signature retains the descriptor/context; C copies input metadata.
-        unsafe { Self::init(Some(data), format.raw(), max_depth, max_elements, true) }
+        Self::parse_with_source_locations(data, format, max_depth, max_elements)
     }
     unsafe fn init(
         data: Option<&[u8]>,
@@ -404,13 +425,14 @@ impl<'f> Document<'f> {
     pub fn encoded_size(&self) -> Result<usize> {
         self.measure(self.format)
     }
-    /// Exact encoded size using a compatible destination builtin Format.
-    pub fn encoded_size_as(&self, format: Format) -> Result<usize> {
-        self.measure(format.raw())
+    /// Exact encoded size using a compatible destination Format.
+    pub fn encoded_size_as<'g>(&self, format: impl Into<FormatRef<'g>>) -> Result<usize> {
+        self.measure(format.into().raw())
     }
     /// Exact encoded size using a borrowed destination Fixed Format.
+    /// Equivalent to [`Document::encoded_size_as`].
     pub fn encoded_size_fixed(&self, format: &FixedFormat<'_>) -> Result<usize> {
-        self.measure(format.raw())
+        self.encoded_size_as(format)
     }
     fn measure(&self, format: *const native::tlv_format_t) -> Result<usize> {
         let mut size = 0;
@@ -422,17 +444,22 @@ impl<'f> Document<'f> {
     pub fn encode_into(&self, output: &mut [u8]) -> DocResult<usize> {
         self.write(self.format, output)
     }
-    /// Encode using a compatible destination builtin, without modifying the document.
-    pub fn encode_into_as(&self, output: &mut [u8], format: Format) -> DocResult<usize> {
-        self.write(format.raw(), output)
+    /// Encode using a compatible destination Format, without modifying the document.
+    pub fn encode_into_as<'g>(
+        &self,
+        output: &mut [u8],
+        format: impl Into<FormatRef<'g>>,
+    ) -> DocResult<usize> {
+        self.write(format.into().raw(), output)
     }
     /// Encode using a destination Fixed Format into caller-owned storage.
+    /// Equivalent to [`Document::encode_into_as`].
     pub fn encode_into_fixed(
         &self,
         output: &mut [u8],
         format: &FixedFormat<'_>,
     ) -> DocResult<usize> {
-        self.write(format.raw(), output)
+        self.encode_into_as(output, format)
     }
     fn write(&self, format: *const native::tlv_format_t, output: &mut [u8]) -> DocResult<usize> {
         let mut written = 0;
@@ -452,9 +479,9 @@ impl<'f> Document<'f> {
     pub fn encode(&self) -> DocResult<Vec<u8>> {
         self.encode_format(self.format)
     }
-    /// Allocate and encode using a compatible destination builtin Format.
-    pub fn encode_as(&self, format: Format) -> DocResult<Vec<u8>> {
-        self.encode_format(format.raw())
+    /// Allocate and encode using a compatible destination Format.
+    pub fn encode_as<'g>(&self, format: impl Into<FormatRef<'g>>) -> DocResult<Vec<u8>> {
+        self.encode_format(format.into().raw())
     }
     fn encode_format(&self, format: *const native::tlv_format_t) -> DocResult<Vec<u8>> {
         let mut output = output_buffer(self.measure(format)?)?;
@@ -539,9 +566,9 @@ impl<'d, 'f> Node<'d, 'f> {
     pub fn encoded_size(&self) -> Result<usize> {
         self.measure(self.document.format)
     }
-    /// Exact encoded size of this subtree in a destination builtin Format.
-    pub fn encoded_size_as(&self, format: Format) -> Result<usize> {
-        self.measure(format.raw())
+    /// Exact encoded size of this subtree in a destination Format.
+    pub fn encoded_size_as<'g>(&self, format: impl Into<FormatRef<'g>>) -> Result<usize> {
+        self.measure(format.into().raw())
     }
     fn measure(&self, format: *const native::tlv_format_t) -> Result<usize> {
         let mut size = 0;
@@ -553,9 +580,13 @@ impl<'d, 'f> Node<'d, 'f> {
     pub fn encode_into(&self, output: &mut [u8]) -> DocResult<usize> {
         self.write(self.document.format, output)
     }
-    /// Encode this subtree into caller-owned output using a destination builtin.
-    pub fn encode_into_as(&self, output: &mut [u8], format: Format) -> DocResult<usize> {
-        self.write(format.raw(), output)
+    /// Encode this subtree into caller-owned output using a destination Format.
+    pub fn encode_into_as<'g>(
+        &self,
+        output: &mut [u8],
+        format: impl Into<FormatRef<'g>>,
+    ) -> DocResult<usize> {
+        self.write(format.into().raw(), output)
     }
     fn write(&self, format: *const native::tlv_format_t, output: &mut [u8]) -> DocResult<usize> {
         let mut written = 0;

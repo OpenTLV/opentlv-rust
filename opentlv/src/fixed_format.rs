@@ -18,16 +18,16 @@ pub enum ByteOrder {
     /// Least significant byte first.
     Little,
 }
-/// Wire ordering of configurable Fixed fields.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Wire ordering of configurable Fixed and composed fields.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ElementOrder {
     /// Tag, Length, Value.
     Tlv,
     /// Length, Tag, Value.
     Ltv,
 }
-/// Logical content counted by the Fixed length field.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Logical content counted by a Fixed or composed length field.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum LengthScope {
     /// Value bytes only.
     Value,
@@ -40,6 +40,22 @@ impl From<ByteOrder> for native::tlv_byte_order_t {
         match order {
             ByteOrder::Big => native::TLV_BYTE_ORDER_BIG_ENDIAN,
             ByteOrder::Little => native::TLV_BYTE_ORDER_LITTLE_ENDIAN,
+        }
+    }
+}
+impl From<ElementOrder> for native::tlv_element_order_t {
+    fn from(order: ElementOrder) -> Self {
+        match order {
+            ElementOrder::Tlv => native::TLV_ELEMENT_ORDER_TLV,
+            ElementOrder::Ltv => native::TLV_ELEMENT_ORDER_LTV,
+        }
+    }
+}
+impl From<LengthScope> for native::tlv_length_scope_t {
+    fn from(scope: LengthScope) -> Self {
+        match scope {
+            LengthScope::Value => native::TLV_LENGTH_SCOPE_VALUE,
+            LengthScope::TagAndValue => native::TLV_LENGTH_SCOPE_TAG_AND_VALUE,
         }
     }
 }
@@ -62,18 +78,12 @@ pub struct FixedFormatConfig {
 impl FixedFormatConfig {
     /// Select field order, leaving width and byte-order settings unchanged.
     pub fn with_order(mut self, order: ElementOrder) -> Self {
-        self.inner.element_order = match order {
-            ElementOrder::Tlv => native::TLV_ELEMENT_ORDER_TLV,
-            ElementOrder::Ltv => native::TLV_ELEMENT_ORDER_LTV,
-        };
+        self.inner.element_order = order.into();
         self
     }
     /// Select what the length field counts; C validates the resulting descriptor.
     pub fn with_length_scope(mut self, scope: LengthScope) -> Self {
-        self.inner.length_scope = match scope {
-            LengthScope::Value => native::TLV_LENGTH_SCOPE_VALUE,
-            LengthScope::TagAndValue => native::TLV_LENGTH_SCOPE_TAG_AND_VALUE,
-        };
+        self.inner.length_scope = scope.into();
         self
     }
     /// Creates a fixed-width format configuration. A one-byte tag and a

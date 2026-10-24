@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Marek Cingel
 
 //! Bounded tree output through the canonical C Tree Writer.
-use crate::{Element, Error, FixedFormat, Format, Result, Tag};
+use crate::{Element, Error, FixedFormat, FormatRef, Result, Tag};
 use opentlv_sys as native;
 use std::{
     any::Any,
@@ -225,19 +225,21 @@ pub struct TreeWriter<'a> {
 
 impl<'a> TreeWriter<'a> {
     /// Initialize bounded output with explicit frame, scratch, depth and item limits.
+    /// `format` is a builtin [`Format`](crate::Format) or a borrowed Fixed or
+    /// composed descriptor.
     pub fn new(
         output: &'a mut [u8],
-        format: Format,
+        format: impl Into<FormatRef<'a>>,
         frame_capacity: usize,
         scratch_capacity: usize,
         max_depth: usize,
         max_elements: usize,
     ) -> Result<Self> {
-        // SAFETY: static builtin descriptor.
+        // SAFETY: the signature keeps the descriptor/context alive with the output borrow.
         unsafe {
             Self::init(
                 output,
-                format.raw(),
+                format.into().raw(),
                 frame_capacity,
                 scratch_capacity,
                 max_depth,
@@ -246,6 +248,7 @@ impl<'a> TreeWriter<'a> {
         }
     }
     /// Initialize while borrowing a Fixed descriptor and configuration for `'a`.
+    /// Equivalent to [`TreeWriter::new`].
     pub fn with_fixed_format(
         output: &'a mut [u8],
         format: &'a FixedFormat<'_>,
@@ -254,17 +257,14 @@ impl<'a> TreeWriter<'a> {
         max_depth: usize,
         max_elements: usize,
     ) -> Result<Self> {
-        // SAFETY: signature keeps the descriptor/context alive with the output borrow.
-        unsafe {
-            Self::init(
-                output,
-                format.raw(),
-                frame_capacity,
-                scratch_capacity,
-                max_depth,
-                max_elements,
-            )
-        }
+        Self::new(
+            output,
+            format,
+            frame_capacity,
+            scratch_capacity,
+            max_depth,
+            max_elements,
+        )
     }
     unsafe fn init(
         output: &'a mut [u8],

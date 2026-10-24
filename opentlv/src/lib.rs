@@ -10,8 +10,11 @@
 //! layers wrap the C library's implementation instead of reimplementing it:
 //! [`LengthSchema`] and [`StructureSchema`] validate data, [`Codec`] converts
 //! values to and from typed [`Value`]s, [`Format`] enforces the DER and CER
-//! canonical rules, and the [`emv`] module exposes the EMV dictionary. No raw
-//! pointers appear in the public API.
+//! canonical rules, [`ComposedFormat`] composes custom formats from Core's
+//! field encodings, and the [`emv`] module exposes the EMV dictionary. Every
+//! format entry point takes a [`FormatRef`], which borrows a builtin, Fixed or
+//! composed descriptor and exposes its decode, measure and encode operations.
+//! No raw pointers appear in the public API.
 //!
 //! # Setup
 //!
@@ -60,7 +63,9 @@
 //! and yields [`Element<'a>`](Element) values that are zero-copy slices of it, so
 //! elements outlive the reader but not the input. [`Writer<'a>`](Writer)
 //! exclusively borrows a caller-owned output buffer and never allocates.
-//! Schemas own their C tables and free them on drop.
+//! Schemas own their C tables and free them on drop. A [`ComposedFormat`] owns
+//! its descriptor and the tables Core borrows; clones share them, and readers,
+//! writers and documents borrow it for their lifetime.
 //!
 //! # Relationship to the C API
 //!
@@ -73,6 +78,7 @@
 #![warn(missing_docs)]
 
 mod codec;
+mod composed_format;
 mod diagnostic_kind;
 pub use diagnostic_kind::*;
 mod definition;
@@ -81,6 +87,7 @@ pub use definition::{Definition, DefinitionRegistry};
 mod document;
 mod element;
 mod error;
+mod field;
 mod fixed_format;
 mod format;
 mod query;
@@ -104,12 +111,18 @@ pub use codec::{
     CryptogramInfo, CryptogramType, CvmResult, Date, NumberCodec, NumberEncoding, Time, Track2,
     Value, ValueKind,
 };
+pub use composed_format::{ComposedFormat, FieldComposition, PackedLayout};
 pub use element::Element;
 pub use error::{Error, Result};
+pub use field::{
+    ConstructedBit, EscapedLength, FixedIdentifier, FixedLength, IdentifierEncoding,
+    IdentifierPolicy, LengthEncoding, LengthPolicy, PackedField, VariableIdentifier,
+    VariableLength,
+};
 pub use fixed_format::{
     ByteOrder, ElementOrder, FixedFormat, FixedFormatConfig, LengthScope, OwnedFixedFormat,
 };
-pub use format::Format;
+pub use format::{Encoding, Format, FormatError, FormatOperation, FormatRef, Region};
 pub use query::{Query, QueryError, QueryMatcher};
 pub use reader::{read, read_fixed, Reader, ReaderError};
 pub use reader_diagnostic::{DiagnosticContext, DiagnosticMetadata, ReaderDiagnostic};

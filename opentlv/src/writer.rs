@@ -12,7 +12,7 @@ use opentlv_sys as native;
 use crate::element::Element;
 use crate::error::{Error, Result};
 use crate::fixed_format::FixedFormat;
-use crate::format::Format;
+use crate::format::{Format, FormatRef};
 use crate::tag::Tag;
 use crate::{Decoded, WriterDiagnostic};
 
@@ -50,10 +50,11 @@ fn diagnosed_size(
 }
 
 /// Measure exact encoding through C, preserving structured errors.
-pub fn measure_element(
+pub fn measure_element<'f>(
     element: &Element<'_>,
-    format: Format,
+    format: impl Into<FormatRef<'f>>,
 ) -> std::result::Result<usize, WriterError> {
+    let format = format.into();
     let element = raw_element(element);
     // SAFETY: live immutable content/Format and writable outputs.
     diagnosed_size(|size, diagnostic| unsafe {
@@ -62,24 +63,22 @@ pub fn measure_element(
 }
 
 /// Measure using a borrowed Fixed Format, preserving structured errors.
+/// Equivalent to [`measure_element`].
 pub fn measure_element_fixed(
     element: &Element<'_>,
     format: &FixedFormat<'_>,
 ) -> std::result::Result<usize, WriterError> {
-    let element = raw_element(element);
-    // SAFETY: live immutable content/Format and writable outputs.
-    diagnosed_size(|size, diagnostic| unsafe {
-        native::tlv_element_encoded_size_diag(&element, format.raw(), size, diagnostic)
-    })
+    measure_element(element, format)
 }
 
 /// Encode a single Element into caller storage, preserving C diagnostics.
 /// Capacity shortage reports diagnostic.required and leaves output unchanged.
-pub fn write_element(
+pub fn write_element<'f>(
     output: &mut [u8],
     element: &Element<'_>,
-    format: Format,
+    format: impl Into<FormatRef<'f>>,
 ) -> std::result::Result<usize, WriterError> {
+    let format = format.into();
     let element = raw_element(element);
     // SAFETY: output is exclusive and disjoint from all readable inputs.
     diagnosed_size(|written, diagnostic| unsafe {
@@ -95,23 +94,13 @@ pub fn write_element(
 }
 
 /// Encode a single Element with a borrowed Fixed Format and structured errors.
+/// Equivalent to [`write_element`].
 pub fn write_element_fixed(
     output: &mut [u8],
     element: &Element<'_>,
     format: &FixedFormat<'_>,
 ) -> std::result::Result<usize, WriterError> {
-    let element = raw_element(element);
-    // SAFETY: output is exclusive and disjoint from all readable inputs.
-    diagnosed_size(|written, diagnostic| unsafe {
-        native::tlv_write_element_diag(
-            output.as_mut_ptr(),
-            output.len(),
-            format.raw(),
-            &element,
-            written,
-            diagnostic,
-        )
-    })
+    write_element(output, element, format)
 }
 
 fn raw_element(element: &Element<'_>) -> native::tlv_element_t {
@@ -129,7 +118,11 @@ fn raw_element(element: &Element<'_>) -> native::tlv_element_t {
 ///
 /// # Errors
 /// Returns the C measurement error, including native size overflow.
-pub fn element_encoded_size(element: &Element<'_>, format: Format) -> Result<usize> {
+pub fn element_encoded_size<'f>(
+    element: &Element<'_>,
+    format: impl Into<FormatRef<'f>>,
+) -> Result<usize> {
+    let format = format.into();
     let raw = raw_element(element);
     let mut size = 0;
     // SAFETY: input and format remain valid for the call; size is writable.
@@ -138,6 +131,7 @@ pub fn element_encoded_size(element: &Element<'_>, format: Format) -> Result<usi
 }
 
 /// Measures an Element in a configurable fixed format without allocation.
+/// Equivalent to [`element_encoded_size`].
 ///
 /// # Errors
 /// Returns the C measurement error, including native size overflow.
@@ -145,11 +139,7 @@ pub fn element_encoded_size_fixed(
     element: &Element<'_>,
     format: &FixedFormat<'_>,
 ) -> Result<usize> {
-    let raw = raw_element(element);
-    let mut size = 0;
-    // SAFETY: input and borrowed format remain valid for the call; size is writable.
-    Error::check(unsafe { native::tlv_element_encoded_size(&raw, format.raw(), &mut size) })?;
-    Ok(size)
+    element_encoded_size(element, format)
 }
 
 /// Returns the encoded size of an element with the given tag and value length
@@ -166,10 +156,15 @@ pub fn element_encoded_size_fixed(
 /// let tag = Tag::from_bytes(&[0x01]);
 /// assert_eq!(encoded_size(&tag, 3, Format::Ber).unwrap(), 5);
 /// ```
-pub fn encoded_size(tag: &Tag, value_len: usize, format: Format) -> Result<usize> {
+pub fn encoded_size<'f>(
+    tag: &Tag,
+    value_len: usize,
+    format: impl Into<FormatRef<'f>>,
+) -> Result<usize> {
+    let format = format.into();
     let mut size = 0usize;
-    // SAFETY: `format.raw()` points to a static format and `size` is
-    // a valid, writable `usize`.
+    // SAFETY: `format` is borrowed for this call and `size` is a valid,
+    // writable `usize`.
     let code = unsafe { native::tlv_encoded_size(tag.raw(), value_len, format.raw(), &mut size) };
     Error::check(code)?;
     Ok(size)
@@ -182,12 +177,7 @@ pub fn encoded_size(tag: &Tag, value_len: usize, format: Format) -> Result<usize
 ///
 /// Same as [`encoded_size`].
 pub fn encoded_size_fixed(tag: &Tag, value_len: usize, format: &FixedFormat<'_>) -> Result<usize> {
-    let mut size = 0usize;
-    // SAFETY: `format.raw()` points at storage owned by `format`,
-    // borrowed for this call only, and `size` is a valid, writable `usize`.
-    let code = unsafe { native::tlv_encoded_size(tag.raw(), value_len, format.raw(), &mut size) };
-    Error::check(code)?;
-    Ok(size)
+    encoded_size(tag, value_len, format)
 }
 
 /// A sequential writer that encodes TLV entries into a byte slice.
@@ -219,17 +209,19 @@ impl<'a> Writer<'a> {
         Writer::with_format(buf, Format::Ber)
     }
 
-    /// Creates a writer for the given wire format.
-    pub fn with_format(buf: &'a mut [u8], format: Format) -> Writer<'a> {
+    /// Creates a writer for the given wire format: a builtin [`Format`], or a
+    /// `&`[`FixedFormat`], `&`[`OwnedFixedFormat`](crate::OwnedFixedFormat) or
+    /// `&`[`ComposedFormat`](crate::ComposedFormat) that outlives the writer.
+    pub fn with_format(buf: &'a mut [u8], format: impl Into<FormatRef<'a>>) -> Writer<'a> {
+        let format = format.into();
         let mut raw = MaybeUninit::<native::tlv_writer_t>::uninit();
         // SAFETY: `raw` is writable; `buf` is a valid slice (a non-null
-        // pointer even when empty); `format.raw()` points to a static
-        // format.
+        // pointer even when empty); `format` is borrowed for `'a`.
         let code = unsafe {
             native::tlv_writer_init(raw.as_mut_ptr(), buf.as_mut_ptr(), buf.len(), format.raw())
         };
-        // Every argument is non-null and the built-in formats are complete, so
-        // initialization cannot fail.
+        // Every argument is non-null and every FormatRef descriptor can
+        // encode, so initialization cannot fail.
         assert_eq!(code, native::TLV_OK, "tlv_writer_init failed");
         Writer {
             // SAFETY: `tlv_writer_init` succeeded and initialized every field.
@@ -240,21 +232,9 @@ impl<'a> Writer<'a> {
     }
 
     /// Creates a writer for a [`FixedFormat`]; `format` must outlive the writer.
+    /// Equivalent to [`Writer::with_format`].
     pub fn with_fixed_format<'f>(buf: &'a mut [u8], format: &'a FixedFormat<'f>) -> Writer<'a> {
-        let mut raw = MaybeUninit::<native::tlv_writer_t>::uninit();
-        // SAFETY: `raw` is writable; `buf` is a valid slice (a non-null
-        // pointer even when empty); `format.raw()` points at storage
-        // owned by `format`, which the borrow checker keeps alive for `'a`.
-        let code = unsafe {
-            native::tlv_writer_init(raw.as_mut_ptr(), buf.as_mut_ptr(), buf.len(), format.raw())
-        };
-        assert_eq!(code, native::TLV_OK, "tlv_writer_init failed");
-        Writer {
-            // SAFETY: `tlv_writer_init` succeeded and initialized every field.
-            raw: unsafe { raw.assume_init() },
-            _buf: PhantomData,
-            diagnostic: None,
-        }
+        Writer::with_format(buf, format)
     }
 
     /// Appends one element with the given tag and value.
