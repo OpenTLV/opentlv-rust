@@ -124,7 +124,7 @@ pub use fixed_format::{
 };
 pub use format::{Encoding, Format, FormatError, FormatOperation, FormatRef, Region};
 pub use query::{Query, QueryError, QueryMatcher};
-pub use reader::{read, read_fixed, Reader, ReaderError};
+pub use reader::{read, read_element, read_fixed, Reader, ReaderError};
 pub use reader_diagnostic::{DiagnosticContext, DiagnosticMetadata, ReaderDiagnostic};
 pub use schema::{
     Kind, LengthRule, LengthSchema, SchemaBounds, SchemaDiagnostic, SchemaDiagnosticReport,

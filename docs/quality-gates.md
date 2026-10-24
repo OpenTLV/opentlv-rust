@@ -240,8 +240,8 @@ artifact.
 `opentlv-sys` is not a reference directory. Its `extern` declarations make a
 symbol callable only through `unsafe` raw bindings, without the safe crate's
 ownership, error and lifetime guarantees, so a declaration alone does not count.
-For Core 0.7.1, 17 symbols such as `tlv_document_encode`, `tlv_query_compile`
-and `tlv_writer_preserve` are declared in `opentlv-sys` but not used by
+For Core 0.7.1, 11 symbols such as `tlv_document_encode`, `tlv_query_compile`
+and `tlv_node_encode` are declared in `opentlv-sys` but not used by
 `opentlv`, and are reported as not referenced.
 
 On a pull request, the job also reads the Core lock at the base commit and lists
@@ -263,7 +263,12 @@ implementations, and the decode, measure, encode and constructed callbacks
 that the bound initializers such as `tlv_fields_format_init()` and
 `tlv_variable_format_init()` install, which Core calls through the descriptor.
 The packed callbacks stay counted: `ComposedFormat::packed` passes them to
-`tlv_format_init()` itself. Diagnostic consumers such as the `*_string` lookups and
+`tlv_format_init()` itself. The last entries are Reader and Writer entry points
+that duplicate a bound path: wrappers that pass a NULL diagnostic to a bound
+`_diag` counterpart, such as `tlv_reader_next` and `tlv_tree_writer_begin`;
+`tlv_write` and `tlv_write_diag`, the Tag/Value forms of
+`tlv_write_element_diag`; and `tlv_writer_copy_element`, which is
+`tlv_writer_write_element` without diagnostics. Diagnostic consumers such as the `*_string` lookups and
 `tlv_diagnostic_path_string` remain counted. Patterns that match nothing in the
 pinned Core are reported, so stale entries are visible after a pin bump. Change
 the ignore list only for symbols the safe crate intentionally leaves unbound.
@@ -273,7 +278,9 @@ symbols (53.5 %) with 43 ignored, and 34 of 291 builtins symbols (11.7 %).
 With the field encodings, Format compositions and generic Format operations
 (#20), it references 164 of 235 core symbols (69.8 %) with 62 ignored; every
 `tlv/field/*.h`, `tlv/format.h` and `tlv/formats/*.h` symbol is referenced or
-ignored.
+ignored. With the single-element reads and source-free Reader pulls (#24), it
+references 167 of 218 core symbols (76.6 %) with 79 ignored; every
+`tlv/reader/*.h` and `tlv/writer/*.h` symbol is referenced or ignored.
 Builtins-specific parity is outside the coverage epic. The report reads the
 headers, not a build, and is unaffected by Cargo features; with the default
 features `opentlv-sys/build.rs` builds Core with every component and builtin
