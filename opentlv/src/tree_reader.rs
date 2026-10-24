@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Marek Cingel
 
 //! Safe preorder projection of the canonical C Tree Reader.
-use crate::{Decoded, Error, FixedFormat, Format, ReaderDiagnostic, Result};
+use crate::{Decoded, Error, FixedFormat, FormatRef, ReaderDiagnostic, Result};
 use opentlv_sys as native;
 use std::{marker::PhantomData, mem::MaybeUninit};
 
@@ -38,7 +38,7 @@ pub enum TreeEvent<'a> {
 }
 
 /// Preorder traversal backed exclusively by C; owns bounded frame storage.
-/// Input and custom fixed descriptors are borrowed for `'a`. Moving the reader
+/// Input and custom Fixed or composed descriptors are borrowed for `'a`. Moving the reader
 /// does not move its heap-backed frames. It cannot be cloned to alias frame state.
 pub struct TreeReader<'a> {
     pub(crate) raw: native::tlv_tree_reader_t,
@@ -51,19 +51,21 @@ pub struct TreeReader<'a> {
 
 impl<'a> TreeReader<'a> {
     /// Creates a bounded reader; `final_input = false` enables resumable input.
+    /// `format` is a builtin [`Format`](crate::Format) or a borrowed Fixed or
+    /// composed descriptor.
     pub fn new(
         data: &'a [u8],
-        format: Format,
+        format: impl Into<FormatRef<'a>>,
         frame_capacity: usize,
         max_depth: usize,
         max_elements: usize,
         final_input: bool,
     ) -> Result<Self> {
-        // SAFETY: builtin descriptors have static lifetime.
+        // SAFETY: the signature borrows the descriptor and its context for 'a.
         unsafe {
             Self::init(
                 data,
-                format.raw(),
+                format.into().raw(),
                 frame_capacity,
                 max_depth,
                 max_elements,
@@ -73,6 +75,7 @@ impl<'a> TreeReader<'a> {
     }
 
     /// Creates traversal borrowing a fixed descriptor and configuration for `'a`.
+    /// Equivalent to [`TreeReader::new`].
     pub fn with_fixed_format(
         data: &'a [u8],
         format: &'a FixedFormat<'_>,
@@ -81,17 +84,14 @@ impl<'a> TreeReader<'a> {
         max_elements: usize,
         final_input: bool,
     ) -> Result<Self> {
-        // SAFETY: signature borrows the descriptor and context for 'a.
-        unsafe {
-            Self::init(
-                data,
-                format.raw(),
-                frame_capacity,
-                max_depth,
-                max_elements,
-                final_input,
-            )
-        }
+        Self::new(
+            data,
+            format,
+            frame_capacity,
+            max_depth,
+            max_elements,
+            final_input,
+        )
     }
 
     unsafe fn init(

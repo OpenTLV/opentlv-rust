@@ -5,7 +5,8 @@ for input, expected output and the public API. You can use this guide without
 studying native C implementation contracts.
 
 The `opentlv` crate is an experimental safe Rust API over the OpenTLV C library.
-This guide covers setup, reading, writing, error handling and ownership. For
+This guide covers setup, reading, writing, composing formats, error handling
+and ownership. For
 crate layout, schemas, codecs, canonical validation and CI, see
 [Rust development](../development/rust.md); every public item also has Rustdoc
 (`cargo doc -p opentlv --open` from the repository root).
@@ -60,8 +61,10 @@ for element in Reader::with_format(&data, Format::Ber) {
 
 `Reader::new` uses BER;
 `Reader::with_format` selects another built-in `Format` (`Ber`, `Cer`, `Der`),
-and `Reader::with_fixed_format` takes a `&FixedFormat` for a
-runtime-configurable tag width, length width and length byte order:
+or takes a borrowed `&FixedFormat` for a runtime-configurable tag width, length
+width and length byte order, or a `&ComposedFormat` (see
+[Composing formats](#composing-formats)). `Reader::with_fixed_format` is
+equivalent for a `&FixedFormat`:
 
 ```rust
 use opentlv::{ByteOrder, FixedFormat, FixedFormatConfig, Reader};
@@ -93,10 +96,70 @@ writer.write(&Tag::from_bytes(&[0x50]), b"VISA")?;
 let encoded: &[u8] = writer.written();
 ```
 
-Use `encoded_size` to size the buffer beforehand, or `encoded_size_fixed`/
-`Writer::with_fixed_format` for a `FixedFormat`. Runnable version:
-[writer.rs](../../opentlv/examples/writer.rs)
+Use `encoded_size` to size the buffer beforehand. Both accept a `FixedFormat`
+or `ComposedFormat` as well; `encoded_size_fixed` and
+`Writer::with_fixed_format` are equivalent for a `FixedFormat`. Runnable
+version: [writer.rs](../../opentlv/examples/writer.rs)
 (`cargo run --example writer` from the repository root).
+
+## Composing formats
+
+A proprietary TLV format needs no C. `ComposedFormat` composes Core's generic
+field encodings into a definite Format and owns the native descriptor, its
+configuration and every table Core borrows:
+
+```rust
+use opentlv::{
+    ByteOrder, ComposedFormat, ConstructedBit, EscapedLength, FieldComposition,
+    FixedIdentifier, Reader,
+};
+
+// One tag byte; a length byte below 0xFF, or 0xFF and a two-byte count.
+// Tags with the top bit set hold nested elements.
+let format = ComposedFormat::fields(
+    &FieldComposition::new(FixedIdentifier::new(1), EscapedLength::new(0xFF, 2, ByteOrder::Big))
+        .with_constructed(ConstructedBit::new(0, 0x80, 0x80)),
+)?;
+for element in Reader::with_format(&data, &format) {
+    let element = element?;
+    println!("{:02X?}: {} bytes", element.tag().as_bytes(), element.value().len());
+}
+```
+
+`FieldComposition::new` takes one identifier encoding, `FixedIdentifier` or
+`VariableIdentifier` with an optional `IdentifierPolicy`, and one length
+encoding, `FixedLength`, `VariableLength` with an optional `LengthPolicy`, or
+`EscapedLength`. `with_order` selects TLV or LTV, `with_length_scope` whether
+the count also covers the identifier, `with_tag_only` identifiers that omit
+Length and Value, and `with_constructed` the `ConstructedBit` that classifies
+nesting; without it every Value is opaque. The encodings select the Core
+composition: the Fixed, tagged binary, Variable or escaped Format where one
+exists, otherwise Core's generic field composition. `ComposedFormat::packed`
+composes a definite packed Tag/Length header from a `PackedLayout` of two
+`PackedField` bit fields, such as LLDP's 7-bit type above a 9-bit length; tag
+fields are limited to 16 bits because the binding owns the identifier table.
+`PackedField::read` and `write` also extract and insert one bit field of a
+header integer directly. Core validates every configuration when the Format is
+composed and reports `Error::InvalidArg` for an invalid one.
+
+Pass `&format` wherever a format is accepted: `Reader`, `TreeReader`, `Writer`,
+`TreeWriter`, `Document`, `decode`, `read`, the writer measurement functions
+and `StructureSchema::validate`. These entry points take anything that converts
+into a `FormatRef<'a>`, a borrowed descriptor: a builtin `Format`, or a
+`&FixedFormat`, `&OwnedFixedFormat` or `&ComposedFormat`. The `_fixed` entry
+points remain and are equivalent. For Query, set
+`ProgramOptions::composed_format` or use `QuerySchema::with_composed_format`.
+Clones of a `ComposedFormat` share one owner and its native identity; share
+clones between a program and its Readers or Documents, because two independently
+composed equal configurations are different Formats to Core.
+
+`FormatRef` also exposes the `tlv_format_t` operations of any Format:
+`can_read`, `can_write`, `decode`, `measure`, `encode` and `encode_into`.
+Failures return `FormatError` with the Format's own detail: the operation, the
+wire `Region`, the offset, the required size and the known tag, length and
+value ranges. Runnable version with Tree Writer, Tree Reader, Query and
+Document: [compose.rs](../../opentlv/examples/compose.rs)
+(`cargo run --example compose` from the repository root).
 
 ## Error handling
 
@@ -126,11 +189,13 @@ structures such as `DocumentError` and `WriterError`. There are no panics on bad
 | `Element<'a>` | its `Tag` | value `&'a [u8]` from the input |
 | `Reader<'a>` | its cursor | the input `&'a [u8]` |
 | `Writer<'a>` | its position and optional diagnostic | the output `&'a mut [u8]` |
-| `Document<'f>` | C document nodes and storage | optional Fixed Format/context |
+| `Document<'f>` | C document nodes and storage | optional Fixed or composed Format/context |
 | `Node`, `NodeMut` | a node handle | immutable or exclusive Document access |
 | `LengthSchema`, `StructureSchema` | their rule tables | nothing |
 | `FixedFormatConfig` | its fields (`Copy`) | nothing |
 | `FixedFormat<'a>` | nothing | `&'a FixedFormatConfig` |
+| `ComposedFormat` | its descriptor, configuration and tables, shared by clones | nothing |
+| `FormatRef<'a>` | nothing (`Copy`) | a Format descriptor for `'a` |
 
 - Element values are zero-copy. `Reader<'a>` yields `Element<'a>` tied to the
   input, not to the reader, so elements stay valid after the reader is dropped
@@ -144,6 +209,9 @@ structures such as `DocumentError` and `WriterError`. There are no panics on bad
   is gone; the value stays zero-copy.
 - Schemas own their C tables, and the tags those tables borrow, and free them
   on `Drop`.
+- Readers, Writers, Documents and decoded sources borrow a Fixed or composed
+  Format for their whole lifetime. A `ComposedFormat` is freed when its last
+  clone drops; the borrow checker keeps it alive while anything uses it.
 - The layout of `tlv_tag_t` is a pointer and a size, independent of any C build
   configuration, so the bindings work with a library built any way.
 

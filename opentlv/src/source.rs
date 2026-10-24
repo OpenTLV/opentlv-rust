@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Marek Cingel
 
 //! Immutable source representation, separate from semantic element content.
-use crate::{Element, Error, FixedFormat, Format, Result};
+use crate::{Element, Error, FixedFormat, FormatRef, Result};
 use opentlv_sys as native;
 use std::{marker::PhantomData, mem::MaybeUninit, slice};
 
@@ -116,19 +116,20 @@ unsafe fn decode_raw<'a>(
     })
 }
 /// Decodes one element, retaining immutable source bytes and raw framing.
-pub fn decode(data: &[u8], format: Format) -> Result<Decoded<'_>> {
-    // SAFETY: builtin descriptors and contexts have static lifetime.
-    unsafe { decode_raw(data, format.raw()) }
+/// The Format stays borrowed for the result's lifetime.
+pub fn decode<'a>(data: &'a [u8], format: impl Into<FormatRef<'a>>) -> Result<Decoded<'a>> {
+    // SAFETY: the signature keeps the input and descriptor borrowed for 'a.
+    unsafe { decode_raw(data, format.into().raw()) }
 }
 /// Decodes using a fixed-format descriptor borrowed for the result's lifetime.
+/// Equivalent to [`decode`].
 pub fn decode_fixed<'a>(data: &'a [u8], format: &'a FixedFormat<'_>) -> Result<Decoded<'a>> {
-    // SAFETY: the signature keeps both configuration and descriptor borrowed.
-    unsafe { decode_raw(data, format.raw()) }
+    decode(data, format)
 }
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Tag;
+    use crate::{Format, Tag};
     #[test]
     fn preserves_nonminimal_length_and_rejects_mutation() {
         let bytes = [4, 0x81, 1, 0xAA];

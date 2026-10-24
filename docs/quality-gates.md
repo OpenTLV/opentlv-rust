@@ -134,7 +134,10 @@ behavior that only these tests cover; any such gap belongs in a Core issue.
 The C ABI probe (`opentlv-sys/tests/fixed_abi.rs` with
 `tests/abi_probe/`) is unchanged. It builds a C program with CMake and compares
 the size, alignment and every member offset of the Fixed format structures with
-the `#[repr(C)]` mirrors. It runs in every `default` and reduced-feature suite,
+the `#[repr(C)]` mirrors. The composition probe (`opentlv-sys/tests/compose_abi.rs`
+with `tests/compose_abi_probe/`, #20) does the same for the field encodings, the
+Format compositions, `tlv_format_error_t` and `tlv_encoding_t`, leaving the
+imported probe intact. Both run in every `default` and reduced-feature suite,
 on every platform and toolchain.
 
 ## Checks
@@ -153,7 +156,7 @@ Rustdoc, `RUSTFLAGS=-D warnings`.
   every target, including Rustdoc tests, and compares them with the inventory.
   A missing, extra or renamed target, a different count, or any failed,
   ignored, measured or filtered test fails.
-- **Examples.** The six runnable examples. `query_conformance` is the native
+- **Examples.** The seven runnable examples. `query_conformance` is the native
   driver of the Query corpus; a new example fails until it is added.
 - **Query corpus.** Core's `tests/query/run.py` of the selected Core tree
   drives `query_conformance` with `--property-cases 0`: 171 fixtures with 2133
@@ -237,7 +240,7 @@ artifact.
 `opentlv-sys` is not a reference directory. Its `extern` declarations make a
 symbol callable only through `unsafe` raw bindings, without the safe crate's
 ownership, error and lifetime guarantees, so a declaration alone does not count.
-For Core 0.7.1, 19 symbols such as `tlv_document_encode`, `tlv_query_compile`
+For Core 0.7.1, 17 symbols such as `tlv_document_encode`, `tlv_query_compile`
 and `tlv_writer_preserve` are declared in `opentlv-sys` but not used by
 `opentlv`, and are reported as not referenced.
 
@@ -253,16 +256,24 @@ paths relative to `tlv/include` (`headers`) or symbol names (`symbols`); both
 accept `fnmatch` patterns. Ignored symbols are excluded from the counts, even
 when the safe crate references them, such as `tlv_tag_compare` in a test that
 compares `Tag` ordering with Core. The current entries are the endian, tag,
-value, size and copy primitives, which Rust represents natively, and the
+value, size and copy primitives, which Rust represents natively, the
 diagnostic producers (`tlv_diagnostic_init`, setters, path builders,
 `tlv_location_set` and `tlv_location_resolve`) for C format and codec
-implementations. Diagnostic consumers such as the `*_string` lookups and
+implementations, and the decode, measure, encode and constructed callbacks
+that the bound initializers such as `tlv_fields_format_init()` and
+`tlv_variable_format_init()` install, which Core calls through the descriptor.
+The packed callbacks stay counted: `ComposedFormat::packed` passes them to
+`tlv_format_init()` itself. Diagnostic consumers such as the `*_string` lookups and
 `tlv_diagnostic_path_string` remain counted. Patterns that match nothing in the
 pinned Core are reported, so stale entries are visible after a pin bump. Change
 the ignore list only for symbols the safe crate intentionally leaves unbound.
 
-The first report, for Core 0.7.1 at `476f1fbecde6`, references 136 of 254 core
+The first report, for Core 0.7.1 at `476f1fbecde6`, referenced 136 of 254 core
 symbols (53.5 %) with 43 ignored, and 34 of 291 builtins symbols (11.7 %).
+With the field encodings, Format compositions and generic Format operations
+(#20), it references 164 of 235 core symbols (69.8 %) with 62 ignored; every
+`tlv/field/*.h`, `tlv/format.h` and `tlv/formats/*.h` symbol is referenced or
+ignored.
 Builtins-specific parity is outside the coverage epic. The report reads the
 headers, not a build, and is unaffected by Cargo features; with the default
 features `opentlv-sys/build.rs` builds Core with every component and builtin
