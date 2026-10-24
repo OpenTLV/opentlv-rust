@@ -94,7 +94,7 @@ generated `Cargo.toml`, `Cargo.toml.orig`, `Cargo.lock` and
 | Crate | Files |
 | --- | --- |
 | `opentlv-sys` | `README.md`, `LICENSE`, `build.rs`, `src/`, the native integration files in `core/` (lock, selection module, release verifier and CMake toolchain probe) and the tests with the C ABI probes in `tests/abi_probe/` and `tests/compose_abi_probe/` |
-| `opentlv` | `README.md`, `LICENSE`, `build.rs`, `src/`, `tests/` and the nine examples |
+| `opentlv` | `README.md`, `LICENSE`, `build.rs`, `src/`, `tests/` and the eleven examples |
 
 The build scripts and tests read only files inside their own package, the
 Cargo `OUT_DIR`, the selected Core tree and their own temporary directories.

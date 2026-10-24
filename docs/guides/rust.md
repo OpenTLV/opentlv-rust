@@ -249,7 +249,8 @@ documents. Reader and Tree Reader `visit` methods support resumable callbacks;
 panics are resumed only after returning from C. `QueryMatcher` retains canonical
 matching state across STOP and input replacement. See the
 [Reader and Query facade contract](https://github.com/OpenTLV/opentlv/blob/main/docs/concepts/bindings.md#rust-and-python-reader-and-query-facades).
-Structure codecs and the DOL component are not bound yet; see the
+Generic Value codecs, structure codecs and wire generation are described below.
+The DOL component is not bound yet; see the
 [C API reference](https://github.com/OpenTLV/opentlv/blob/main/docs/reference/c-api.md).
 
 ## Tree measurement and owning Documents
@@ -412,6 +413,103 @@ is built (`Error::InvalidSchema` for reversed bounds), `validate` fails with
 Runnable version, with a number codec provider, a buffer path visit and the
 Document view: [batch.rs](../../opentlv/examples/batch.rs)
 (`cargo run --example batch` from the repository root).
+
+## Generic Value codecs
+
+Choose a codec explicitly for each element's Value. `IntegerCodec` covers
+`u8`, big- and little-endian `u16`/`u32`, and minimal big-endian `i64`;
+`NumberCodec` covers configurable unsigned numeric representations.
+`SchemaNumberCodec` combines a `NumberCodec` with a `LengthRule` to select a
+permitted wire width. These conversions call the canonical C codecs.
+
+```rust
+use opentlv::{DigitsCodec, IntegerCodec, TextAlphabet, TextCodec};
+
+assert_eq!(IntegerCodec::uint16_be().decode(&[1, 2])?, 258);
+let label = TextCodec::new(TextAlphabet::AsciiPrintable, 4, true);
+assert_eq!(label.encode("OK")?, b"OK\0\0");
+assert_eq!(label.decode(b"OK\0\0")?, "OK");
+// Digit strings retain leading zeros; trailing F nibbles are padding.
+assert_eq!(DigitsCodec::default().decode(&[0x01, 0x23, 0x4f])?, "01234");
+```
+
+`BytesCodec::decode` and `TextCodec::decode` return slices borrowed from the
+input. `Ipv4Codec` returns `std::net::Ipv4Addr`; `Ipv4ListCodec` returns an
+`Ipv4List` borrowing the input, with `get`, `iter` and `as_bytes`. Encoding
+accepts a slice of addresses and preserves their order and duplicates.
+`DigitsCodec::decode` returns an owned `String`.
+
+Each codec exposes `decode`, `encoded_size`, `encode_into` and `encode`.
+`encode_into` reports `Error::BufferTooShort` for insufficient output space;
+`encode` allocates owned output. Errors are `CodecFailure` values with the
+shared `Error` and owned native diagnostic evidence, including Schema causes.
+The [value_codecs example](../../opentlv/examples/value_codecs.rs) demonstrates
+selection per Value (`cargo run --example value_codecs`).
+
+## Structure codecs
+
+`StructureCodec` validates a complete TLV sequence and converts it to or from
+an application object. It borrows a Format and optionally a `StructureSchema`;
+`with_limits` sets the maximum nesting depth and element count. Zero is a real
+limit. Decode validates the whole sequence in Core before calling your closure;
+the returned object may borrow the input:
+
+```rust
+use opentlv::{Format, StructureCodec, StructureRule, StructureSchema, Tag};
+
+let schema = StructureSchema::new(
+    [StructureRule::new(Tag::from_bytes(&[0x50])).required_once()], false,
+);
+let codec = StructureCodec::new(Format::Ber).with_schema(&schema);
+let label = codec.decode(&[0x50, 0x02, b'O', b'K'], |bytes| Ok(&bytes[2..]))?;
+assert_eq!(label, b"OK");
+let encoded = codec.encode(|| Ok([0x50, 0x01, b'A']))?;
+assert_eq!(encoded, [0x50, 0x01, b'A']);
+```
+
+Encoding runs the closure once and validates its produced bytes in Core before
+returning them. `encode_into` copies into caller storage; on a validation
+failure that storage contains rejected output and the diagnostic uses output
+coordinates. `encoded_size` runs the closure and measures its result, without
+validating the sequence. Closure failures are returned unchanged. Closures run
+outside C, so their panics unwind normally through Rust.
+
+## Reproducible wire generation
+
+`Generator` wraps Core's wire generator for fuzz corpora and property tests.
+It owns the ordered candidates and borrows the Format. Record
+`Generator::VERSION`, the Format/configuration, candidates, limits, seed and
+case index to replay a case independently of earlier calls:
+
+```rust
+use opentlv::{Format, Generator, GeneratorCandidate, GeneratorLimits, Tag};
+
+let generator = Generator::new(
+    Format::Ber,
+    [GeneratorCandidate::new(Tag::from_bytes(&[0x5a]), 0, 16)],
+    GeneratorLimits {
+        max_elements: 8, max_depth: 2, max_value_size: 64, max_case_size: 512,
+    },
+    2026,
+);
+let case = generator.generate(42)?;
+assert_eq!(generator.generate(42)?, case);
+```
+
+The Format must support reading and writing. Core validates all limits and
+candidate ranges when a case is requested. `generate` allocates output and
+workspace fallibly; `generate_into` allocates nothing and uses caller storage
+of at least `max_case_size` output bytes and `workspace_size()` scratch bytes.
+The scratch size is `(max_depth + 1) * max_case_size`; a depth above 64 is
+unsupported, and size arithmetic overflow is an error. Generation may return
+`Error::Limit` when the bounded search cannot produce a nonempty case.
+
+Generated streams decode and re-encode through the selected Format. Primitive
+Values are arbitrary bytes: Schema, application and protocol-specific content
+validity are not implied. Exclude terminators and candidates requiring contextual
+ordering. Seed and index zero are valid, and distinct pairs may produce the
+same bytes. See [generate.rs](../../opentlv/examples/generate.rs)
+(`cargo run --example generate`).
 
 ## Next step
 

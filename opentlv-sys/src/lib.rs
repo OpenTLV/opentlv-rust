@@ -12,17 +12,21 @@
 use std::os::raw::{c_char, c_int, c_void};
 
 mod codec_diagnostic;
+mod codecs;
 mod compose;
 mod diagnostic_strings;
 pub use diagnostic_strings::*;
 #[cfg(feature = "document")]
 mod document;
+mod generator;
 mod program;
 mod schema_report;
 pub use codec_diagnostic::*;
+pub use codecs::*;
 pub use compose::*;
 #[cfg(feature = "document")]
 pub use document::*;
+pub use generator::*;
 pub use program::*;
 pub use schema_report::*;
 
