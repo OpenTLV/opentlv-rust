@@ -8,8 +8,9 @@
       "headers": ["tlv/endian.h", "tlv/tag.h", "tlv/value.h", "tlv/size.h", "tlv/copy.h"]
     },
     {
-      "reason": "Diagnostic producers for C format and codec implementations; Rust consumes diagnostics but does not build them.",
+      "reason": "Diagnostic producers for C format and codec implementations; Rust consumes diagnostics but does not build them. Every Core codec and structure codec entry point initializes its own diagnostic with `tlv_codec_diagnostic_init()`.",
       "symbols": [
+        "tlv_codec_diagnostic_init",
         "tlv_diagnostic_init",
         "tlv_diagnostic_set_location",
         "tlv_diagnostic_set_path",

@@ -72,8 +72,11 @@
 //! Every operation calls into the OpenTLV C library through `opentlv-sys`, so
 //! behavior and error codes match the C API. The safe layer replaces pointer and
 //! length pairs with slices and lifetimes. [`TreeReader`], resumable Readers,
-//! Visitors and [`QueryMatcher`] delegate to the canonical C engines. Structure
-//! codecs and the DOL component are not bound yet.
+//! Visitors and [`QueryMatcher`] delegate to the canonical C engines.
+//! [`IntegerCodec`], [`TextCodec`], [`DigitsCodec`], [`BytesCodec`], [`Ipv4Codec`],
+//! [`Ipv4ListCodec`] and [`SchemaNumberCodec`] convert generic Values;
+//! [`StructureCodec`] validates complete object encodings, and [`Generator`]
+//! generates reproducible wire streams. The DOL component is not bound yet.
 
 #![warn(missing_docs)]
 
@@ -91,11 +94,13 @@ mod error;
 mod field;
 mod fixed_format;
 mod format;
+mod generator;
 mod query;
 mod reader;
 mod reader_diagnostic;
 mod schema;
 mod source;
+mod structure_codec;
 mod tag;
 mod tree_reader;
 mod tree_writer;
@@ -104,6 +109,7 @@ pub use document::{
     Document, DocumentBuilder, DocumentError, DocumentSourceLocation, Node, NodeHandle, NodeMut,
 };
 mod validation;
+mod value_codec;
 mod visitor;
 mod writer;
 
@@ -127,6 +133,7 @@ pub use fixed_format::{
     ByteOrder, ElementOrder, FixedFormat, FixedFormatConfig, LengthScope, OwnedFixedFormat,
 };
 pub use format::{Encoding, Format, FormatError, FormatOperation, FormatRef, Region};
+pub use generator::{Generator, GeneratorCandidate, GeneratorLimits};
 pub use query::{Query, QueryError, QueryMatcher};
 pub use reader::{read, read_element, read_fixed, Reader, ReaderError};
 pub use reader_diagnostic::{DiagnosticContext, DiagnosticMetadata, ReaderDiagnostic};
@@ -136,10 +143,15 @@ pub use schema::{
     StructureSchema, UnknownPolicy, ValidationLimits,
 };
 pub use source::{decode, decode_fixed, Decoded, Layout};
+pub use structure_codec::StructureCodec;
 pub use tag::Tag;
 pub use tree_reader::{TreeEvent, TreeItem, TreeReader};
 pub use tree_writer::{TreeWriteItem, TreeWriter, WriterDiagnostic};
 pub use validation::{Limits, Strictness, ValidationError};
+pub use value_codec::{
+    BytesCodec, CodecInteger, DigitsCodec, IntegerCodec, Ipv4Codec, Ipv4List, Ipv4ListCodec,
+    SchemaNumberCodec, TextAlphabet, TextCodec,
+};
 pub use visitor::Visit;
 pub use writer::{
     element_encoded_size, element_encoded_size_fixed, encoded_size, encoded_size_fixed,

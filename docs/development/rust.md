@@ -21,7 +21,9 @@ so far.
 
 The `opentlv-sys` test suite builds a small C ABI probe with CMake and a native C
 compiler. It compares the size, alignment and every member offset of Fixed field
-and format configurations with the Rust `#[repr(C)]` mirrors. Offset checks catch
+and format configurations with the Rust `#[repr(C)]` mirrors; `compose_abi` and
+`codec_abi` do the same for Format composition and for the generic codec,
+structure codec and generator types. Offset checks catch
 layout changes even when the overall structure size stays the same. This test
 uses the matching source headers; consumers must still pair them with the
 matching native library.
@@ -167,6 +169,60 @@ let date = definition.codec().unwrap().decode(&[0x25, 0x12, 0x31])?;
 contexts. Opaque bytes, text and templates have no codec; use the reader's
 borrowed value.
 
+Generic Value codecs are selected explicitly per Value, never by tag. Each has
+`decode`, `encoded_size`, `encode_into` and `encode`, and every conversion
+runs in a public C codec:
+
+| Type | Rust value | C codec |
+| --- | --- | --- |
+| `NumberCodec` | `u64` | `tlv_number_decode`/`tlv_number_encode` |
+| `SchemaNumberCodec` | `u64` with lengths limited by a `LengthRule` | `tlv_schema_number_t` |
+| `IntegerCodec<u8>`, `<u16>`, `<u32>` | exact-width unsigned integer | `tlv_codec_uint8`, `tlv_codec_uint16_be`/`_le`, `tlv_codec_uint32_be`/`_le` |
+| `IntegerCodec<i64>` | minimal two's complement | `tlv_codec_int64_minimal_be` |
+| `BytesCodec` | `&[u8]` borrowed from the input | `tlv_codec_bytes` |
+| `Ipv4Codec`, `Ipv4ListCodec` | `Ipv4Addr`, `Ipv4List<'a>` | `tlv_codec_ipv4`, `tlv_codec_ipv4_list` |
+| `TextCodec` | `&str` borrowed from the input | `tlv_text_decode`/`tlv_text_encode` |
+| `DigitsCodec` | `String` of decimal digits | `tlv_digits_decode`/`tlv_digits_encode` |
+
+The static descriptors are `Copy` handles. `TextCodec`, `DigitsCodec` and
+`SchemaNumberCodec` own their configuration and build the descriptor that
+Core's inline `tlv_text_codec()`, `tlv_digits_codec()` and
+`tlv_schema_number_codec()` would build for the duration of each call, so C
+validates the configuration on every use and Core's callback contract checks
+apply. `IntegerCodec<T>` takes only its exact C type, so out-of-range
+integers do not compile. Decoded `&[u8]`, `&str` and `Ipv4List` views borrow
+the input; a view outside it fails with `Error::Callback`. `Ipv4List::get`
+copies one address through `tlv_ipv4_list_at()`. Core initializes every codec
+diagnostic itself, so `tlv_codec_diagnostic_init()` is in the API coverage
+ignore list.
+
+Owned generic codec output uses fallible allocation and reports
+`Error::OutOfMemory` when the requested buffer cannot be allocated; use
+`encode_into` to provide bounded output storage. Schema, text and digit
+configuration errors still come from Core. The
+[pinned-Core inventory](../validation/codecs-generator.md) records the original
+gaps, their public Rust mappings and the intentional exclusions.
+
+`StructureCodec<'a>` maps one complete sequence to one application object
+through `tlv_structure_decode()` and `tlv_structure_encode()`. It borrows a
+Format and an optional `StructureSchema` and has `ValidationLimits`. The
+conversion is a closure per call, run outside C: `decode` calls it only after
+Core validated the sequence, and `encode` runs it once, then Core copies the
+produced bytes through a fixed callback and validates them, with output
+coordinates. User closures never run inside a C callback, so a closure panic needs
+no unwinding guard, and a closure failure is returned unchanged.
+
+## Wire generation
+
+`Generator<'f>` borrows a Format and owns `GeneratorCandidate` records,
+`GeneratorLimits` and a seed. `workspace_size()` calls
+`tlv_generator_workspace_size()`; `generate(case_index)` allocates the output
+and workspace with fallible allocation and calls `tlv_generate()`, and
+`generate_into` uses caller storage without allocating. When the
+configuration is invalid, `generate` reports what `tlv_generate()` reports,
+which checks the Format before the configuration. `Generator::VERSION` is
+`TLV_GENERATOR_VERSION`.
+
 ## Formats and canonical validation
 
 `Format` (`Ber`, `Emv`, `Cer`, `Der`, plus optional `Lldp` and `NfcType2`) selects the wire
@@ -180,7 +236,7 @@ than DER/CER; ordinary framing remains available through Reader/Writer. Failures
 `ValidationError` values with an explicit location domain, kind and bounds.
 
 Reader and Tree Reader callbacks and resumable Query matching delegate to C.
-The DOL component and structure codecs are not bound yet.
+The DOL component is not bound yet.
 
 ## Build
 

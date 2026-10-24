@@ -51,7 +51,8 @@ impl LengthRule {
         LengthRule::new(tag, length, length)
     }
 
-    fn raw(&self) -> native::tlv_schema_entry_t {
+    /// A C entry borrowing this rule's tag bytes.
+    pub(crate) fn raw(&self) -> native::tlv_schema_entry_t {
         native::tlv_schema_entry_t {
             tag: self.tag.raw(),
             min_length: self.min_length,
@@ -806,7 +807,7 @@ impl StructureSchema {
         }
     }
 
-    fn as_raw(&self) -> &native::tlv_structure_schema_t {
+    pub(crate) fn as_raw(&self) -> &native::tlv_structure_schema_t {
         match &self.backing {
             Backing::Owned(compiled) => &compiled.raw,
             Backing::Static(raw) => raw,

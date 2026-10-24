@@ -41,7 +41,7 @@ impl CodecFailure {
     pub fn code(&self) -> i32 {
         self.error.code()
     }
-    fn check(code: i32, diagnostic: &native::tlv_codec_diagnostic_t) -> CodecResult<()> {
+    pub(crate) fn check(code: i32, diagnostic: &native::tlv_codec_diagnostic_t) -> CodecResult<()> {
         crate::Error::check(code).map_err(|error| Self {
             error,
             diagnostic: Some(Box::new(unsafe { CodecDiagnostic::from_raw(diagnostic) })),
@@ -486,6 +486,132 @@ fn read_cstr(chars: &[c_char]) -> CodecResult<String> {
     String::from_utf8(bytes).map_err(|_| CodecFailure::from(crate::Error::InvalidValue))
 }
 
+/// Decodes `data` with `codec` into `capacity` writable bytes at `value`
+/// through `tlv_codec_decode()`.
+///
+/// # Safety
+///
+/// `codec` must be a live descriptor whose context outlives the call, and
+/// `value` must point to `capacity` writable bytes of the C type it decodes into.
+pub(crate) unsafe fn decode_with(
+    codec: *const native::tlv_codec_t,
+    data: &[u8],
+    value: *mut c_void,
+    capacity: usize,
+) -> CodecResult<()> {
+    // SAFETY: `data` is a valid slice; the caller guarantees the rest.
+    let mut diagnostic: native::tlv_codec_diagnostic_t = unsafe { mem::zeroed() };
+    CodecFailure::check(
+        unsafe {
+            native::tlv_codec_decode(
+                codec,
+                data.as_ptr(),
+                data.len(),
+                value,
+                capacity,
+                &mut diagnostic,
+            )
+        },
+        &diagnostic,
+    )
+}
+
+/// Decodes into `out`, an object of the C type `codec` decodes into.
+///
+/// # Safety
+///
+/// As for [`decode_with`], with `T` as the C representation.
+pub(crate) unsafe fn decode_object<T>(
+    codec: *const native::tlv_codec_t,
+    data: &[u8],
+    out: &mut T,
+) -> CodecResult<()> {
+    // SAFETY: `out` is a valid, writable object of the size passed.
+    unsafe {
+        decode_with(
+            codec,
+            data,
+            (out as *mut T).cast::<c_void>(),
+            mem::size_of::<T>(),
+        )
+    }
+}
+
+/// Allocates codec output without panicking on an unrepresentable capacity.
+pub(crate) fn codec_buffer(size: usize) -> CodecResult<Vec<u8>> {
+    let mut bytes = Vec::new();
+    bytes
+        .try_reserve_exact(size)
+        .map_err(|_| CodecFailure::from(crate::Error::OutOfMemory))?;
+    bytes.resize(size, 0);
+    Ok(bytes)
+}
+
+/// Decodes packed digits into an owned string.
+///
+/// # Safety
+///
+/// As for [`decode_with`], for a codec that writes a NUL-terminated string.
+pub(crate) unsafe fn decode_digits(
+    codec: *const native::tlv_codec_t,
+    data: &[u8],
+) -> CodecResult<String> {
+    // At most two digits per byte, plus the terminating NUL.
+    let capacity = data
+        .len()
+        .checked_mul(2)
+        .and_then(|size| size.checked_add(1))
+        .ok_or_else(|| CodecFailure::from(crate::Error::Overflow))?;
+    let mut digits = codec_buffer(capacity)?;
+    // SAFETY: `digits` is a valid writable buffer of its length.
+    unsafe {
+        decode_with(
+            codec,
+            data,
+            digits.as_mut_ptr().cast::<c_void>(),
+            digits.len(),
+        )
+    }?;
+    let end = digits.iter().position(|b| *b == 0).unwrap_or(digits.len());
+    digits.truncate(end);
+    String::from_utf8(digits).map_err(|_| CodecFailure::from(crate::Error::InvalidValue))
+}
+
+/// Encodes `size` bytes at `value` with `codec` through `tlv_codec_encode()`;
+/// a null `data` with zero `capacity` is a size query.
+///
+/// # Safety
+///
+/// `codec` must be a live descriptor whose context outlives the call, `value`
+/// must point to `size` readable bytes of the C type it encodes, and `data`
+/// must be null with zero capacity or a writable buffer of `capacity` bytes.
+pub(crate) unsafe fn encode_with(
+    codec: *const native::tlv_codec_t,
+    value: *const c_void,
+    size: usize,
+    data: *mut u8,
+    capacity: usize,
+) -> CodecResult<usize> {
+    let mut written = 0usize;
+    // SAFETY: the caller guarantees the pointers; `written` aliases none of them.
+    let mut diagnostic: native::tlv_codec_diagnostic_t = unsafe { mem::zeroed() };
+    CodecFailure::check(
+        unsafe {
+            native::tlv_codec_encode(
+                codec,
+                value,
+                size,
+                data,
+                capacity,
+                &mut written,
+                &mut diagnostic,
+            )
+        },
+        &diagnostic,
+    )?;
+    Ok(written)
+}
+
 impl Codec {
     /// # Safety
     ///
@@ -522,23 +648,9 @@ impl Codec {
 
     /// Calls the C decoder into `out`, a zero-initialized `T`.
     fn decode_into<T>(&self, data: &[u8], out: &mut T) -> CodecResult<()> {
-        // SAFETY: `data` is a valid slice; `out` is a valid, writable object of
-        // the size passed as capacity, and it has the C type this codec kind
-        // decodes into. The codec descriptor is immutable and static.
-        let mut diagnostic: native::tlv_codec_diagnostic_t = unsafe { mem::zeroed() };
-        CodecFailure::check(
-            unsafe {
-                native::tlv_codec_decode(
-                    self.raw,
-                    data.as_ptr(),
-                    data.len(),
-                    (out as *mut T).cast::<c_void>(),
-                    mem::size_of::<T>(),
-                    &mut diagnostic,
-                )
-            },
-            &diagnostic,
-        )
+        // SAFETY: `out` has the C type this codec kind decodes into, and the
+        // codec descriptor is immutable and static.
+        unsafe { decode_object(self.raw, data, out) }
     }
 
     /// Decodes a raw value, for example the value of an [`Element`](crate::Element).
@@ -562,29 +674,8 @@ impl Codec {
             }
             ValueKind::Digits => {
                 // At most two digits per byte, plus the terminating NUL.
-                let mut digits = vec![0u8; data.len() * 2 + 1];
-                // SAFETY: `digits` is a valid writable buffer of its length;
-                // the digits codec writes a NUL-terminated string into it.
-                let mut diagnostic: native::tlv_codec_diagnostic_t = unsafe { mem::zeroed() };
-                CodecFailure::check(
-                    unsafe {
-                        native::tlv_codec_decode(
-                            self.raw,
-                            data.as_ptr(),
-                            data.len(),
-                            digits.as_mut_ptr().cast::<c_void>(),
-                            digits.len(),
-                            &mut diagnostic,
-                        )
-                    },
-                    &diagnostic,
-                )?;
-                let end = digits.iter().position(|b| *b == 0).unwrap_or(digits.len());
-                digits.truncate(end);
-                Value::Digits(
-                    String::from_utf8(digits)
-                        .map_err(|_| CodecFailure::from(crate::Error::InvalidValue))?,
-                )
+                // SAFETY: the digits codec writes a NUL-terminated string.
+                Value::Digits(unsafe { decode_digits(self.raw, data) }?)
             }
             ValueKind::Date => {
                 let mut date = native::tlv_emv_date_t::default();
@@ -711,27 +802,9 @@ impl Codec {
         data: *mut u8,
         capacity: usize,
     ) -> CodecResult<usize> {
-        let mut written = 0usize;
-        // SAFETY: `value` points to `size` readable bytes of the C type of this
-        // codec kind; `data` is either null with zero capacity or a writable
-        // buffer of `capacity` bytes; `written` is a writable `usize` that
-        // aliases neither.
-        let mut diagnostic: native::tlv_codec_diagnostic_t = unsafe { mem::zeroed() };
-        CodecFailure::check(
-            unsafe {
-                native::tlv_codec_encode(
-                    self.raw,
-                    value,
-                    size,
-                    data,
-                    capacity,
-                    &mut written,
-                    &mut diagnostic,
-                )
-            },
-            &diagnostic,
-        )?;
-        Ok(written)
+        // SAFETY: private callers pass `size` readable bytes of the C type of
+        // this codec kind, and null with zero capacity or a writable buffer.
+        unsafe { encode_with(self.raw, value, size, data, capacity) }
     }
 
     fn encode_value(&self, value: &Value, data: *mut u8, capacity: usize) -> CodecResult<usize> {
