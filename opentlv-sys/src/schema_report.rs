@@ -14,6 +14,16 @@ pub struct tlv_diagnostic_path_t {
     /// Number of innermost scope Tags omitted after the retained outer prefix.
     pub omitted: usize,
 }
+extern "C" {
+    /// Format a path as uppercase hexadecimal Tags joined by `" > "`; `length` is
+    /// reported also when `capacity` is too small.
+    pub fn tlv_diagnostic_path_string(
+        path: *const tlv_diagnostic_path_t,
+        out: *mut c_char,
+        capacity: usize,
+        length: *mut usize,
+    ) -> tlv_result_t;
+}
 /// Schema-specific violation evidence, shared by Schema, Codec and Query diagnostics.
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]

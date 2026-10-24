@@ -177,6 +177,10 @@ pub struct WriterDiagnostic {
 }
 
 impl WriterDiagnostic {
+    /// `path` as Core formats it, such as `"6F > A5"`; see [`crate::DiagnosticMetadata::path_text`].
+    pub fn path_text(&self) -> Option<String> {
+        crate::reader_diagnostic::path_text(self.path.as_deref(), self.path_omitted)
+    }
     /// Copy native details while their borrowed fields remain alive.
     pub(crate) unsafe fn from_raw(diag: &native::tlv_writer_diagnostic_t) -> Self {
         let text = |p: *const std::os::raw::c_char| {

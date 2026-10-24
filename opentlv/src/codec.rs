@@ -98,6 +98,10 @@ pub struct CodecDiagnostic {
     pub schema: Option<Box<crate::SchemaDiagnostic>>,
 }
 impl CodecDiagnostic {
+    /// `path` as Core formats it, such as `"6F > A5"`; see [`crate::DiagnosticMetadata::path_text`].
+    pub fn path_text(&self) -> Option<String> {
+        crate::reader_diagnostic::path_text(self.path.as_deref(), self.path_omitted)
+    }
     pub(crate) unsafe fn from_raw(raw: &native::tlv_codec_diagnostic_t) -> Self {
         let common =
             unsafe { crate::ReaderDiagnostic::from_parts(&raw.diagnostic, &mem::zeroed()) };

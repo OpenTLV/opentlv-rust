@@ -144,7 +144,7 @@ def validate_dependency(selected, require_release=False):
 def validate_records(records, tier, expected_identity, definitions, checks, require_release=False):
     require(tier in TIERS, "Unknown CI tier")
     require(not require_release or tier == "full", "Release requires Full CI")
-    required = {"build", "quality", "codeql"}
+    required = {"build", "quality", "codeql", "api_coverage"}
     require(set(checks) == required, "Missing or unexpected prerequisite job")
     for name in required:
         expected = "skipped" if tier == "main" and name != "build" else "success"

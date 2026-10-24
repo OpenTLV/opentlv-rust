@@ -91,6 +91,31 @@ class Configuration(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'reason'):
                     api_coverage.load_config(path)
 
+    def test_complete_names_known_scopes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'config.json'
+            base = {'schema': 1, 'lock': 'lock.json', 'references': ['src']}
+            for complete in (['core', 'extras'], 'core'):
+                path.write_text(json.dumps(base | {'complete': complete}), encoding='utf-8')
+                with self.assertRaisesRegex(ValueError, 'complete must list scopes'):
+                    api_coverage.load_config(path)
+
+    def test_completeness_requires_reviewed_symbols_and_current_ignores(self):
+        symbols = {'tlv_read': {'kind': 'function', 'header': 'tlv/reader/reader.h'},
+                   'tlv_format_emv': {'kind': 'data', 'header': 'tlv/builtins/emv/emv.h'}}
+        scopes = api_coverage.coverage(symbols, {'tlv_read'}, {})
+        config = {'complete': ['core']}
+        # Builtins stay informational unless they are listed.
+        self.assertEqual(api_coverage.completeness(config, scopes, []),
+                         {'scopes': ['core'], 'missing': {'core': []}, 'stale_ignores': [],
+                          'status': 'success'})
+        self.assertEqual(api_coverage.completeness(config, scopes, ['tlv_gone'])['status'],
+                         'failure')
+        scopes = api_coverage.coverage(symbols, set(), {})
+        self.assertEqual(api_coverage.completeness(config, scopes, []),
+                         {'scopes': ['core'], 'missing': {'core': ['tlv_read']},
+                          'stale_ignores': [], 'status': 'failure'})
+
     def test_ignored_symbols_and_stale_patterns(self):
         symbols = {'tlv_read_u16_be': {'kind': 'function', 'header': 'tlv/endian.h'},
                    'tlv_location_set': {'kind': 'function', 'header': 'tlv/diagnostic.h'},
@@ -112,6 +137,8 @@ class Configuration(unittest.TestCase):
         self.assertTrue((ROOT / config['lock']).is_file())
         # Raw opentlv-sys declarations alone do not make a symbol available through the safe API.
         self.assertEqual(config['references'], ['opentlv/src'])
+        # Generic Core is the reviewed complete surface; Builtins parity is tracked separately.
+        self.assertEqual(config['complete'], ['core'])
 
 
 class Report(unittest.TestCase):
@@ -174,23 +201,43 @@ class Report(unittest.TestCase):
         self.assertIn(f'1.0.0 `{old[:12]}` -> OpenTLV/opentlv 1.0.0 `{new[:12]}`: 2 added, 3 removed',
                       result.stdout)
         self.assertEqual(summary.read_text(encoding='utf-8'), 'previous\n' + result.stdout)
+        self.assertNotIn('complete', report)
+        self.assertNotIn('Completeness', result.stdout)
+
+        # Requiring core completeness fails on the unreviewed and stale entries, after reporting.
+        complete = tmp / 'complete.json'
+        complete.write_text(json.dumps(config | {'complete': ['core']}), encoding='utf-8')
+        result = subprocess.run([sys.executable, '-B', str(ROOT / 'scripts/api_coverage.py'),
+                                 '--core', str(core), '--config', str(complete),
+                                 '--output', str(output)],
+                                cwd=binding, check=False, capture_output=True, text=True,
+                                encoding='utf-8')
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('required scopes are incomplete', result.stderr)
+        self.assertIn('**Completeness (core) failed:** 1 unreviewed symbols and 2 stale ignore '
+                      'patterns', result.stdout)
+        self.assertEqual(json.loads(output.read_text(encoding='utf-8'))['complete'], {
+            'scopes': ['core'], 'missing': {'core': ['tlv_added']},
+            'stale_ignores': ['tlv/endian.h', 'tlv_gone'], 'status': 'failure'})
 
 
 class Workflow(unittest.TestCase):
-    def test_coverage_job_is_informational(self):
+    def test_coverage_job_gates_core_completeness(self):
         checks = yaml.load((ROOT / '.github/workflows/rust-checks.yml').read_text(encoding='utf-8'),
                            Loader=yaml.BaseLoader)
         job = checks['jobs']['api_coverage']
-        self.assertEqual(job['continue-on-error'], 'true')
+        self.assertNotIn('continue-on-error', job)
         self.assertEqual(job['if'], "inputs.tier != 'main'")
-        self.assertNotIn('api_coverage', checks['jobs']['gate']['needs'])
-        self.assertIn('api_coverage', checks['jobs']['timings']['needs'])
+        self.assertIn('api_coverage', checks['jobs']['gate']['needs'])
+        self.assertIn('gate', checks['jobs']['timings']['needs'])
         checkout, report, upload = job['steps']
         self.assertEqual(checkout['with']['fetch-depth'], '0')
         self.assertEqual(report['env']['BASE_SHA'], '${{ github.event.pull_request.base.sha }}')
         self.assertIn('scripts/api_coverage.py', report['run'])
         self.assertIn('$GITHUB_STEP_SUMMARY', report['run'])
         self.assertEqual(upload['with']['path'], 'build/api-coverage.json')
+        # A failed completeness check still publishes its report.
+        self.assertEqual(upload['if'], 'always()')
 
 
 if __name__ == '__main__':

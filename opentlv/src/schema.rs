@@ -452,6 +452,10 @@ pub struct SchemaDiagnostic {
 }
 
 impl SchemaDiagnostic {
+    /// `path` as Core formats it, such as `"6F > A5"`; see [`crate::DiagnosticMetadata::path_text`].
+    pub fn path_text(&self) -> Option<String> {
+        crate::reader_diagnostic::path_text(self.path.as_deref(), self.path_omitted)
+    }
     // SAFETY: the caller keeps all native diagnostic spans and strings alive.
     pub(crate) unsafe fn from_raw(item: &native::tlv_schema_diagnostic_t) -> crate::Result<Self> {
         let detail = schema_detail(item);

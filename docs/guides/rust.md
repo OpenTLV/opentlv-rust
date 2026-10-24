@@ -198,6 +198,10 @@ structures such as `DocumentError` and `WriterError`. There are no panics on bad
 - Layers with more context use their own types: `SchemaError` and
   `ValidationError` carry the C `Error` plus the failing offset, and `CodecFailure`
   retains the shared `Error` and owned conversion diagnostic.
+- Diagnostics keep the enclosing Tags of a failure in `path`, outermost first,
+  and `path_text()` formats them as Core does, for example `"6F > A5"`. A
+  truncated path ends in `" > ..."`. In Core 0.7.1 only Schema failures,
+  including Query Schema rules, track a path; otherwise both are `None`.
 
 ## Ownership and lifetimes
 
