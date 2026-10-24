@@ -44,7 +44,7 @@ class Workflows(unittest.TestCase):
         gate = checks['jobs']['gate']
         self.assertEqual(gate['name'], 'Rust quality gate')
         self.assertEqual(gate['if'], 'always()')
-        self.assertEqual(set(gate['needs']), {'build', 'quality', 'codeql'})
+        self.assertEqual(set(gate['needs']), {'build', 'quality', 'codeql', 'api_coverage'})
         self.assertEqual(checks['jobs']['build']['strategy']['fail-fast'], 'false')
         for path in (ROOT / '.github/workflows').glob('*.yml'):
             for job in workflow(path.name)['jobs'].values():

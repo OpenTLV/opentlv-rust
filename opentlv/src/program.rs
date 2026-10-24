@@ -311,6 +311,11 @@ impl ProgramError {
             (None, None) => None,
         }
     }
+    /// `path()` as Core formats it, such as `"6F > A5"`; see
+    /// [`crate::DiagnosticMetadata::path_text`].
+    pub fn path_text(&self) -> Option<String> {
+        crate::reader_diagnostic::path_text(self.path(), self.path_omitted())
+    }
     /// Number of omitted innermost path scopes.
     pub fn path_omitted(&self) -> usize {
         match (&self.reader, &self.metadata) {

@@ -62,7 +62,10 @@ assembles `docs/` at a reviewed commit and links the examples in
 in Core or the portal. Successful Main builds notify the portal when
 documentation inputs change; see the
 [notification contract and token permissions](docs/quality-gates.md#documentation-portal-notifications).
-The [migration record](docs/migration.md) links the original Core guides.
+The [migration record](docs/migration.md) links the original Core guides. The
+[Core API coverage record](docs/validation/api-coverage.md) maps every generic
+Core header to its public Rust API and binding tests, and lists the reviewed
+exclusions and limitations for the pinned Core.
 
 ## Building
 

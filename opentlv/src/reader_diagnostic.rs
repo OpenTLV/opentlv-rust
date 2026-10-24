@@ -3,7 +3,7 @@
 
 //! Owned Reader diagnostics: no native borrowed pointer escapes.
 use opentlv_sys as native;
-use std::{ffi::CStr, slice};
+use std::{ffi::CStr, ptr, slice};
 
 /// Structured detail from the canonical Reader, safe to retain after input replacement.
 #[derive(Clone, Debug, Default)]
@@ -48,6 +48,10 @@ pub struct ReaderDiagnostic {
 }
 
 impl ReaderDiagnostic {
+    /// `path` as Core formats it, such as `"6F > A5"`; see [`DiagnosticMetadata::path_text`].
+    pub fn path_text(&self) -> Option<String> {
+        path_text(self.path.as_deref(), self.path_omitted)
+    }
     pub(crate) unsafe fn from_raw(raw: &native::tlv_reader_diagnostic_t) -> Self {
         // SAFETY: the caller retains all borrowed diagnostic storage.
         unsafe { Self::from_parts(&raw.diagnostic, &raw.detail) }
@@ -158,6 +162,43 @@ pub(crate) unsafe fn path(raw: &native::tlv_diagnostic_t) -> Option<Vec<Vec<u8>>
     })
 }
 
+/// Core's text of an owned path through `tlv_diagnostic_path_string()`.
+///
+/// None without a tracked path, or when Core rejects it, for example for an empty Tag.
+pub(crate) fn path_text<T: AsRef<[u8]>>(path: Option<&[T]>, omitted: usize) -> Option<String> {
+    let path = path?;
+    // SAFETY: an all-zero path is empty and every unused Tag is a null, zero-size span.
+    let mut raw: native::tlv_diagnostic_path_t = unsafe { std::mem::zeroed() };
+    if path.len() > raw.tags.len() {
+        return None;
+    }
+    for (slot, tag) in raw.tags.iter_mut().zip(path) {
+        let tag = tag.as_ref();
+        *slot = native::tlv_tag_t {
+            data: tag.as_ptr(),
+            size: tag.len(),
+        };
+    }
+    raw.length = path.len();
+    raw.omitted = omitted;
+    let mut length = 0;
+    // SAFETY: the Tags borrow `path` for both calls; a zero capacity needs no output.
+    let code = unsafe { native::tlv_diagnostic_path_string(&raw, ptr::null_mut(), 0, &mut length) };
+    if code != native::TLV_OK && code != native::TLV_ERR_BUFFER_TOO_SHORT {
+        return None;
+    }
+    let mut text = vec![0u8; length.checked_add(1)?];
+    // SAFETY: `text` holds the measured text and its terminator.
+    let code = unsafe {
+        native::tlv_diagnostic_path_string(&raw, text.as_mut_ptr().cast(), text.len(), &mut length)
+    };
+    if code != native::TLV_OK {
+        return None;
+    }
+    text.truncate(length);
+    String::from_utf8(text).ok()
+}
+
 /// Owned common diagnostic metadata; absence of a path is distinct from an empty path.
 #[derive(Clone, Debug, Default)]
 pub struct DiagnosticMetadata {
@@ -173,4 +214,14 @@ pub struct DiagnosticMetadata {
     pub path: Option<Vec<Vec<u8>>>,
     /// Number of omitted innermost scopes.
     pub path_omitted: usize,
+}
+impl DiagnosticMetadata {
+    /// `path` as uppercase hexadecimal Tags joined by `" > "`, such as `"6F > A5"`,
+    /// formatted by Core's `tlv_diagnostic_path_string()`. A path with omitted inner
+    /// scopes ends in `" > ..."` and a tracked empty path is `""`. None means no tracked
+    /// path, or a path Core cannot format, such as one with an empty Tag or more Tags
+    /// than a native path retains.
+    pub fn path_text(&self) -> Option<String> {
+        path_text(self.path.as_deref(), self.path_omitted)
+    }
 }

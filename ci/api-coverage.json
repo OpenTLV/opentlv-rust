@@ -2,6 +2,7 @@
   "schema": 1,
   "lock": "opentlv-sys/core/core-artifact.json",
   "references": ["opentlv/src"],
+  "complete": ["core"],
   "ignore": [
     {
       "reason": "Endian, tag, value, size and copy primitives; Rust represents byte order, comparison, hashing, slicing, size arithmetic and copies natively.",
@@ -76,6 +77,10 @@
     {
       "reason": "NUL-terminated form of `tlv_query_parse_n()`; Rust strings carry their length, so `Query::parse` parses through `tlv_query_parse_n()`, which also rejects embedded NUL.",
       "symbols": ["tlv_query_parse"]
+    },
+    {
+      "reason": "Checked translation of a location by a byte origin the caller adds; Rust entry points take the exact input or output slice and report Core's coordinates in it unchanged, so the binding never adds an origin.",
+      "symbols": ["tlv_location_translate"]
     }
   ]
 }

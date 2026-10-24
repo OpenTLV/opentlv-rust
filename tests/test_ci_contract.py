@@ -17,7 +17,7 @@ import ci_contract as contract  # noqa: E402
 IDENTITY = {'repository': contract.REPOSITORY, 'commit': 'a' * 40, 'run_id': '100',
             'run_attempt': '2', 'hosted': True, 'dirty': False}
 DEFINITIONS = {'scripts/ci.py': 'b' * 64}
-CHECKS = {name: {'result': 'success'} for name in ('build', 'quality', 'codeql')}
+CHECKS = {name: {'result': 'success'} for name in ('build', 'quality', 'codeql', 'api_coverage')}
 SYSTEMS = {'Linux': 'x86_64-unknown-linux-gnu', 'Windows': 'x86_64-pc-windows-msvc',
            'Darwin': 'aarch64-apple-darwin'}
 CARGO_OUTPUT = r'''
@@ -69,7 +69,8 @@ def records(tier='pr'):
 def checks_for(tier):
     checks = copy.deepcopy(CHECKS)
     if tier == 'main':
-        checks['quality']['result'] = checks['codeql']['result'] = 'skipped'
+        for name in ('quality', 'codeql', 'api_coverage'):
+            checks[name]['result'] = 'skipped'
     return checks
 
 
@@ -154,7 +155,7 @@ class Gate(unittest.TestCase):
                     contract.validate_records(data, 'full', IDENTITY, DEFINITIONS, CHECKS)
 
     def test_rejects_unsuccessful_prerequisites(self):
-        for job in ('build', 'quality', 'codeql'):
+        for job in ('build', 'quality', 'codeql', 'api_coverage'):
             for result in ('failure', 'cancelled', 'skipped', None):
                 with self.subTest(job=job, result=result):
                     checks = copy.deepcopy(CHECKS)

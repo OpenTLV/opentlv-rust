@@ -8,9 +8,9 @@ only Rust CI.
 
 | Entry point | Trigger | Required work |
 | --- | --- | --- |
-| `rust-pr.yml` | Pull request to `main` | Linux with pinned stable Rust: rustfmt, Clippy, build, the default and reduced-feature test suites (including the C ABI probe), examples, the shared Query corpus, Rustdoc, Core provenance, infrastructure regressions and CodeQL; informational Core API coverage |
+| `rust-pr.yml` | Pull request to `main` | Linux with pinned stable Rust: rustfmt, Clippy, build, the default and reduced-feature test suites (including the C ABI probe), examples, the shared Query corpus, Rustdoc, Core provenance, infrastructure regressions, CodeQL and Core API completeness |
 | `rust-main.yml` | Push to `main` | Linux with pinned stable Rust: workspace build, `quick_start` smoke and Core provenance, then documentation change detection |
-| `rust-full.yml` | Manual dispatch or `workflow_call` | All seven configurations below, Cargo packaging, prebuilt static and shared linking, AddressSanitizer, source quality and CodeQL; informational Core API coverage |
+| `rust-full.yml` | Manual dispatch or `workflow_call` | All seven configurations below, Cargo packaging, prebuilt static and shared linking, AddressSanitizer, source quality, CodeQL and Core API completeness |
 | `docs-notify.yml` | Successful `Rust Main CI` on `main` | [Documentation portal notification](#documentation-portal-notifications) when documentation inputs changed |
 
 PR has no path filters, so a documentation-only pull request still produces its
@@ -219,15 +219,16 @@ desired Bash executable and run `tests/test_ci_shell.py`.
 ## Core API coverage
 
 `Core API coverage` reports how much of the pinned Core's public API the safe
-`opentlv` crate uses. It runs in PR and Full, not Main. The job is
-informational: it uses `continue-on-error`, is not a `Rust quality gate`
-prerequisite and has no threshold yet. The coverage epic (#18) tracks raising
-it. `Rust timings` waits for it, so its duration is recorded.
+`opentlv` crate uses, and fails when the generic Core surface is incomplete. It
+runs in PR and Full, not Main, and is a `Rust quality gate` prerequisite. The
+reviewed per-header baseline, with the public Rust API and binding tests of
+each header, is the [Core API coverage record](validation/api-coverage.md).
 
 [`scripts/api_coverage.py`](../scripts/api_coverage.py) is the binding-agnostic
-script of the Python repository, with two changes: its default configuration is
-`ci/api-coverage.json`, and the report states that a referenced symbol does not
-prove functional parity. It fetches only the locked Core commit and reads every
+script of the Python repository, with three changes: its default configuration
+is `ci/api-coverage.json`, the report states that a referenced symbol does not
+prove functional parity, and scopes that the configuration lists as `complete`
+are checked. It fetches only the locked Core commit and reads every
 `TLV_API` function and data declaration under `tlv/include`. A declaration
 shape it does not recognize fails the report instead of being skipped. A symbol
 counts as referenced when its identifier appears in `opentlv/src` outside
@@ -240,8 +241,9 @@ artifact.
 `opentlv-sys` is not a reference directory. Its `extern` declarations make a
 symbol callable only through `unsafe` raw bindings, without the safe crate's
 ownership, error and lifetime guarantees, so a declaration alone does not count.
-For Core 0.7.1, `tlv_codec_diagnostic_init` is the only symbol declared in
-`opentlv-sys` but not used by `opentlv`, and is reported as not referenced.
+For Core 0.7.1, every core symbol that `opentlv-sys` declares but `opentlv` does
+not use is in the ignore list; the
+[coverage record](validation/api-coverage.md#per-header-inventory) names them.
 
 On a pull request, the job also reads the Core lock at the base commit and lists
 the symbols added and removed between the two pins. Added symbols show whether
@@ -273,6 +275,18 @@ string's length. Diagnostic consumers such as the `*_string` lookups and
 `tlv_diagnostic_path_string` remain counted. Patterns that match nothing in the
 pinned Core are reported, so stale entries are visible after a pin bump. Change
 the ignore list only for symbols the safe crate intentionally leaves unbound.
+`tlv_location_translate` adds a byte origin to a location; Rust entry points
+take the exact slice and report Core's coordinates in it, so the binding never
+adds one.
+
+`complete` lists `core`. The report then fails, after writing its log, summary
+and JSON, when a core symbol is neither referenced nor ignored or when any
+ignore pattern matches nothing. The JSON records the result under `complete`
+with the unreviewed symbols. Builtins are reported without a threshold. A Core
+pin update therefore cannot merge until each added generic symbol is bound with
+binding tests or excluded with a reason, and each stale exclusion is removed;
+the [coverage record](validation/api-coverage.md#updating-the-core-pin)
+describes the review. The report is uploaded even when the check fails.
 
 The first report, for Core 0.7.1 at `476f1fbecde6`, referenced 136 of 254 core
 symbols (53.5 %) with 43 ignored, and 34 of 291 builtins symbols (11.7 %).
@@ -285,7 +299,11 @@ references 167 of 218 core symbols (76.6 %) with 79 ignored; every
 Document, Query and Schema operations (#21), it references 194 of 217 core
 symbols (89.4 %) with 80 ignored; every `tlv/document/*.h` and `tlv/query/*.h`
 symbol, and every `tlv/schema/*.h` symbol except the `tlv/schema/number.h`
-codec callbacks, is referenced or ignored.
+codec callbacks, is referenced or ignored. With the generic Codec and wire
+Generator APIs (#22), it references 214 of 216 core symbols (99.1 %) with 81
+ignored. With `path_text()` through `tlv_diagnostic_path_string` and the
+`tlv_location_translate` exclusion (#23), it references 215 of 215 core symbols
+(100.0 %) with 82 ignored, and core completeness became a gate.
 Builtins-specific parity is outside the coverage epic. The report reads the
 headers, not a build, and is unaffected by Cargo features; with the default
 features `opentlv-sys/build.rs` builds Core with every component and builtin
@@ -303,8 +321,9 @@ Without `--core`, the script caches the shallow Core fetch in
 `build/api-coverage/core.git`. `--core` reads an existing Core checkout instead;
 the requested commits must already be there. `--commit` measures a different
 Core revision than the lock. `--base` reads the lock at a binding revision, and
-`--base-commit` names a previous Core revision directly. The parsing, ignore
-and pin-diff logic is covered by `tests/test_api_coverage.py`.
+`--base-commit` names a previous Core revision directly. The script exits with
+status 1 when a `complete` scope fails. The parsing, ignore, completeness and
+pin-diff logic is covered by `tests/test_api_coverage.py`.
 
 ## Dependency verification
 
@@ -339,9 +358,10 @@ definitions, sources, tests and dependency configuration. Local runs explicitly
 record `hosted: false` and their checkout's dirty state.
 
 `Rust quality gate` runs even after failed prerequisites. It requires the exact
-matrix, all applicable job results and, per configuration, exactly the
-configured checks with the inventory results. Main explicitly permits only the
-source-quality and CodeQL jobs to be skipped. Missing, duplicate, stale,
+matrix, all applicable job results, including Core API coverage, and, per
+configuration, exactly the configured checks with the inventory results. Main
+explicitly permits only the source-quality, CodeQL and Core API coverage jobs
+to be skipped. Missing, duplicate, stale,
 foreign, cancelled, unexpectedly skipped or unsuccessful evidence fails. Success
 evidence is removed before each attempt, so a failed rerun cannot reuse an old
 success. The gate CLI accepts only an official clean hosted checkout.

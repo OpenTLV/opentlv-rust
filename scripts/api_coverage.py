@@ -2,7 +2,8 @@
 # Copyright (c) 2026 Marek Cingel
 """Report which pinned-Core TLV_API symbols a binding references.
 
-Uses only the standard library and one JSON configuration, so other bindings
+Scopes that the configuration lists as `complete` fail the report when a symbol is
+neither referenced nor ignored, or an ignore pattern matches nothing. Uses only the standard library and one JSON configuration, so other bindings
 can reuse it unchanged. Run it from the binding's Git checkout.
 """
 
@@ -17,6 +18,7 @@ import tokenize
 
 HEADERS = "tlv/include"
 BUILTINS = "tlv/builtins/"
+SCOPES = ("core", "builtins")
 C_LIKE = {".c", ".h", ".cc", ".cpp", ".cxx", ".hh", ".hpp", ".hxx", ".rs"}
 # Literals are matched so that comment markers inside them are not comments.
 C_TOKENS = re.compile(r'"(?:\\.|[^"\\\n])*"|\'(?:\\.[^\'\n]{0,8}|[^\'\\\n])\'|//[^\n]*|/\*.*?\*/',
@@ -105,6 +107,9 @@ def load_config(path):
     for entry in config.get("ignore", []):
         if not entry.get("reason") or not (entry.get("headers") or entry.get("symbols")):
             raise ValueError("Each ignore entry needs a reason and headers or symbols")
+    complete = config.get("complete", [])
+    if not isinstance(complete, list) or not set(complete) <= set(SCOPES):
+        raise ValueError("complete must list scopes among " + ", ".join(SCOPES))
     return config
 
 
@@ -129,7 +134,7 @@ def status(name, found, ignore):
 
 def coverage(symbols, found, ignore):
     scopes = {scope: {"referenced": 0, "missing": 0, "ignored": 0, "headers": {}}
-              for scope in ("core", "builtins")}
+              for scope in SCOPES}
     for name, symbol in sorted(symbols.items()):
         scope = scopes["builtins" if symbol["header"].startswith(BUILTINS) else "core"]
         header = scope["headers"].setdefault(symbol["header"],
@@ -167,6 +172,15 @@ def core_repository(root, local, pins):
     return repository
 
 
+def completeness(config, scopes, stale):
+    """Fail closed when a required scope has an unreviewed symbol or the ignore list is stale."""
+    required = config.get("complete", [])
+    missing = {name: sorted(symbol for header in scopes[name]["headers"].values()
+                            for symbol in header["missing"]) for name in required}
+    return {"scopes": required, "missing": missing, "stale_ignores": stale,
+            "status": "success" if not stale and not any(missing.values()) else "failure"}
+
+
 def ratio(scope):
     considered = scope["referenced"] + scope["missing"]
     if not considered:
@@ -190,6 +204,17 @@ def markdown(report):
     if report["stale_ignores"]:
         lines += ["", "Ignore patterns matching no symbol: "
                   + ", ".join(f"`{pattern}`" for pattern in report["stale_ignores"])]
+    gate = report.get("complete")
+    if gate:
+        scopes = ", ".join(gate["scopes"])
+        if gate["status"] == "success":
+            lines += ["", f"Completeness ({scopes}): every symbol is referenced or ignored."]
+        else:
+            missing = [symbol for names in gate["missing"].values() for symbol in names]
+            lines += ["", f"**Completeness ({scopes}) failed:** {len(missing)} unreviewed "
+                      f"symbols and {len(gate['stale_ignores'])} stale ignore patterns. Bind each "
+                      "symbol in the safe crate or add it to the ignore list with a reason, and "
+                      "remove stale patterns."]
     diff = report.get("diff")
     if diff is not None:
         lines += ["", "### Core pin change", ""]
@@ -229,8 +254,11 @@ def report(root, config, core=None, commit=None, base=None, base_commit=None):
     symbols = core_symbols(repository, head["commit"])
     found = references(root, config["references"])
     ignore, stale = ignored(config, symbols)
+    scopes = coverage(symbols, found, ignore)
     result = {"schema": 1, "core": head, "references": config["references"],
-              "scopes": coverage(symbols, found, ignore), "stale_ignores": stale}
+              "scopes": scopes, "stale_ignores": stale}
+    if config.get("complete"):
+        result["complete"] = completeness(config, scopes, stale)
     if previous:
         old = core_symbols(repository, previous["commit"])
         result["diff"] = {
@@ -267,6 +295,8 @@ def main():
     if args.summary:
         with args.summary.open("a", encoding="utf-8") as summary:
             summary.write(text)
+    if result.get("complete", {}).get("status") == "failure":
+        parser.exit(1, "API coverage failed: required scopes are incomplete\n")
 
 
 if __name__ == "__main__":
