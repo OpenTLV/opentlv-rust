@@ -600,7 +600,7 @@ impl StructureSchema {
         unknown: UnknownPolicy,
         capacity: usize,
     ) -> std::result::Result<SchemaDiagnosticReport, SchemaError> {
-        self.validate_diagnostics_raw(data, format.into().raw(), limits, unknown, capacity)
+        self.validate_diagnostics_raw(data, format.into().raw(), limits, unknown, capacity, None)
     }
 
     /// Same validation using a borrowed configurable Fixed Format.
@@ -623,6 +623,7 @@ impl StructureSchema {
         limits: &ValidationLimits,
         unknown: UnknownPolicy,
         capacity: usize,
+        checked: Option<&native::tlv_schema_checked_t>,
     ) -> std::result::Result<SchemaDiagnosticReport, SchemaError> {
         let convert = |error| SchemaError {
             error,
@@ -642,33 +643,40 @@ impl StructureSchema {
             capacity,
             count: 0,
         };
-        // SAFETY: zero diagnostic has no active borrows.
-        let mut diagnostic: native::tlv_schema_diagnostic_t = unsafe { std::mem::zeroed() };
-        // SAFETY: schema/input are live and C receives exclusive, correctly sized storage.
+        let mut diagnostic = new_diagnostic();
+        // SAFETY: schema/input are live and C receives exclusive, correctly sized storage;
+        // a checked handle borrows this schema.
         let code = unsafe {
-            native::tlv_schema_validate_all_diag(
-                data.as_ptr(),
-                data.len(),
-                format,
-                self.as_raw(),
-                limits.max_depth,
-                limits.max_elements,
-                unknown as i32,
-                &mut report,
-                &mut diagnostic,
-            )
+            match checked {
+                Some(checked) => native::tlv_schema_validate_all_checked(
+                    checked,
+                    data.as_ptr(),
+                    data.len(),
+                    format,
+                    limits.max_depth,
+                    limits.max_elements,
+                    unknown as i32,
+                    &mut report,
+                    &mut diagnostic,
+                ),
+                None => native::tlv_schema_validate_all_diag(
+                    data.as_ptr(),
+                    data.len(),
+                    format,
+                    self.as_raw(),
+                    limits.max_depth,
+                    limits.max_elements,
+                    unknown as i32,
+                    &mut report,
+                    &mut diagnostic,
+                ),
+            }
         };
         if code != native::TLV_OK && code != native::TLV_ERR_SCHEMA {
-            return Err(SchemaError {
-                error: Error::from_code(code).unwrap(),
-                offset: crate::Location::from_raw(diagnostic.diagnostic.location).offset(),
-                kind: crate::SchemaIssue::from_raw(schema_detail(&diagnostic).kind),
-                location: crate::Location::from_raw(diagnostic.diagnostic.location),
-                definition_kind: crate::SchemaDefinitionKind::from_raw(
-                    schema_detail(&diagnostic).definition.kind,
-                ),
-                definition_index: schema_detail(&diagnostic).definition.index,
-            });
+            return Err(SchemaError::from_raw(
+                Error::from_code(code).unwrap(),
+                &diagnostic,
+            ));
         }
         let mut diagnostics = Vec::new();
         for item in storage.iter().take(report.count.min(capacity)) {
@@ -825,7 +833,7 @@ impl StructureSchema {
         format: impl Into<crate::FormatRef<'f>>,
         limits: &ValidationLimits,
     ) -> std::result::Result<(), SchemaError> {
-        self.validate_raw(data, format.into().raw(), limits)
+        self.validate_raw(data, format.into().raw(), limits, None)
     }
 
     /// Same validation using a borrowed configurable Fixed Format.
@@ -844,38 +852,161 @@ impl StructureSchema {
         data: &[u8],
         format: *const native::tlv_format_t,
         limits: &ValidationLimits,
+        checked: Option<&native::tlv_schema_checked_t>,
     ) -> std::result::Result<(), SchemaError> {
-        let mut diagnostic: native::tlv_schema_diagnostic_t = unsafe { std::mem::zeroed() };
+        let mut diagnostic = new_diagnostic();
         // SAFETY: `data` is a valid slice; the format and schema tables are
         // valid for the call and immutable; `diagnostic` is writable native storage.
+        // A checked handle borrows this schema.
         let code = unsafe {
-            native::tlv_schema_validate(
-                data.as_ptr(),
-                data.len(),
-                format,
-                self.as_raw(),
-                limits.max_depth,
-                limits.max_elements,
-                &mut diagnostic,
-            )
+            match checked {
+                Some(checked) => native::tlv_schema_validate_checked(
+                    checked,
+                    data.as_ptr(),
+                    data.len(),
+                    format,
+                    limits.max_depth,
+                    limits.max_elements,
+                    &mut diagnostic,
+                ),
+                None => native::tlv_schema_validate(
+                    data.as_ptr(),
+                    data.len(),
+                    format,
+                    self.as_raw(),
+                    limits.max_depth,
+                    limits.max_elements,
+                    &mut diagnostic,
+                ),
+            }
         };
         match Error::from_code(code) {
             None => Ok(()),
-            Some(error) => Err(SchemaError {
-                error,
-                offset: if diagnostic.diagnostic.location.kind != 0 {
-                    Some(diagnostic.diagnostic.location.begin)
-                } else {
-                    None
-                },
-                kind: crate::SchemaIssue::from_raw(schema_detail(&diagnostic).kind),
-                location: crate::Location::from_raw(diagnostic.diagnostic.location),
-                definition_kind: crate::SchemaDefinitionKind::from_raw(
-                    schema_detail(&diagnostic).definition.kind,
-                ),
-                definition_index: schema_detail(&diagnostic).definition.index,
-            }),
+            Some(error) => Err(SchemaError::from_raw(error, &diagnostic)),
         }
+    }
+
+    /// Checks every reachable rule table of the definition through
+    /// `tlv_schema_check()`, without input. Shared and recursive child schemas
+    /// are checked once each.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::InvalidSchema`] with the failing rule or group as
+    /// `definition_kind` and `definition_index`, or [`Error::Unsupported`] when
+    /// the graph exceeds Core's bounded checking capacity.
+    pub fn check_definition(&self) -> std::result::Result<(), SchemaError> {
+        let mut diagnostic = new_diagnostic();
+        // SAFETY: immutable live tables and writable diagnostic.
+        let code = unsafe { native::tlv_schema_check(self.as_raw(), &mut diagnostic) };
+        match Error::from_code(code) {
+            None => Ok(()),
+            Some(error) => Err(SchemaError::from_raw(error, &diagnostic)),
+        }
+    }
+
+    /// Checks the definition once through `tlv_schema_prepare()` and returns a
+    /// handle that validates repeatedly without checking it again. The handle
+    /// borrows this schema, whose tables cannot change.
+    ///
+    /// # Errors
+    ///
+    /// The same as [`StructureSchema::check_definition`].
+    pub fn check(&self) -> std::result::Result<CheckedStructureSchema<'_>, SchemaError> {
+        let mut raw = native::tlv_schema_checked_t {
+            schema: ptr::null(),
+        };
+        let mut diagnostic = new_diagnostic();
+        // SAFETY: the handle borrows these immutable tables for the schema's lifetime.
+        let code = unsafe { native::tlv_schema_prepare(&mut raw, self.as_raw(), &mut diagnostic) };
+        match Error::from_code(code) {
+            None => Ok(CheckedStructureSchema { schema: self, raw }),
+            Some(error) => Err(SchemaError::from_raw(error, &diagnostic)),
+        }
+    }
+}
+
+/// A [`StructureSchema`] whose definition was checked once by
+/// [`StructureSchema::check`]. Validation behaves like the schema's own, but
+/// never repeats the definition check and so never fails with
+/// [`Error::InvalidSchema`].
+///
+/// ```
+/// use opentlv::{Format, StructureRule, StructureSchema, Tag, ValidationLimits};
+///
+/// let rule = StructureRule::new(Tag::from_bytes(&[1])).required_once();
+/// let schema = StructureSchema::new([rule], false);
+/// let checked = schema.check()?;
+/// let limits = ValidationLimits::default();
+/// for input in [&[1, 0][..], &[1, 1, 7]] {
+///     checked.validate(input, Format::Ber, &limits)?;
+/// }
+/// # Ok::<(), opentlv::SchemaError>(())
+/// ```
+#[derive(Clone, Copy)]
+pub struct CheckedStructureSchema<'s> {
+    schema: &'s StructureSchema,
+    raw: native::tlv_schema_checked_t,
+}
+
+// SAFETY: the handle only borrows the immutable, Send + Sync schema tables.
+unsafe impl Send for CheckedStructureSchema<'_> {}
+unsafe impl Sync for CheckedStructureSchema<'_> {}
+
+impl fmt::Debug for CheckedStructureSchema<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CheckedStructureSchema")
+            .field("schema", self.schema)
+            .finish()
+    }
+}
+
+impl<'s> CheckedStructureSchema<'s> {
+    /// The checked schema.
+    pub fn schema(&self) -> &'s StructureSchema {
+        self.schema
+    }
+
+    /// Validates like [`StructureSchema::validate`], through
+    /// `tlv_schema_validate_checked()`.
+    pub fn validate<'f>(
+        &self,
+        data: &[u8],
+        format: impl Into<crate::FormatRef<'f>>,
+        limits: &ValidationLimits,
+    ) -> std::result::Result<(), SchemaError> {
+        self.schema
+            .validate_raw(data, format.into().raw(), limits, Some(&self.raw))
+    }
+
+    /// Reports violations like [`StructureSchema::validate_diagnostics`],
+    /// through `tlv_schema_validate_all_checked()`.
+    pub fn validate_diagnostics<'f>(
+        &self,
+        data: &[u8],
+        format: impl Into<crate::FormatRef<'f>>,
+        limits: &ValidationLimits,
+        unknown: UnknownPolicy,
+        capacity: usize,
+    ) -> std::result::Result<SchemaDiagnosticReport, SchemaError> {
+        self.schema.validate_diagnostics_raw(
+            data,
+            format.into().raw(),
+            limits,
+            unknown,
+            capacity,
+            Some(&self.raw),
+        )
+    }
+}
+
+/// A Schema diagnostic reset by C to all-unset.
+fn new_diagnostic() -> native::tlv_schema_diagnostic_t {
+    let mut diagnostic = std::mem::MaybeUninit::uninit();
+    // SAFETY: C writes every byte of the writable diagnostic.
+    unsafe {
+        native::tlv_schema_diagnostic_init(diagnostic.as_mut_ptr());
+        diagnostic.assume_init()
     }
 }
 
@@ -917,6 +1048,21 @@ pub struct SchemaError {
     pub definition_kind: crate::SchemaDefinitionKind,
     /// Rule, group, type or component index in the supplied schema.
     pub definition_index: usize,
+}
+
+impl SchemaError {
+    fn from_raw(error: Error, diagnostic: &native::tlv_schema_diagnostic_t) -> Self {
+        let detail = schema_detail(diagnostic);
+        let location = crate::Location::from_raw(diagnostic.diagnostic.location);
+        SchemaError {
+            error,
+            offset: location.offset(),
+            kind: crate::SchemaIssue::from_raw(detail.kind),
+            location,
+            definition_kind: crate::SchemaDefinitionKind::from_raw(detail.definition.kind),
+            definition_index: detail.definition.index,
+        }
+    }
 }
 
 impl fmt::Display for SchemaError {

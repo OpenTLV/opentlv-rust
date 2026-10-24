@@ -79,6 +79,7 @@
 
 mod codec;
 mod composed_format;
+mod constraint;
 mod diagnostic_kind;
 pub use diagnostic_kind::*;
 mod definition;
@@ -99,7 +100,9 @@ mod tag;
 mod tree_reader;
 mod tree_writer;
 #[cfg(feature = "document")]
-pub use document::{Document, DocumentBuilder, DocumentError, Node, NodeMut};
+pub use document::{
+    Document, DocumentBuilder, DocumentError, DocumentSourceLocation, Node, NodeHandle, NodeMut,
+};
 mod validation;
 mod visitor;
 mod writer;
@@ -112,6 +115,7 @@ pub use codec::{
     Value, ValueKind,
 };
 pub use composed_format::{ComposedFormat, FieldComposition, PackedLayout};
+pub use constraint::ValueConstraint;
 pub use element::Element;
 pub use error::{Error, Result};
 pub use field::{
@@ -127,9 +131,9 @@ pub use query::{Query, QueryError, QueryMatcher};
 pub use reader::{read, read_element, read_fixed, Reader, ReaderError};
 pub use reader_diagnostic::{DiagnosticContext, DiagnosticMetadata, ReaderDiagnostic};
 pub use schema::{
-    Kind, LengthRule, LengthSchema, SchemaBounds, SchemaDiagnostic, SchemaDiagnosticReport,
-    SchemaError, SchemaOrder, StructureGroup, StructureRule, StructureSchema, UnknownPolicy,
-    ValidationLimits,
+    CheckedStructureSchema, Kind, LengthRule, LengthSchema, SchemaBounds, SchemaDiagnostic,
+    SchemaDiagnosticReport, SchemaError, SchemaOrder, StructureGroup, StructureRule,
+    StructureSchema, UnknownPolicy, ValidationLimits,
 };
 pub use source::{decode, decode_fixed, Decoded, Layout};
 pub use tag::Tag;

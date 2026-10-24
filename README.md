@@ -33,7 +33,7 @@ publication is separate post-migration work.
 | `Cargo.toml`, `Cargo.lock` | Cargo workspace of the two crates |
 | `opentlv-sys/` | Raw FFI crate: sources, `build.rs`, tests and the C ABI probe |
 | `opentlv-sys/core/` | Core dependency lock, selection module, release verifier and toolchain probe used by `build.rs` |
-| `opentlv/` | Safe Rust crate: sources, tests and eight examples |
+| `opentlv/` | Safe Rust crate: sources, tests and nine examples |
 | `opentlv-sys/README.md`, `opentlv/README.md`, `*/LICENSE` | Package readme and license text of each crate |
 | `.github/workflows/` | PR, Main and Full CI, source quality, CodeQL and the documentation portal notification |
 | `ci/matrix.json` | CI toolchains, platforms, feature sets and test inventory |

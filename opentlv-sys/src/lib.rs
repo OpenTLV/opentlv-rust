@@ -574,6 +574,79 @@ pub struct tlv_structure_schema_t {
     pub order: tlv_schema_order_t,
 }
 
+/// Handle to a schema graph checked once by `tlv_schema_prepare` (`tlv_schema_checked_t`).
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct tlv_schema_checked_t {
+    /// Borrowed checked schema, or null when not prepared.
+    pub schema: *const tlv_structure_schema_t,
+}
+
+/// Kind of a value constraint (`tlv_value_constraint_kind_t`).
+pub type tlv_value_constraint_kind_t = c_int;
+/// Every value is permitted (`TLV_VALUE_CONSTRAINT_NONE`).
+pub const TLV_VALUE_CONSTRAINT_NONE: tlv_value_constraint_kind_t = 0;
+/// Inclusive `min_value..=max_value` range (`TLV_VALUE_CONSTRAINT_RANGE`).
+pub const TLV_VALUE_CONSTRAINT_RANGE: tlv_value_constraint_kind_t = 1;
+/// One of `allowed_values` (`TLV_VALUE_CONSTRAINT_ALLOWED_VALUES`).
+pub const TLV_VALUE_CONSTRAINT_ALLOWED_VALUES: tlv_value_constraint_kind_t = 2;
+
+/// Constraint on one decoded scalar value (`tlv_value_constraint_t`).
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct tlv_value_constraint_t {
+    /// Which fields below apply.
+    pub kind: tlv_value_constraint_kind_t,
+    /// Inclusive minimum of a range.
+    pub min_value: i64,
+    /// Inclusive maximum of a range.
+    pub max_value: i64,
+    /// Borrowed permitted values; null only when the count is zero.
+    pub allowed_values: *const i64,
+    /// Number of permitted values.
+    pub allowed_values_count: usize,
+    /// Optional borrowed display names parallel to `allowed_values`.
+    pub allowed_value_names: *const *const c_char,
+}
+
+extern "C" {
+    /// Checks a structural schema graph independently of input.
+    pub fn tlv_schema_check(
+        schema: *const tlv_structure_schema_t,
+        diagnostic: *mut tlv_schema_diagnostic_t,
+    ) -> tlv_result_t;
+    /// Resets a schema diagnostic to all-unset.
+    pub fn tlv_schema_diagnostic_init(diagnostic: *mut tlv_schema_diagnostic_t);
+    /// Checks a schema once and prepares a handle borrowing it.
+    pub fn tlv_schema_prepare(
+        checked: *mut tlv_schema_checked_t,
+        schema: *const tlv_structure_schema_t,
+        diagnostic: *mut tlv_schema_diagnostic_t,
+    ) -> tlv_result_t;
+    /// Validates input against a prepared schema without repeating its check.
+    pub fn tlv_schema_validate_checked(
+        checked: *const tlv_schema_checked_t,
+        data: *const u8,
+        size: usize,
+        format: *const tlv_format_t,
+        max_depth: usize,
+        max_elements: usize,
+        diagnostic: *mut tlv_schema_diagnostic_t,
+    ) -> tlv_result_t;
+    /// Checks a value constraint definition.
+    pub fn tlv_value_constraint_check(constraint: *const tlv_value_constraint_t) -> tlv_result_t;
+    /// Validates a decoded value against a constraint.
+    pub fn tlv_value_constraint_validate(
+        constraint: *const tlv_value_constraint_t,
+        value: i64,
+    ) -> tlv_result_t;
+    /// Borrowed display name of an allowed value, or null.
+    pub fn tlv_value_constraint_name(
+        constraint: *const tlv_value_constraint_t,
+        value: i64,
+    ) -> *const c_char;
+}
+
 /// Value decoder callback of a codec.
 pub type tlv_codec_decode_fn = unsafe extern "C" fn(
     context: *const c_void,
@@ -1241,6 +1314,20 @@ extern "C" {
     pub fn tlv_query_visit(
         reader: *mut tlv_tree_reader_t,
         matcher: *mut tlv_query_matcher_t,
+        visitor: Option<
+            unsafe extern "C" fn(*const tlv_element_t, usize, usize, *mut c_void) -> c_int,
+        >,
+        context: *mut c_void,
+        diagnostic: *mut tlv_reader_diagnostic_t,
+    ) -> tlv_result_t;
+    /// Visit every addressed element of complete input without a caller Reader.
+    pub fn tlv_query_visit_buffer(
+        data: *const u8,
+        size: usize,
+        format: *const tlv_format_t,
+        query: *const tlv_query_t,
+        max_depth: usize,
+        max_elements: usize,
         visitor: Option<
             unsafe extern "C" fn(*const tlv_element_t, usize, usize, *mut c_void) -> c_int,
         >,

@@ -156,7 +156,7 @@ Rustdoc, `RUSTFLAGS=-D warnings`.
   every target, including Rustdoc tests, and compares them with the inventory.
   A missing, extra or renamed target, a different count, or any failed,
   ignored, measured or filtered test fails.
-- **Examples.** The seven runnable examples. `query_conformance` is the native
+- **Examples.** The eight runnable examples. `query_conformance` is the native
   driver of the Query corpus; a new example fails until it is added.
 - **Query corpus.** Core's `tests/query/run.py` of the selected Core tree
   drives `query_conformance` with `--property-cases 0`: 171 fixtures with 2133
@@ -240,9 +240,8 @@ artifact.
 `opentlv-sys` is not a reference directory. Its `extern` declarations make a
 symbol callable only through `unsafe` raw bindings, without the safe crate's
 ownership, error and lifetime guarantees, so a declaration alone does not count.
-For Core 0.7.1, 11 symbols such as `tlv_document_encode`, `tlv_query_compile`
-and `tlv_node_encode` are declared in `opentlv-sys` but not used by
-`opentlv`, and are reported as not referenced.
+For Core 0.7.1, `tlv_codec_diagnostic_init` is the only symbol declared in
+`opentlv-sys` but not used by `opentlv`, and is reported as not referenced.
 
 On a pull request, the job also reads the Core lock at the base commit and lists
 the symbols added and removed between the two pins. Added symbols show whether
@@ -268,7 +267,9 @@ that duplicate a bound path: wrappers that pass a NULL diagnostic to a bound
 `_diag` counterpart, such as `tlv_reader_next` and `tlv_tree_writer_begin`;
 `tlv_write` and `tlv_write_diag`, the Tag/Value forms of
 `tlv_write_element_diag`; and `tlv_writer_copy_element`, which is
-`tlv_writer_write_element` without diagnostics. Diagnostic consumers such as the `*_string` lookups and
+`tlv_writer_write_element` without diagnostics. `tlv_query_parse` is the
+NUL-terminated form of `tlv_query_parse_n`, which `Query::parse` calls with the
+string's length. Diagnostic consumers such as the `*_string` lookups and
 `tlv_diagnostic_path_string` remain counted. Patterns that match nothing in the
 pinned Core are reported, so stale entries are visible after a pin bump. Change
 the ignore list only for symbols the safe crate intentionally leaves unbound.
@@ -280,7 +281,11 @@ With the field encodings, Format compositions and generic Format operations
 `tlv/field/*.h`, `tlv/format.h` and `tlv/formats/*.h` symbol is referenced or
 ignored. With the single-element reads and source-free Reader pulls (#24), it
 references 167 of 218 core symbols (76.6 %) with 79 ignored; every
-`tlv/reader/*.h` and `tlv/writer/*.h` symbol is referenced or ignored.
+`tlv/reader/*.h` and `tlv/writer/*.h` symbol is referenced or ignored. With the
+Document, Query and Schema operations (#21), it references 194 of 217 core
+symbols (89.4 %) with 80 ignored; every `tlv/document/*.h` and `tlv/query/*.h`
+symbol, and every `tlv/schema/*.h` symbol except the `tlv/schema/number.h`
+codec callbacks, is referenced or ignored.
 Builtins-specific parity is outside the coverage epic. The report reads the
 headers, not a build, and is unaffected by Cargo features; with the default
 features `opentlv-sys/build.rs` builds Core with every component and builtin

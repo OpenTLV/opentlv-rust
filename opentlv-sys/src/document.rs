@@ -19,7 +19,36 @@ extern "C" {
     ) -> tlv_result_t;
     /// Stable native node identity, scoped to its owning Document.
     pub fn tlv_node_identity(node: *const tlv_node_t) -> u64;
+    /// Identity of a possibly stale node address in a live Document, or zero.
+    pub fn tlv_document_node_identity(
+        document: *const tlv_document_t,
+        node: *const tlv_node_t,
+    ) -> u64;
+    /// Whole-Document Node retirement epoch.
+    pub fn tlv_document_retire_epoch(document: *const tlv_document_t) -> u64;
+    /// Whole-Document mutation revision.
+    pub fn tlv_document_revision(document: *const tlv_document_t) -> u64;
+    /// Copy of a node's optional original source location.
+    pub fn tlv_node_source_location(node: *const tlv_node_t) -> tlv_document_source_location_t;
 }
+
+/// Original Reader coordinates of a parsed node (`tlv_document_source_location_t`).
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct tlv_document_source_location_t {
+    /// Absolute element start in the original Reader input.
+    pub offset: usize,
+    /// Original encoded header length.
+    pub header_size: usize,
+    /// Nonzero when `offset` is known.
+    pub has_offset: c_int,
+    /// Nonzero when `header_size` is known.
+    pub has_header_size: c_int,
+}
+
+/// Document Query node callback (`tlv_document_query_visitor_t`).
+pub type tlv_document_query_visitor_t =
+    Option<unsafe extern "C" fn(*mut tlv_node_t, *mut c_void) -> c_int>;
 
 /// Opaque resumable Document builder.
 #[repr(C)]

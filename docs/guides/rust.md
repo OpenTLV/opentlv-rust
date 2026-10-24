@@ -209,7 +209,10 @@ structures such as `DocumentError` and `WriterError`. There are no panics on bad
 | `Writer<'a>` | its position and optional diagnostic | the output `&'a mut [u8]` |
 | `Document<'f>` | C document nodes and storage | optional Fixed or composed Format/context |
 | `Node`, `NodeMut` | a node handle | immutable or exclusive Document access |
+| `NodeHandle` | a node address and identity (`Copy`) | nothing |
 | `LengthSchema`, `StructureSchema` | their rule tables | nothing |
+| `CheckedStructureSchema<'s>` | a native checked handle (`Copy`) | its `&'s StructureSchema` |
+| `ValueConstraint` | its values and names | nothing |
 | `FixedFormatConfig` | its fields (`Copy`) | nothing |
 | `FixedFormat<'a>` | nothing | `&'a FixedFormatConfig` |
 | `ComposedFormat` | its descriptor, configuration and tables, shared by clones | nothing |
@@ -264,8 +267,38 @@ The default-enabled Cargo feature `document` exposes `Document`, `Node`,
 `OPENTLV_DOCUMENT`. `Document::parse` copies input through C, while node Values
 borrow document storage. Mutation requires exclusive access; a retained value
 or node prevents mutation or destruction at compile time. Query lookup and all
-edits delegate to C. Destination-format sizing and output are available through
-`encoded_size_as`, `encode_as` and `encode_into_as`.
+edits delegate to C. `encode`, `encode_into` and `encoded_size` use the
+Document's own Format through `tlv_document_encode()` and its siblings;
+destination-format sizing and output are available through `encoded_size_as`,
+`encode_as` and `encode_into_as`.
+
+Because a borrowed `Node` cannot survive an edit, `Node::handle()` returns a
+`NodeHandle` that is not tied to any borrow. After edits,
+`Document::resolve(handle)` or `resolve_mut` returns the node again, or `None`
+once an erase or a constructed Value replacement has retired it. C compares the
+node's never-reused identity, so a node created later at the same address is
+not mistaken for it. `revision()` counts every successful edit and
+`retire_epoch()` the edits that retired existing nodes:
+
+```rust
+use opentlv::{Document, Format, Query, Tag};
+
+let mut document = Document::parse(&data, Format::Ber, 64, 1024)?;
+let amount = document
+    .find_path(&Query::parse("6F/A5/9F02")?)?
+    .ok_or("no amount")?
+    .handle();
+document.append(&Tag::from_bytes(&[0x9F, 0x36]), &[0, 1])?;
+if let Some(mut node) = document.resolve_mut(amount) {
+    node.set_value(&[0x01, 0x2C])?;
+}
+```
+
+`Document::parse_with_source_locations` retains original input coordinates:
+`Node::source_location()` returns the offset and header length, and an edit
+clears them for the changed node and its ancestors. `Document::visit(&query,
+visitor)` delivers every path match as a `Node` in Document order, without
+allocating; the nodes borrow the Document and may be kept after the visit.
 
 `DocumentBuilder::new` materializes a fresh TreeReader stream;
 `DocumentBuilder::next_subtree` pulls and materializes only the next subtree.
@@ -276,16 +309,31 @@ conservative input/Format lifetime.
 
 ## Compiled Query
 
-`QueryProgram::compile(text, &ProgramOptions)` owns the canonical C program;
-`QueryProgram::load(image, &options)` validates an image with its original
-compile options. `info`, `variables`, `format`, `explain` and `image` expose
-native requirements and release-specific program data.
+`QueryProgram::compile(text, &ProgramOptions)` owns the canonical C program.
+Static `names` compile directly through `tlv_query_compile()`; a `resolver`
+uses checked preparation and commit instead, which detects a resolver that
+answers differently while the program is sized and written. Both produce the
+same image. `QueryProgram::load(image, &options)` validates an image with its
+original compile options, and `QueryProgram::open_plan(image, &options)`
+validates only the native plan, without parsing, name resolution or planning;
+the options then supply just the Format, semantic Tags and providers that
+executions use. `info`, `variables`, `format`, `explain` and `image` expose
+native requirements and release-specific program data, and `plan_info` reads
+the requirements from the plan itself.
 
 Independent `QueryExecution` values bind typed `QueryBinding` values, feed events,
 pull or visit a `TreeReader`, or evaluate a Document. Scalars return `QueryValue`.
 Use `feed_event(QueryEvent)` for source-less events, or `feed(TreeEvent)` to
 preserve Reader Source metadata. After `finish()`, `next_result()` pulls retained
 matches; `next_result_with_ordinal()` also returns native preorder identity.
+`reset()` resets an execution in place through `tlv_query_exec_reset()`: it
+keeps the program, providers, workspace and budgets and clears bindings,
+results and counters, so one execution serves a whole batch of inputs, even
+after a failure. After `evaluate_document`, `next_document()` pulls result
+nodes and `visit_document(visitor)` visits the remaining ones through the same
+cursor. Programs that read constructed Values need a canonical Value snapshot;
+without `value_capacity`, its size is discovered with
+`tlv_document_query_value_size()` and the discovery output becomes the snapshot.
 Owning workspace and `execution_external` are available with explicit bounds;
 the latter borrows caller storage. Rust lifetimes preserve program, input and
 Document ownership; errors retain native Query spans and diagnostic detail.
@@ -307,6 +355,13 @@ TEXT and DATE conversions. Each owns a stable ID, scratch limit and `Send + Sync
 callback. Callbacks receive bytes and optional owned metadata; return
 `QueryDecoded` or the shared `Error`. Provider panics become native codec errors,
 and text is copied into bounded native scratch. Programs retain provider owners.
+`QueryProvider::number(conversion, id, NumberCodec)` decodes NUM, BCD or DATE
+Values with Core's own number codec through `tlv_query_codec_decode()`, without
+a Rust callback; values above `i64::MAX` fail with `Error::InvalidValue`.
+
+`Query::visit_buffer(data, format, max_depth, max_elements, visitor)` visits the
+elements a parsed path addresses in complete input, without opening a Reader or
+matcher.
 
 `QueryProgram::edit_document` evaluates and edits under one exclusive Document
 borrow. `QueryEdit` selects removal, replacement or insertion;
@@ -326,6 +381,37 @@ The [consumer example](../../opentlv/examples/query_conformance.rs)
 runs the common corpus through the public facade. Remaining custom Format and
 semantic Tag adapter coverage is tracked by the
 [release requirements](https://github.com/OpenTLV/opentlv/blob/main/docs/development/query-release.md).
+
+## Validating and querying batches
+
+Work that does not depend on the input can be done once. `StructureSchema::check()`
+checks the definition, including every child schema, through
+`tlv_schema_prepare()` and returns a `CheckedStructureSchema` that borrows the
+schema. Its `validate` and `validate_diagnostics` behave like the schema's own,
+without repeating the definition check, so they never fail with
+`Error::InvalidSchema`. `check_definition()` runs only the check. Combined with
+one compiled program and one execution reset per message:
+
+```rust
+let schema = definition.check()?;
+let mut execution = program.execution(8, 64, 100_000, true)?;
+for message in &messages {
+    schema.validate(message, Format::Ber, &limits)?;
+    execution.reset()?;
+    execution.bind("minimum", QueryBinding::Integer(250))?;
+    let mut reader = TreeReader::new(message, Format::Ber, 8, 8, 64, true)?;
+    execution.visit(&mut reader, |_| Visit::Continue)?;
+    println!("{:?}", execution.result()?);
+}
+```
+
+`ValueConstraint` checks a decoded scalar, such as an ASN.1 INTEGER, against a
+`range`, an `allowed` set or `named` numbers. Core checks the definition when it
+is built (`Error::InvalidSchema` for reversed bounds), `validate` fails with
+`Error::Schema` for a violating value, and `name` returns a named number's name.
+Runnable version, with a number codec provider, a buffer path visit and the
+Document view: [batch.rs](../../opentlv/examples/batch.rs)
+(`cargo run --example batch` from the repository root).
 
 ## Next step
 

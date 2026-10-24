@@ -907,6 +907,9 @@ impl NumberCodec {
             },
         }
     }
+    pub(crate) fn config(&self) -> native::tlv_number_codec_config_t {
+        self.config
+    }
     /// Decode Value bytes through the canonical C numeric codec.
     pub fn decode(&self, data: &[u8]) -> CodecResult<u64> {
         let mut value = 0u64;
