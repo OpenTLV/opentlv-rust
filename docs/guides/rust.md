@@ -77,6 +77,24 @@ for element in Reader::with_fixed_format(&data, &format) {
 }
 ```
 
+To decode a single element, `read_element(&data, format)` returns the `Element`
+and the consumed byte count, and `read(&data, format)` returns a `Decoded` with
+the original encoding and `Layout`. Trailing bytes stay unread, empty input
+fails with `Error::End`, and other failures return a `ReaderError` that owns the
+`ReaderDiagnostic`:
+
+```rust
+use opentlv::{read_element, Format};
+
+let (element, consumed) = read_element(&data, Format::Ber)?;
+let rest = &data[consumed..];
+```
+
+`Reader::read_element()` and `Reader::read_source()` pull the next element
+without or with source metadata. Unlike iteration they stay callable after an
+error: a `Reader::incremental` reader returns `Error::NeedMoreData` at the end
+of its window, and continues after `set_input` supplies more bytes.
+
 Runnable version with nesting and EMV tag names:
 [reader.rs](../../opentlv/examples/reader.rs)
 (`cargo run --example reader` from the repository root).

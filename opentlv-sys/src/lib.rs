@@ -1130,6 +1130,28 @@ extern "C" {
         source: *mut tlv_source_t,
         diagnostic: *mut tlv_reader_diagnostic_t,
     ) -> tlv_result_t;
+    pub fn tlv_reader_next_diag(
+        reader: *mut tlv_reader_t,
+        element: *mut tlv_element_t,
+        diagnostic: *mut tlv_reader_diagnostic_t,
+    ) -> tlv_result_t;
+    pub fn tlv_read_diag(
+        data: *const u8,
+        size: usize,
+        format: *const tlv_format_t,
+        element: *mut tlv_element_t,
+        consumed: *mut usize,
+        diagnostic: *mut tlv_reader_diagnostic_t,
+    ) -> tlv_result_t;
+    pub fn tlv_read_source_diag(
+        data: *const u8,
+        size: usize,
+        format: *const tlv_format_t,
+        element: *mut tlv_element_t,
+        consumed: *mut usize,
+        source: *mut tlv_source_t,
+        diagnostic: *mut tlv_reader_diagnostic_t,
+    ) -> tlv_result_t;
     pub fn tlv_tree_reader_init(
         reader: *mut tlv_tree_reader_t,
         data: *const u8,

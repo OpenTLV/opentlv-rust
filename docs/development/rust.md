@@ -77,6 +77,14 @@ writer built from it). Malformed input yields an `Err(Error)` item, after
 which the iterator ends, since the C reader does not advance past bad data.
 Library users need no `unsafe`.
 
+Iteration and `Reader::read_element()` pull through `tlv_reader_next_diag()`
+without source metadata; `Reader::read_source()` uses
+`tlv_reader_next_source_diag()`. Both explicit pulls stay callable after an
+error, so incremental input can be extended with `set_input` after
+`Error::NeedMoreData`. For one element, `read_element()` calls `tlv_read_diag()`
+and `read()` calls `tlv_read_source_diag()` without opening a Reader; their
+`ReaderError` owns the failure diagnostic.
+
 ## Writer
 
 `Writer<'a>` encodes elements into a caller-owned `&'a mut [u8]`. It wraps the C

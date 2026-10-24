@@ -29,13 +29,31 @@ impl std::fmt::Display for ReaderError {
 }
 impl std::error::Error for ReaderError {}
 
-/// Read one complete element and its original Layout through the C Reader.
+/// Read one complete element and its original Layout through C `tlv_read_source_diag()`.
 /// The consumed byte count is `decoded.encoded().len()`; trailing input is unread.
+/// Empty input fails with [`Error::End`].
 pub fn read<'a>(
     data: &'a [u8],
     format: impl Into<FormatRef<'a>>,
 ) -> std::result::Result<crate::Decoded<'a>, ReaderError> {
-    read_once(Reader::with_format(data, format))
+    let format = format.into();
+    let mut decoded = MaybeUninit::<native::tlv_decoded_t>::uninit();
+    let mut consumed = 0;
+    // SAFETY: input and Format are borrowed for 'a; outputs are writable.
+    read_once(|diagnostic| unsafe {
+        let raw = decoded.as_mut_ptr();
+        native::tlv_read_source_diag(
+            data.as_ptr(),
+            data.len(),
+            format.raw(),
+            std::ptr::addr_of_mut!((*raw).element),
+            &mut consumed,
+            std::ptr::addr_of_mut!((*raw).source),
+            diagnostic,
+        )
+    })?;
+    // SAFETY: success initializes decoded; backing input/Format remains live for 'a.
+    unsafe { crate::Decoded::from_raw(decoded.assume_init()) }.map_err(ReaderError::from)
 }
 
 /// Read one complete element borrowing input and a Fixed Format for `'a`.
@@ -46,11 +64,70 @@ pub fn read_fixed<'a>(
     read(data, format)
 }
 
-fn read_once(mut reader: Reader<'_>) -> std::result::Result<crate::Decoded<'_>, ReaderError> {
-    reader.read_source().map_err(|error| ReaderError {
-        error,
-        diagnostic: reader.diagnostic.take().map(Box::new),
-    })
+/// Read one Element without source metadata through C `tlv_read_diag()`.
+/// Returns the Element and the consumed byte count; trailing input is unread.
+/// The Tag is copied, so the Format is borrowed only for the call.
+/// Empty input fails with [`Error::End`].
+///
+/// ```
+/// use opentlv::{read_element, Format};
+///
+/// let (element, consumed) = read_element(&[0x50, 1, 0xAA, 0x51, 0], Format::Ber).unwrap();
+/// assert_eq!((element.value(), consumed), (&[0xAA][..], 3));
+/// ```
+pub fn read_element<'a, 'f>(
+    data: &'a [u8],
+    format: impl Into<FormatRef<'f>>,
+) -> std::result::Result<(Element<'a>, usize), ReaderError> {
+    let format = format.into();
+    let mut element = MaybeUninit::<native::tlv_element_t>::uninit();
+    let mut consumed = 0;
+    // SAFETY: input and Format are live for the call; outputs are writable.
+    read_once(|diagnostic| unsafe {
+        native::tlv_read_diag(
+            data.as_ptr(),
+            data.len(),
+            format.raw(),
+            element.as_mut_ptr(),
+            &mut consumed,
+            diagnostic,
+        )
+    })?;
+    // SAFETY: success initializes element; its Value borrows the input for 'a,
+    // and the Tag is copied before the Format borrow ends.
+    let element = unsafe { Element::from_raw(&element.assume_init()) }?;
+    Ok((element, consumed))
+}
+
+fn read_once(
+    call: impl FnOnce(*mut native::tlv_reader_diagnostic_t) -> i32,
+) -> std::result::Result<(), ReaderError> {
+    let mut diagnostic = MaybeUninit::uninit();
+    // SAFETY: C initializes all diagnostic fields before the synchronous operation.
+    let (code, diagnostic) = unsafe {
+        native::tlv_reader_diagnostic_init(diagnostic.as_mut_ptr());
+        let code = call(diagnostic.as_mut_ptr());
+        (code, diagnostic.assume_init())
+    };
+    match Error::from_code(code) {
+        None => Ok(()),
+        Some(error) => Err(ReaderError {
+            error,
+            // SAFETY: diagnostic pointers still borrow the caller's live input or Format.
+            diagnostic: Some(Box::new(unsafe {
+                crate::ReaderDiagnostic::from_raw(&diagnostic)
+            })),
+        }),
+    }
+}
+
+impl From<Error> for ReaderError {
+    fn from(error: Error) -> Self {
+        ReaderError {
+            error,
+            diagnostic: None,
+        }
+    }
 }
 
 /// A sequential reader that parses TLV elements from a byte slice.
@@ -129,6 +206,30 @@ impl<'a> Reader<'a> {
     /// after an error.
     pub fn next_element(&mut self) -> Option<Result<Element<'a>>> {
         self.next()
+    }
+
+    /// Pulls the next Element through C `tlv_reader_next_diag()`, without
+    /// source metadata. Like [`Reader::read_source`], it remains callable after
+    /// any error; final exhaustion is [`Error::End`].
+    pub fn read_element(&mut self) -> Result<Element<'a>> {
+        let mut element = MaybeUninit::<native::tlv_element_t>::uninit();
+        let mut diagnostic = MaybeUninit::<native::tlv_reader_diagnostic_t>::uninit();
+        // SAFETY: C initializes all diagnostic fields, and success initializes the element.
+        let (code, diagnostic) = unsafe {
+            native::tlv_reader_diagnostic_init(diagnostic.as_mut_ptr());
+            let code = native::tlv_reader_next_diag(
+                &mut self.raw,
+                element.as_mut_ptr(),
+                diagnostic.as_mut_ptr(),
+            );
+            (code, diagnostic.assume_init())
+        };
+        // SAFETY: diagnostic pointers still borrow live input or Format storage.
+        self.diagnostic = (code != native::TLV_OK)
+            .then(|| unsafe { crate::ReaderDiagnostic::from_raw(&diagnostic) });
+        Error::check(code)?;
+        // SAFETY: success initialized element; backing input/Format remains live for 'a.
+        unsafe { Element::from_raw(&element.assume_init()) }
     }
 
     /// Creates a non-final reader. `NeedMoreData` permits `set_input` and retry.
@@ -251,7 +352,7 @@ impl<'a> Iterator for Reader<'a> {
         if self.failed || self.is_at_end() {
             return None;
         }
-        let result = self.read_source().map(|decoded| decoded.element);
+        let result = self.read_element();
         self.failed = matches!(&result, Err(error) if *error != Error::NeedMoreData);
         Some(result)
     }
