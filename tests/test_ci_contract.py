@@ -44,10 +44,13 @@ def record(configuration, tier):
         'runtime': {'rustc': '1.99.0-nightly' if sanitizer else configuration['toolchain'],
                     'host': SYSTEMS[configuration['system']], 'system': configuration['system']},
         'c_compiler': [{'id': 'GNU', 'version': '13.3.0'}],
-        'core': [{'mode': 'pinned-git', 'verified': False, 'repository': 'OpenTLV/opentlv',
+        'core': [{'mode': 'verified-source', 'verified': True, 'repository': 'OpenTLV/opentlv',
                   'version': pinned['version'], 'commit': pinned['commit'], 'dirty': False,
                   'locked_version': pinned['version'], 'locked_commit': pinned['commit'],
-                  'release_tag': None}],
+                  'release_tag': pinned['release_tag'],
+                  'release': {'mode': 'verified-source', 'release_tag': pinned['release_tag'],
+                              'release_id': 7, 'manifest_sha256': 'd' * 64,
+                              'signer_workflow': contract.SIGNER}}],
         'tests': {name: contract.expected_tests(name, sanitizer)
                   for name in configuration['features']}}
     checks = {
@@ -105,7 +108,7 @@ class Gate(unittest.TestCase):
             (('runtime', 'system'), 'Windows'), (('runtime', 'rustc'), '1.98.0'),
             (('runtime', 'host'), 'x86_64-pc-windows-msvc'), (('c_compiler',), []),
             (('core',), []), (('core', 0, 'commit'), 'f' * 40), (('core', 0, 'dirty'), True),
-            (('core', 0, 'mode'), 'local-source'), (('core', 0, 'verified'), True),
+            (('core', 0, 'mode'), 'local-source'), (('core', 0, 'verified'), False),
             (('core', 0, 'locked_commit'), 'f' * 40), (('core', 0, 'repository'), 'other/core'),
             (('tests', 'default', 'total'), 1), (('tests', 'none', 'targets', 'fixed_abi'), 0),
             (('tests', 'lldp'), {'total': 0, 'targets': {}}), (('tests', 'none'), KeyError),
@@ -169,11 +172,15 @@ class Gate(unittest.TestCase):
         with self.assertRaises(ValueError):
             contract.validate_records(records('main'), 'main', IDENTITY, DEFINITIONS, CHECKS)
 
-    def test_release_fails_with_current_null_lock(self):
+    def test_release_fails_with_null_lock(self):
         data = records('full')
         for item in data:
             item['require_release'] = True
-        with self.assertRaisesRegex(ValueError, 'published Core'):
+        null_lock = {**contract.lock(), 'release_tag': None}
+        original_read = contract.read
+        with mock.patch.object(contract, 'read', side_effect=lambda path: (
+                null_lock if path == contract.LOCK else original_read(path))), \
+                self.assertRaisesRegex(ValueError, 'published Core'):
             contract.validate_records(data, 'full', IDENTITY, DEFINITIONS, CHECKS, True)
         with self.assertRaisesRegex(ValueError, 'Full CI'):
             contract.validate_records(records(), 'pr', IDENTITY, DEFINITIONS, CHECKS, True)
@@ -181,7 +188,8 @@ class Gate(unittest.TestCase):
     def test_release_requires_attestation_even_after_lock_update(self):
         pinned = contract.lock()
         released = {**pinned, 'release_tag': 'v' + pinned['version']}
-        selected = {**records()[0]['core'][0], 'release_tag': released['release_tag']}
+        selected = {**records()[0]['core'][0], 'release_tag': released['release_tag'],
+                    'mode': 'pinned-git', 'verified': False}
         release = {'mode': 'verified-source', 'release_tag': released['release_tag'],
                    'release_id': 7, 'manifest_sha256': 'd' * 64, 'signer_workflow': contract.SIGNER}
         with mock.patch.object(contract, 'lock', lambda _=False: released):
@@ -200,7 +208,8 @@ class Gate(unittest.TestCase):
             output = Path(directory) / 'record.json'
             output.write_text('{"status": "success"}')
             args = argparse.Namespace(output=output, require_release=True, tier='full')
-            with self.assertRaisesRegex(ValueError, 'published Core'):
+            with mock.patch.object(ci, 'lock', side_effect=ValueError('published Core missing')), \
+                    self.assertRaisesRegex(ValueError, 'published Core'):
                 ci.build(args)
             self.assertFalse(output.exists())
 

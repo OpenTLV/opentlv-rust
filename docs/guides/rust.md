@@ -25,10 +25,11 @@ git clone https://github.com/OpenTLV/opentlv-rust.git
 opentlv = { path = "opentlv-rust/opentlv" }
 ```
 
-The build script of `opentlv-sys` fetches the OpenTLV Core commit pinned by
-this repository, builds the C library with CMake and links it, so you need
-Rust 1.82 or newer, CMake 3.16 or newer, a C99 compiler, Git and network
-access to GitHub for the first build. On Windows, use the MSVC Rust toolchain
+The build script of `opentlv-sys` authenticates the pinned Core v0.8.0 release
+and links its compatible static binary or builds the verified source with CMake.
+You need Rust 1.82 or newer, CMake 3.16 or newer, a C99 compiler, Git,
+Python 3.11 or newer, an authenticated GitHub CLI (`gh auth login`) and network
+access to GitHub. On Windows, use the MSVC Rust toolchain
 with Visual Studio. See [Build](../development/rust.md#build) for the Core
 dependency. To link a library you built yourself, set `OPENTLV_LIB_DIR` (and
 optionally `OPENTLV_LINK_KIND`); see

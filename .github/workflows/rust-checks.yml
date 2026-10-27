@@ -70,6 +70,12 @@ jobs:
           if [[ "$REQUIRE_RELEASE" == true ]]; then ci_command+=(--require-release); fi
           "${ci_command[@]}" 2>&1 | tee build/ci.log
       - uses: actions/upload-artifact@v4
+        if: inputs.tier == 'full' && matrix.id == 'linux-stable'
+        with:
+          name: rust-packages-${{ github.run_attempt }}
+          path: build/ci/target/package/*.crate
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: rust-build-${{ inputs.tier }}-${{ matrix.id }}-${{ github.run_attempt }}

@@ -103,7 +103,7 @@ def core_identity(selected):
 def compilers(work):
     found = set()
     for path in work.rglob("CMakeCCompiler.cmake"):
-        if "cmake-build" in path.parts:
+        if "cmake-build" in path.parts or "core-probe" in path.parts:
             text = path.read_text(encoding="utf-8")
             values = [re.search(rf'set\(CMAKE_C_COMPILER_{key} "([^"]*)"\)', text)
                       for key in ("ID", "VERSION")]

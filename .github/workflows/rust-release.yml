@@ -1,0 +1,108 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Marek Cingel
+name: Rust Release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Unused Rust tag matching Cargo and ci/release-notes.md (v0.1.0)
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+  attestations: read
+concurrency:
+  group: rust-release
+  cancel-in-progress: false
+env:
+  PYTHONDONTWRITEBYTECODE: '1'
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 -B scripts/release.py prepare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rust-request-${{ github.run_attempt }}
+          path: build/request.json
+          if-no-files-found: error
+  full:
+    needs: prepare
+    uses: ./.github/workflows/rust-full.yml
+    permissions:
+      contents: read
+      actions: read
+      attestations: read
+      security-events: write
+    with:
+      require_verified_core: true
+  assemble:
+    needs: [prepare, full]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: rust-request-${{ github.run_attempt }}
+          path: build/evidence
+      - uses: actions/download-artifact@v4
+        with:
+          name: rust-quality-full-${{ github.run_attempt }}
+          path: build/evidence
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rust-build-full-*-${{ github.run_attempt }}
+          path: build/evidence/builds
+      - uses: actions/download-artifact@v4
+        with:
+          name: rust-packages-${{ github.run_attempt }}
+          path: build/evidence/packages
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -B scripts/release.py assemble
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: build/release/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rust-release-${{ github.run_attempt }}
+          path: build/release/*
+          if-no-files-found: error
+  publish:
+    needs: [full, assemble]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+      attestations: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: rust-release-${{ github.run_attempt }}
+          path: build/release
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -B scripts/release.py publish
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rust-published-${{ github.run_attempt }}
+          path: build/published.json
+          if-no-files-found: error

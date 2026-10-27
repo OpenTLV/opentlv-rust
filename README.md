@@ -72,7 +72,8 @@ exclusions and limitations for the pinned Core.
 ## Building
 
 Requirements: Rust 1.82 or newer, CMake 3.16 or newer,
-a C99 compiler and Git. On Windows, use the MSVC Rust toolchain with Visual
+a C99 compiler, Git, Python 3.11 or newer and an authenticated GitHub CLI
+(`gh auth login`). On Windows, use the MSVC Rust toolchain with Visual
 Studio. The first build of each configuration downloads Core from GitHub.
 
 ```sh
@@ -101,9 +102,9 @@ Core:
 
 | Field | Value |
 | --- | --- |
-| `version` | `0.7.1` |
-| `commit` | `476f1fbecde6b056419e43c9a6cea4d1ca8df1cf` (`0.7.1-31-g476f1fbe`, the migration source commit) |
-| `release_tag` | `null`: no approved Core release with attested artifacts is locked yet |
+| `version` | `0.8.0` |
+| `commit` | `345c77acb29266036df5f27d04ce315bb61853cc` |
+| `release_tag` | `v0.8.0`: default builds require authenticated Core release artifacts |
 | `allow_verified_source` | `true` |
 
 The `opentlv-sys` build script selects Core before it runs any Core build
@@ -121,13 +122,13 @@ version, commit and Core components. Each build records its selection in
 `core-selection.json` in the `opentlv-sys` `OUT_DIR`
 (`target/<profile>/build/opentlv-sys-*/out/`).
 
-Core is built in `OUT_DIR` with CMake as before: as a Release static,
+When no compatible Verified Binary is available, Core is built in `OUT_DIR`
+with CMake as a Release static,
 position-independent library without C++, tests, examples or
-warnings-as-errors. Within an `OUT_DIR`, the clone and the Core build are
-reused; Core is rebuilt only when the lock, the selected Core sources or the
-build environment variables change. Cargo configurations with their own
-`OUT_DIR`, such as another profile or feature set, clone and build Core once
-each.
+warnings-as-errors. Cargo reuses a successful build until its inputs change.
+When the build script reruns, it authenticates release artifacts in a fresh
+attempt directory. Cargo configurations with their own `OUT_DIR`, such as
+another profile or feature set, resolve Core separately.
 
 `OPENTLV_LIB_DIR` and `OPENTLV_LINK_KIND` still link a prebuilt library.
 The build script still selects Core for its headers and test data, but does not

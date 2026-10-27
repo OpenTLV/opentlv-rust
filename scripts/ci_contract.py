@@ -90,7 +90,7 @@ def cargo_tests(output):
 
 def definition_hashes():
     listed = run("git", "ls-files", "--cached", "--others", "--exclude-standard", "--",
-                 "requirements-dev.txt", "Cargo.toml", "Cargo.lock", *CRATES, "ci", "scripts",
+                 "requirements-dev.txt", "CHANGELOG.md", "Cargo.toml", "Cargo.lock", *CRATES, "ci", "scripts",
                  "tests", ".github/workflows", capture=True).splitlines()
     paths = sorted({path for path in listed if (ROOT / path).is_file()})
     return {path: digest(ROOT / path) for path in paths}

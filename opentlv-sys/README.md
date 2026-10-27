@@ -15,17 +15,17 @@ package:
 
 | `opentlv-sys` | Core version | Core commit | Core release |
 | --- | --- | --- | --- |
-| 0.7.1 | 0.7.1 | `476f1fbecde6b056419e43c9a6cea4d1ca8df1cf` | none locked |
+| 0.1.0 | 0.8.0 | `345c77acb29266036df5f27d04ce315bb61853cc` | v0.8.0 |
 
-The package does not contain Core. While no Core release is locked, the build
-script clones `OpenTLV/opentlv` from GitHub into Cargo's `OUT_DIR`, checks out
-the pinned commit, verifies its identity and builds it with CMake as a static
-Release library. Once a release is locked, `core/verified_core.py` uses only
-its attested artifacts instead. After building, the build script checks that
+The package does not contain Core. `core/verified_core.py` authenticates the
+locked Core release artifacts, selects a compatible static binary or builds
+the verified source with CMake as a static Release library in Cargo's `OUT_DIR`.
+It never falls back to an unauthenticated Git checkout. The build script checks that
 Core's public headers report the pinned version, commit and components.
 
-Requirements: Rust 1.82 or newer, CMake 3.16 or newer, a C99 compiler and Git,
-plus network access to GitHub for the first build. On Windows, use the MSVC
+Requirements: Rust 1.82 or newer, CMake 3.16 or newer, a C99 compiler, Git,
+Python 3.11 or newer and an authenticated GitHub CLI (`gh auth login`),
+plus network access to GitHub. On Windows, use the MSVC
 Rust toolchain with Visual Studio.
 
 ## Build environment
