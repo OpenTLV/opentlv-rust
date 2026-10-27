@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Marek Cingel
-"""Check Python syntax, workflow structure and whitespace of the CI infrastructure."""
+"""Check Python syntax, workflow structure, whitespace and REUSE licensing metadata."""
 
 import ast
+import sys
 
 import yaml
 
@@ -24,6 +25,8 @@ def main():
                 "Invalid workflow: " + str(path))
     # Migration evidence is preserved byte-for-byte, including its whitespace.
     run("git", "diff", "--check", EMPTY_TREE, "--", ".", ":(exclude)docs/migration")
+    # Every file needs license and copyright metadata, from its header or REUSE.toml.
+    run(sys.executable, "-m", "reuse", "lint")
 
 
 if __name__ == "__main__":

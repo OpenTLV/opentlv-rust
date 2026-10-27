@@ -51,4 +51,6 @@ change of the pinned Core dependency is released as a new version. See
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). The build script builds or links the OpenTLV Core C library,
+also MIT licensed by Marek Cingel; keep the license notice when distributing
+binaries that contain it.

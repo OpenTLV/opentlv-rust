@@ -35,6 +35,8 @@ publication is separate post-migration work.
 | `opentlv-sys/core/` | Core dependency lock, selection module, release verifier and toolchain probe used by `build.rs` |
 | `opentlv/` | Safe Rust crate: sources, tests and eleven examples |
 | `opentlv-sys/README.md`, `opentlv/README.md`, `*/LICENSE` | Package readme and license text of each crate |
+| `LICENSE`, `LICENSES/`, `REUSE.toml` | MIT license, the license text for REUSE and the metadata of files without a header |
+| `.pre-commit-config.yaml`, `requirements-dev.txt` | Optional contributor hooks and the Python tools of the quality checks |
 | `.github/workflows/` | PR, Main and Full CI, source quality, CodeQL and the documentation portal notification |
 | `ci/matrix.json` | CI toolchains, platforms, feature sets and test inventory |
 | `scripts/ci.py` | Runs one CI configuration, or checks the evidence of all of them |
@@ -46,7 +48,7 @@ publication is separate post-migration work.
 | `docs/migration/` | Source inventory, original CI configuration and validation evidence |
 | `docs/quality-gates.md` | CI entry points, supported configurations, test ownership and evidence |
 | `docs/packaging.md` | Package identities, versioning, Core compatibility and crates.io prerequisites |
-| `docs/validation/` | Standalone build, CI, packaging and layout validation |
+| `docs/validation/` | Standalone build, CI, packaging, layout and licensing validation |
 | `scripts/verify_baseline.py` | Verifies the inventory against the pinned Core tree |
 | `scripts/verify_migration.py` | Verifies the imported files against the inventory and the pinned Core tree |
 
@@ -191,4 +193,22 @@ results and the [standalone build validation](docs/validation/standalone-build.m
 
 ## License
 
-[MIT](LICENSE)
+MIT; see [LICENSE](LICENSE). Marek Cingel holds copyright in his original
+contributions, including the bindings migrated from Core; other contributors
+retain copyright in theirs. OpenTLV is a GitHub organization, not a copyright
+holder. Sources carry SPDX headers, and [`REUSE.toml`](REUSE.toml) covers the
+files that cannot carry one, so every tracked file has REUSE metadata. Both
+crate archives include the MIT license text. `opentlv-sys` builds or links the
+MIT-licensed OpenTLV Core library; there are no other dependencies. See
+[licensing in packages](docs/packaging.md#licensing).
+
+## Community
+
+Contribution, conduct, security and support policies are shared across OpenTLV
+in [OpenTLV/.github](https://github.com/OpenTLV/.github); this repository has
+no local copies, so GitHub shows those defaults. The
+[development guide](docs/development/rust.md#contributing) adds the Rust build,
+test and licensing instructions. Report suspected vulnerabilities privately as
+described in the
+[security policy](https://github.com/OpenTLV/.github/blob/main/SECURITY.md),
+not in public issues.

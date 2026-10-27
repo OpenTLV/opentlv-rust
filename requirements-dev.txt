@@ -1,3 +1,4 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Marek Cingel
 PyYAML>=6,<7
+reuse[charset-normalizer]==6.2.0

@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Marek Cingel
+# Migration evidence is preserved byte-for-byte, including its whitespace.
+exclude: ^docs/migration/
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        types: [text]
+      - id: end-of-file-fixer
+        types: [text]
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-ast
+      - id: check-added-large-files
+        args: [--enforce-all]
+
+  # Lint only: annotating would add one author's notice to other contributors' files.
+  - repo: https://codeberg.org/fsfe/reuse-tool
+    rev: v6.2.0
+    hooks:
+      - id: reuse
+        additional_dependencies: ['reuse[charset-normalizer]==6.2.0']

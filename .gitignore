@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Marek Cingel
 /build/
 /target/
 __pycache__/

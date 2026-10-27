@@ -203,9 +203,11 @@ Rustdoc, `RUSTFLAGS=-D warnings`.
   `OPENTLV_CORE_SOURCE` is never accepted; `build.rs` also rejects it in CI.
 
 Source quality runs [`scripts/check_quality.py`](../scripts/check_quality.py)
-(Python syntax, workflow structure and whitespace of all files except the
-preserved migration evidence), the existing release-verifier tests, the CI and
-documentation notification regression tests with
+(Python syntax, workflow structure, whitespace of all files except the
+preserved migration evidence and `reuse lint`, which requires license and
+copyright metadata for every file from its SPDX header or `REUSE.toml`), the
+existing release-verifier tests, the CI, documentation notification and
+licensing regression tests with
 `python -m unittest discover -s tests`, and actionlint.
 CodeQL analyzes Rust and Python from source.
 
@@ -398,6 +400,7 @@ python -m pip install -r requirements-dev.txt
 python -B scripts/check_quality.py
 python -B -m unittest discover -s tests
 actionlint
+python -m pre_commit run --all-files    # optional, with pre-commit installed
 python -B scripts/ci.py matrix --tier full
 python -B scripts/ci.py build --tier full --configuration linux-stable \
   --work build/ci-full-linux --output build/full-linux-stable.json
