@@ -350,6 +350,36 @@ shared TLV semantics, the C API or Core components belong to
 [OpenTLV Core](https://github.com/OpenTLV/opentlv/issues); this repository then
 selects the Core revision that contains them.
 
+The shared
+[OpenTLV contribution guidelines](https://github.com/OpenTLV/.github/blob/main/CONTRIBUTING.md),
+[Code of Conduct](https://github.com/OpenTLV/.github/blob/main/CODE_OF_CONDUCT.md)
+and [support directory](https://github.com/OpenTLV/.github/blob/main/SUPPORT.md)
+apply; this guide adds the Rust build and test rules. Report suspected
+vulnerabilities privately through the repository's Security tab as described
+in the [security policy](https://github.com/OpenTLV/.github/blob/main/SECURITY.md),
+not in public issues.
+
+The bindings are MIT licensed. Marek Cingel holds copyright in his original
+contributions; other contributors retain copyright in theirs, since an MIT
+contribution does not assign copyright, and OpenTLV is a GitHub organization,
+not a copyright holder. Start new Rust sources by Marek Cingel with:
+
+<!-- REUSE-IgnoreStart -->
+```rust
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Marek Cingel
+```
+<!-- REUSE-IgnoreEnd -->
+
+Use `#` comments in TOML, Python, YAML and CMake files, and your own name and
+year for your own work; never rewrite an existing or third-party notice.
+Documentation and data files that cannot carry a header are listed by exact
+path in the repository's `REUSE.toml`; add new ones there. The migration
+evidence in `docs/migration/` and the C ABI probe imported from Core keep their
+original bytes and never receive headers. `scripts/check_quality.py` runs
+`reuse lint` over every file Git does not ignore; the optional `.pre-commit-config.yaml`
+runs the same lint and the whitespace, YAML, JSON and TOML checks.
+
 ## Linking a prebuilt library
 
 To link a library you built yourself, point `OPENTLV_LIB_DIR` at the directory

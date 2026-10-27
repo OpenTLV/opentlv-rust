@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Marek Cingel
+
+version = 1
+
+# Documentation, data and Cargo's generated lock file, which cannot carry
+# comments or would be changed by a header. Keep paths explicit so new sources
+# cannot silently bypass the source-header policy.
+[[annotations]]
+path = [
+    "CHANGELOG.md",
+    "Cargo.lock",
+    "README.md",
+    "ci/api-coverage.json",
+    "ci/matrix.json",
+    "docs/development/rust.md",
+    "docs/guides/rust.md",
+    "docs/migration.md",
+    "docs/packaging.md",
+    "docs/quality-gates.md",
+    "docs/validation/api-coverage.md",
+    "docs/validation/ci.json",
+    "docs/validation/ci.md",
+    "docs/validation/codecs-generator.md",
+    "docs/validation/layout.md",
+    "docs/validation/licensing.md",
+    "docs/validation/packaging.md",
+    "docs/validation/standalone-build.json",
+    "docs/validation/standalone-build.md",
+    "opentlv-sys/README.md",
+    "opentlv-sys/core/core-artifact.json",
+    "opentlv/README.md",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Marek Cingel"
+SPDX-License-Identifier = "MIT"
+
+# Migration evidence and the C ABI probe imported from Core. The source
+# inventory and regression tests require their original bytes, so they never
+# receive headers.
+[[annotations]]
+path = [
+    "docs/migration/import-validation.json",
+    "docs/migration/original-rust.yml",
+    "docs/migration/source-inventory.json",
+    "docs/migration/validation.json",
+    "docs/migration/windows-baseline.log",
+    "docs/migration/windows-imported.log",
+    "opentlv-sys/tests/abi_probe/CMakeLists.txt",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Marek Cingel"
+SPDX-License-Identifier = "MIT"

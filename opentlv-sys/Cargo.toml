@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Marek Cingel
+
 [package]
 name = "opentlv-sys"
 description = "Raw FFI bindings to the OpenTLV C API"

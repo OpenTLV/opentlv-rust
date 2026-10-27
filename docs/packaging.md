@@ -129,6 +129,26 @@ cargo package --workspace --allow-dirty
 from a local archive only for crates packaged in the same invocation. Use
 `--workspace`, as CI does.
 
+## Licensing
+
+Both crates declare the SPDX expression `MIT` in `license` and carry a
+`LICENSE` copy equal to the root `LICENSE`, which names Marek Cingel as the
+copyright holder. Packaged Rust, Python and CMake sources keep their SPDX
+headers. The repository's `REUSE.toml` and `LICENSES/` are not packaged: in an
+archive, the crate `LICENSE` covers the files without a header, which are the
+README, the Core lock, the C ABI probe's `CMakeLists.txt` imported from Core
+and Cargo's generated files. Neither crate has Cargo dependencies beyond `opentlv-sys`, and no
+third-party code is vendored.
+
+The archives contain no Core sources. `opentlv-sys` fetches the pinned Core
+commit at build time, or links a library selected with `OPENTLV_LIB_DIR`, and
+the resulting `tlv` library becomes part of the Rust binary. At the pinned
+commit, Core's `LICENSE` is byte-identical to this repository's and its
+library sources carry only `MIT` and `Copyright (c) 2026 Marek Cingel`
+notices. A binary distribution therefore needs that one MIT notice; recheck
+Core's licensing notices when changing the pinned commit, and add the license
+of every new bundled or linked dependency here and to the crate archives.
+
 ## Remaining crates.io prerequisites
 
 These are not part of this preparation and must be resolved before or at the
