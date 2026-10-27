@@ -202,7 +202,19 @@ fn build_from_source(core: &Selection) {
         Some(plain) => PathBuf::from(plain),
         None => core.source_dir.clone(),
     };
-    let build_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap()).join("cmake-build");
+    // A verified resolution extracts into a new attempt directory on every
+    // build-script run. CMake caches the absolute source path, so its build
+    // directory must belong to that same attempt, not the shared OUT_DIR.
+    let build_root = if core.mode == "verified-source" {
+        source_dir
+            .parent()
+            .and_then(Path::parent)
+            .expect("verified source must be inside its extraction attempt")
+            .to_path_buf()
+    } else {
+        PathBuf::from(env::var_os("OUT_DIR").unwrap())
+    };
+    let build_dir = build_root.join("cmake-build");
 
     for path in ["CMakeLists.txt", "cmake", "tlv"] {
         println!("cargo:rerun-if-changed={}", source_dir.join(path).display());

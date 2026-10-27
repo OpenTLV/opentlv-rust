@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Keep each Verified Source CMake build beside its extraction attempt instead of reusing one cache across fresh source paths. Repeated Cargo commands in the same `OUT_DIR` now compile the newly verified source without CMake's source-directory mismatch; a real build-script/CMake regression covers two successful resolutions followed by failed verification. (#33)
 - Name Marek Cingel instead of `OpenTLV` as the copyright holder in the repository `LICENSE` and the `LICENSE` copies packaged with `opentlv-sys` and `opentlv`, matching Core's `LICENSE` and the source headers; the MIT license text is unchanged. (#14)
 - Point the `FixedFormatConfig` Rustdoc link to Core's memory guide in `OpenTLV/opentlv` instead of the former `marekcingel/OpenTLV` monorepository. (#6)
 - Declare Rust 1.82, the oldest toolchain that compiles the safe crate, as `rust-version` instead of the never-working 1.70, and use `Option::is_none_or` where Clippy now suggests it; give `opentlv`'s `opentlv-sys` dependency a version so both crates can be packaged; repair three broken Rustdoc links in `codec.rs`. (#3)

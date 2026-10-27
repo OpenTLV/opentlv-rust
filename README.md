@@ -127,7 +127,9 @@ with CMake as a Release static,
 position-independent library without C++, tests, examples or
 warnings-as-errors. Cargo reuses a successful build until its inputs change.
 When the build script reruns, it authenticates release artifacts in a fresh
-attempt directory. Cargo configurations with their own `OUT_DIR`, such as
+attempt directory and compiles Verified Source in that attempt's own
+`cmake-build`, so CMake never reuses a cache bound to an earlier extraction.
+Cargo configurations with their own `OUT_DIR`, such as
 another profile or feature set, resolve Core separately.
 
 `OPENTLV_LIB_DIR` and `OPENTLV_LINK_KIND` still link a prebuilt library.

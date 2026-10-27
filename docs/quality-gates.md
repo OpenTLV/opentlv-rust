@@ -349,6 +349,15 @@ the locked release tag, a release ID, the manifest SHA-256 and the
 stop the build in `build.rs`; they never fall back to Git. Testing fixtures is
 not evidence that a real published Core attestation was consumed.
 
+Each Verified Source resolution has its own `cmake-build` directory beside
+the attempt's `source/` directory. Repeated Cargo commands in one `OUT_DIR`
+therefore cannot reuse a CMake cache pointing to a previous extraction.
+`tests/test_build_script.py` compiles the real build script with `rustc` and
+runs it twice with fresh resolver fixtures and a real CMake C library build,
+then checks that a verification failure removes selection evidence and stops
+before linking. This infrastructure test requires Rust, CMake and a C compiler;
+its fixture resolver does not authenticate release artifacts.
+
 The manual [Rust Release workflow](../.github/workflows/rust-release.yml)
 uses this mode, revalidates every Full record and publishes the exact Linux
 stable `.crate` files tested by Cargo packaging. It also requires successful

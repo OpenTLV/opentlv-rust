@@ -228,6 +228,17 @@ Full jobs, release attestations and publication still require the hosted
 release run on the merged commit. Local logs and the machine-readable result
 are under `build/issue33-*`; they are not committed release evidence.
 
+The subsequent [Full run 40559017343, attempt 1](https://github.com/OpenTLV/opentlv-rust/actions/runs/40559017343/attempts/1)
+on `df4faeb87c923a042944977eea5e96cf2f0017b5` failed all seven build
+configurations: a second Verified Source resolution changed the extracted
+source path while reusing the first CMake cache. The follow-up gives each
+resolution its own build directory. A regression reproduced the original
+failure and passed after the fix; the 101-test infrastructure suite, Clippy,
+rustfmt and source quality/REUSE passed locally. Two successive builds also
+passed with the actual Core v0.8.0 source archive and an offline acquisition
+fixture. These checks cover compilation and reruns, not online authentication
+or hosted acceptance; a new Full run on the fix commit is still required.
+
 ## Remaining crates.io prerequisites
 
 These are not part of this preparation and must be resolved before or at the
