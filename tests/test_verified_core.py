@@ -97,9 +97,15 @@ class Fixture(unittest.TestCase):
 
 
 class LockTest(Fixture):
-    def test_committed_lock_has_no_release(self):
+    def test_committed_lock_selects_core_080(self):
+        selected = verified.lock(CORE / 'core-artifact.json')
+        self.assertEqual(selected['release_tag'], 'v0.8.0')
+        self.assertEqual(selected['commit'], '345c77acb29266036df5f27d04ce315bb61853cc')
+
+    def test_null_lock_cannot_verify_a_release(self):
+        self.lock_path.write_text(json.dumps({**PIN, 'release_tag': None}), encoding='utf-8')
         with self.assertRaisesRegex(ValueError, 'published Core'):
-            verified.lock(CORE / 'core-artifact.json')
+            verified.lock(self.lock_path)
 
     def test_release_lock(self):
         self.assertEqual(verified.lock(self.lock_path)['release_tag'], 'v' + VERSION)

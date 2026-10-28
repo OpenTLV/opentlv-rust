@@ -240,7 +240,8 @@ The DOL component is not bound yet.
 
 ## Build
 
-Requirements: Rust 1.82 or newer, CMake 3.16 or newer, a C99 compiler and Git.
+Requirements: Rust 1.82 or newer, CMake 3.16 or newer, a C99 compiler, Git,
+Python 3.11 or newer and an authenticated GitHub CLI (`gh auth login`).
 On Windows use the MSVC Rust toolchain with Visual Studio. The first build of
 each configuration downloads Core from GitHub.
 
@@ -251,10 +252,10 @@ cargo build --workspace
 cargo test --workspace
 ```
 
-By default the build script of `opentlv-sys` clones OpenTLV Core into Cargo's
-`OUT_DIR`, checks out the commit locked in
+By default the build script of `opentlv-sys` authenticates the Core release locked in
 [`opentlv-sys/core/core-artifact.json`](../../opentlv-sys/core/core-artifact.json)
-and verifies its identity. It builds Core with CMake as a static,
+and records its identity in Cargo's `OUT_DIR`. It selects a compatible verified
+static binary or builds the verified source with CMake as a static,
 position-independent Release library and links it. The C++ layer, CLI, tests
 and examples of Core are not built. After building, it checks that Core's
 public `tlv/version.h` and `tlv/config.h` report the locked version, commit and
@@ -305,8 +306,8 @@ for development only and are not release evidence.
 ## Versioning
 
 `opentlv` and `opentlv-sys` share the Cargo workspace version
-(`version.workspace = true` in each crate's `Cargo.toml`). It started from the
-`0.7.1` migration baseline and is independent of the OpenTLV C library's
+(`version.workspace = true` in each crate's `Cargo.toml`). The first standalone
+release is `0.1.0`; `0.7.1` was an unpublished migration baseline. It is independent of the OpenTLV C library's
 version; it is not derived from Core's Git tags. `opentlv` requires exactly the
 `opentlv-sys` version it is released with, and each `opentlv-sys` version
 records its compatible Core dependency. `opentlv::version()` is a separate

@@ -4,10 +4,15 @@ This is the reviewed baseline of the generic Core surface that the safe
 `opentlv` crate supports. It was recorded for issue
 [#23](https://github.com/OpenTLV/opentlv-rust/issues/23), which closes the
 [coverage epic #18](https://github.com/OpenTLV/opentlv-rust/issues/18), against
-Core `0.7.1`, commit `476f1fbecde6b056419e43c9a6cea4d1ca8df1cf`, as pinned by
-[`core-artifact.json`](../../opentlv-sys/core/core-artifact.json). The
+Core `0.7.1`, commit `476f1fbecde6b056419e43c9a6cea4d1ca8df1cf`. The
 comparison baseline is Rust commit `01c1c977ec9e6be7aeaadd8d5d0e11ddd10d7b63`,
 `main` before this issue's changes.
+
+For release preparation #33, the baseline was rechecked against Core `v0.8.0`
+at `345c77acb29266036df5f27d04ce315bb61853cc`, now pinned by
+[`core-artifact.json`](../../opentlv-sys/core/core-artifact.json). The pin diff
+has zero added and zero removed public symbols. Coverage and all 82 reviewed
+exclusions remain unchanged; no new facade APIs are needed for this release.
 
 Core coverage is **215/215 (100.0 %)** with 82 reviewed exclusions, up from
 214/216 (99.1 %) with 81. Builtins stay at **34/291 (11.7 %)**. Builtins parity

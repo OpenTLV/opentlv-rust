@@ -110,9 +110,9 @@ fn lock_for(commit: &str) -> Lock {
 #[test]
 fn committed_lock_pins_an_exact_core_commit() {
     let lock = select::parse_lock(LOCK).unwrap();
-    assert_eq!(lock.commit, "476f1fbecde6b056419e43c9a6cea4d1ca8df1cf");
-    assert_eq!(lock.version, "0.7.1");
-    assert_eq!(lock.release_tag, None);
+    assert_eq!(lock.commit, "345c77acb29266036df5f27d04ce315bb61853cc");
+    assert_eq!(lock.version, "0.8.0");
+    assert_eq!(lock.release_tag.as_deref(), Some("v0.8.0"));
     assert!(lock.allow_verified_source);
 }
 
@@ -396,8 +396,8 @@ fn evidence_records_selection_and_lock() {
         "\"verified\": false",
         "\"dirty\": true",
         "\"version\": \"0.8.0\"",
-        "\"locked_commit\": \"476f1fbecde6b056419e43c9a6cea4d1ca8df1cf\"",
-        "\"release_tag\": null",
+        "\"locked_commit\": \"345c77acb29266036df5f27d04ce315bb61853cc\"",
+        "\"release_tag\": \"v0.8.0\"",
         "\"source_dir\": \"C:\\\\core \\\"dev\\\"\"",
         "\"lib_dir\": null",
     ] {

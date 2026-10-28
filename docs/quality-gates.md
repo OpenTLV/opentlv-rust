@@ -75,9 +75,9 @@ artifact expiry, rerun the producer. A 204 response means GitHub accepted the
 event; confirm the Docs receiver run and source-update PR separately. Local
 mocked HTTP tests do not establish hosted delivery or publication.
 
-Independent Rust documentation releases are not configured: this repository
-has no release workflow yet, so no release receipt is sent and the portal
-shows the manuals of its selected source pin.
+Independent Rust documentation releases are not configured: the Rust release
+workflow publishes crate assets without sending a Docs release receipt.
+The portal continues to show the manuals of its selected source pin.
 
 ## Supported configurations
 
@@ -197,9 +197,9 @@ Rustdoc, `RUSTFLAGS=-D warnings`.
 - **Core provenance.** Every `core-selection.json` written by an
   `opentlv-sys` build script in the work directory is checked against the
   lock: repository, commit, version, release tag and a clean tree. With the
-  current `release_tag: null` this requires `pinned-git` with
-  `verified: false`, which is exact source identity, not an authenticated Core
-  release. Core must have been resolved inside the work directory, so a local
+  current `release_tag: v0.8.0` this requires `verified-source` or
+  `verified-binary`, with authenticated Core release artifacts.
+  Core must have been resolved inside the work directory, so a local
   `OPENTLV_CORE_SOURCE` is never accepted; `build.rs` also rejects it in CI.
 
 Source quality runs [`scripts/check_quality.py`](../scripts/check_quality.py)
@@ -340,14 +340,30 @@ jobs:
       require_verified_core: true
 ```
 
-That mode requires Full CI and rejects the current null release lock before
-building. Once an approved release is locked, every Cargo command runs with
+That mode requires Full CI and rejects any null release lock before
+building. Core v0.8.0 is locked; every Cargo command runs with
 `OPENTLV_REQUIRE_VERIFIED_CORE=1`. Each selection must then be
 `verified-binary` or `verified-source`, and its `verification.json` must name
 the locked release tag, a release ID, the manifest SHA-256 and the
 `core-release.yml` signer. Failed attestations, checksums or producer evidence
 stop the build in `build.rs`; they never fall back to Git. Testing fixtures is
 not evidence that a real published Core attestation was consumed.
+
+Each Verified Source resolution has its own `cmake-build` directory beside
+the attempt's `source/` directory. Repeated Cargo commands in one `OUT_DIR`
+therefore cannot reuse a CMake cache pointing to a previous extraction.
+`tests/test_build_script.py` compiles the real build script with `rustc` and
+runs it twice with fresh resolver fixtures and a real CMake C library build,
+then checks that a verification failure removes selection evidence and stops
+before linking. This infrastructure test requires Rust, CMake and a C compiler;
+its fixture resolver does not authenticate release artifacts.
+
+The manual [Rust Release workflow](../.github/workflows/rust-release.yml)
+uses this mode, revalidates every Full record and publishes the exact Linux
+stable `.crate` files tested by Cargo packaging. It also requires successful
+Main CI on the dispatch commit. See the [release procedure](packaging.md#github-release).
+The compiler evidence includes the verified-binary toolchain probe, even
+when a compatible binary means that no Core source compilation is needed.
 
 ## Evidence and required check
 

@@ -4,11 +4,11 @@ version = 3
 
 [[package]]
 name = "opentlv"
-version = "0.7.1"
+version = "0.1.0"
 dependencies = [
  "opentlv-sys",
 ]
 
 [[package]]
 name = "opentlv-sys"
-version = "0.7.1"
+version = "0.1.0"

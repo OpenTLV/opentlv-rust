@@ -39,9 +39,11 @@ opentlv = { path = "opentlv-rust/opentlv" }
 
 ## Build requirements
 
-Rust 1.82 or newer, CMake 3.16 or newer, a C99 compiler and Git. On Windows,
-use the MSVC Rust toolchain with Visual Studio. By default `opentlv-sys` clones
-the pinned OpenTLV Core commit from GitHub and builds it as a static library;
+Rust 1.82 or newer, CMake 3.16 or newer, a C99 compiler, Git, Python 3.11 or newer
+and an authenticated GitHub CLI (`gh auth login`). On Windows,
+use the MSVC Rust toolchain with Visual Studio. By default `opentlv-sys` verifies
+the pinned Core v0.8.0 release artifacts and links a compatible static binary
+or builds the verified source;
 see its README for the Core dependency and for linking a prebuilt library.
 
 ## Cargo features

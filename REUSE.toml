@@ -13,6 +13,7 @@ path = [
     "README.md",
     "ci/api-coverage.json",
     "ci/matrix.json",
+    "ci/release-notes.md",
     "docs/development/rust.md",
     "docs/guides/rust.md",
     "docs/migration.md",
