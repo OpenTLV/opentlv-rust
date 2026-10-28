@@ -155,7 +155,9 @@ of every new bundled or linked dependency here and to the crate archives.
 
 The manual `Rust Release` workflow accepts an unused `vMAJOR.MINOR.PATCH` tag
 matching both Cargo manifests, `Cargo.lock` and `ci/release-notes.md`.
-Changes stay under `Unreleased` in the changelog during preparation; the
+Changes stay under `Unreleased` during development; close the changelog under
+the matching version without the tag's `v` prefix and the release date
+before dispatching the release (for example, `## [0.1.0] - 2026-10-28`). The
 versioned release notes are the publication text and are included in the
 hashed CI definitions. No crates.io credentials or uploads are involved.
 
