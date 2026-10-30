@@ -15,7 +15,7 @@ TIERS = ("pr", "main", "full")
 POLICY = ROOT / "ci/matrix.json"
 LOCK = ROOT / "opentlv-sys/core/core-artifact.json"
 # Optional per-configuration checks; build and Core provenance always run.
-CHECKS = ("smoke", "lint", "docs", "examples", "query", "package", "linking", "sanitizer")
+CHECKS = ("smoke", "lint", "docs", "examples", "query", "package", "consumer", "linking", "sanitizer")
 CRATES = ("opentlv-sys", "opentlv")
 SYSTEMS = {"Linux": "-linux-", "Windows": "-windows-", "Darwin": "-apple-darwin"}
 HEX = re.compile(r"[0-9a-f]{64}")
@@ -44,7 +44,7 @@ def matrix(tier):
     result = []
     for platform in data["platforms"]:
         result.append(configuration(platform, "stable", list(data["features"]),
-                                    ["lint", "docs", "examples", "query", "package", "linking"]))
+                                    ["lint", "docs", "examples", "query", "package", "consumer", "linking"]))
         result.append(configuration(platform, "msrv", ["default", "none"], []))
     result.append(configuration(linux, "sanitizer", ["default"], ["sanitizer"]))
     return result
@@ -210,6 +210,13 @@ def validate_checks(record, configuration, data):
         elif check == "package":
             require(set(value) == set(CRATES) and all(HEX.fullmatch(str(item)) for item in value.values()),
                     "Missing crate package digests")
+        elif check == "consumer":
+            # Every consumer must have used the exact archives the package check recorded.
+            accepted = [{"packages": record["package"], "core": lock()["version"], "selection": mode}
+                        for mode in ("verified-source", "verified-binary")]
+            require(set(value) == set(data["features"])
+                    and all(item in accepted for item in value.values()),
+                    "Incomplete registry consumer builds")
         elif check == "linking":
             dylib = ("unsupported" if configuration["system"] == "Windows"
                      else {"tests": default, "quick_start": True})

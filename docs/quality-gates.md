@@ -10,7 +10,7 @@ only Rust CI.
 | --- | --- | --- |
 | `rust-pr.yml` | Pull request to `main` | Linux with pinned stable Rust: rustfmt, Clippy, build, the default and reduced-feature test suites (including the C ABI probe), examples, the shared Query corpus, Rustdoc, Core provenance, infrastructure regressions, CodeQL and Core API completeness |
 | `rust-main.yml` | Push to `main` | Linux with pinned stable Rust: workspace build, `quick_start` smoke and Core provenance, then documentation change detection |
-| `rust-full.yml` | Manual dispatch or `workflow_call` | All seven configurations below, Cargo packaging, prebuilt static and shared linking, AddressSanitizer, source quality, CodeQL and Core API completeness |
+| `rust-full.yml` | Manual dispatch or `workflow_call` | All seven configurations below, Cargo packaging, registry consumer builds, prebuilt static and shared linking, AddressSanitizer, source quality, CodeQL and Core API completeness |
 | `docs-notify.yml` | Successful `Rust Main CI` on `main` | [Documentation portal notification](#documentation-portal-notifications) when documentation inputs changed |
 
 PR has no path filters, so a documentation-only pull request still produces its
@@ -87,14 +87,15 @@ evidence verifier.
 
 | Configuration | Runner | Toolchain | Feature sets | Additional checks |
 | --- | --- | --- | --- | --- |
-| `linux-stable` | Ubuntu 24.04 | 1.99.1 | all five | rustfmt, Clippy, Rustdoc, examples, Query corpus, packaging, linking |
+| `linux-stable` | Ubuntu 24.04 | 1.99.1 | all five | rustfmt, Clippy, Rustdoc, examples, Query corpus, packaging, registry consumers, linking |
 | `windows-stable` | Windows latest, MSVC | 1.99.1 | all five | as Linux; shared linking unsupported |
 | `macos-stable` | macOS latest | 1.99.1 | all five | as Linux |
 | `linux-msrv`, `windows-msrv`, `macos-msrv` | as above | 1.82.0 | `default`, `none` | |
 | `linux-sanitizer` | Ubuntu 24.04, Clang 18 | `nightly-2026-10-21` | `default` | AddressSanitizer and LeakSanitizer |
 
 PR runs `linux-stable` with the `default` and `none` feature sets and without
-packaging or linking. Main runs only the `linux-stable` smoke.
+packaging, registry consumers or linking. Main runs only the `linux-stable`
+smoke.
 
 - **Toolchains.** Stable is pinned to the exact release, so new Clippy lints or
   compiler warnings arrive through a reviewed update of the matrix, not a
@@ -174,9 +175,21 @@ Rustdoc, `RUSTFLAGS=-D warnings`.
   commit. Each archive's `LICENSE` must equal the repository license, and its
   normalized `Cargo.toml` must keep the [package identity](packaging.md)
   without a dependency `path`, with `opentlv` requiring exactly the
-  `opentlv-sys` version. The archive SHA-256 digests are recorded.
+  `opentlv-sys` version. The `opentlv-sys` archive must contain `build.rs` and
+  the Core selection files in `core/`, and `opentlv` its `build.rs`. The archive
+  SHA-256 digests are recorded.
   Publication is separate post-migration work; the dependency on `opentlv-sys`
   now also states its version so that `opentlv` can be packaged at all.
+- **Registry consumers.** [`scripts/registry_consumer.py`](../scripts/registry_consumer.py)
+  serves the two archives from a local Cargo registry that replaces crates.io.
+  For each feature set, a new project outside the workspace depends on
+  `opentlv = "=<version>"`, and Cargo resolves it offline and unpacks the archives
+  into a Cargo home of its own. `Cargo.lock` must name crates.io as the source and
+  the archive digests as checksums. The consumer uses the Rust API of its features,
+  runs, and must link the Core version locked in the archive. Each consumer's Core
+  selection passes the Core provenance check below. The
+  [registry build validation](validation/registry-builds.md) records the results
+  and what this does not cover.
 - **Native linking.** Core from the selected tree is built once as a static
   and once as a shared library, with the options of `build.rs`. The default
   test suite and `quick_start` then run against each through `OPENTLV_LIB_DIR`

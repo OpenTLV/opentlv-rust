@@ -57,6 +57,9 @@ def record(configuration, tier):
         'smoke': True, 'lint': True, 'docs': True, 'examples': contract.policy()['examples'],
         'query': contract.policy()['query'],
         'package': {crate: 'c' * 64 for crate in contract.CRATES},
+        'consumer': {name: {'packages': {crate: 'c' * 64 for crate in contract.CRATES},
+                            'core': pinned['version'], 'selection': 'verified-source'}
+                     for name in contract.policy()['features']},
         'linking': {'static': {'tests': default, 'quick_start': True},
                     'dylib': 'unsupported' if configuration['system'] == 'Windows'
                     else {'tests': default, 'quick_start': True}},
@@ -128,6 +131,10 @@ class Gate(unittest.TestCase):
         by_id = {item['configuration']['id']: index for index, item in enumerate(records('full'))}
         cases = [
             ('linux-stable', ('package', 'opentlv'), 'bad'),
+            ('linux-stable', ('consumer', 'nfc'), None),
+            ('linux-stable', ('consumer', 'none', 'core'), '0.0.0'),
+            ('linux-stable', ('consumer', 'lldp', 'selection'), 'local-source'),
+            ('windows-stable', ('consumer', 'default', 'packages', 'opentlv'), 'd' * 64),
             ('linux-stable', ('linking', 'static', 'tests'), 1),
             ('linux-stable', ('linking', 'dylib'), 'unsupported'),
             ('windows-stable', ('linking', 'dylib'), {'tests': 1, 'quick_start': True}),

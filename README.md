@@ -40,6 +40,7 @@ publication is separate post-migration work.
 | `.github/workflows/` | PR, Main and Full CI, source quality, CodeQL and the documentation portal notification |
 | `ci/matrix.json` | CI toolchains, platforms, feature sets and test inventory |
 | `scripts/ci.py` | Runs one CI configuration, or checks the evidence of all of them |
+| `scripts/registry_consumer.py` | Builds isolated consumers of the `.crate` archives from a local Cargo registry |
 | `scripts/docs_notification.py` | Records documentation changes for the portal notification |
 | `tests/` | Tests for the release verifier, the CI infrastructure and the documentation notification |
 | `docs/guides/rust.md` | Rust user guide |
@@ -48,7 +49,7 @@ publication is separate post-migration work.
 | `docs/migration/` | Source inventory, original CI configuration and validation evidence |
 | `docs/quality-gates.md` | CI entry points, supported configurations, test ownership and evidence |
 | `docs/packaging.md` | Package identities, versioning, Core compatibility and crates.io prerequisites |
-| `docs/validation/` | Standalone build, CI, packaging, crates.io identity, layout and licensing validation |
+| `docs/validation/` | Standalone build, CI, packaging, crates.io identity, registry build, layout and licensing validation |
 | `scripts/verify_baseline.py` | Verifies the inventory against the pinned Core tree |
 | `scripts/verify_migration.py` | Verifies the imported files against the inventory and the pinned Core tree |
 
@@ -74,7 +75,10 @@ exclusions and limitations for the pinned Core.
 Requirements: Rust 1.82 or newer, CMake 3.16 or newer,
 a C99 compiler, Git, Python 3.11 or newer and an authenticated GitHub CLI
 (`gh auth login`). On Windows, use the MSVC Rust toolchain with Visual
-Studio. The first build of each configuration downloads Core from GitHub.
+Studio, and keep the Cargo target directory at 49 characters or fewer, 47 with
+`--release`, or set a short `CARGO_TARGET_DIR`. The first build of each
+configuration downloads Core from GitHub. Core is built for the host, so cross
+compilation is not supported.
 
 ```sh
 cargo build --workspace
