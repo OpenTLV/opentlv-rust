@@ -120,6 +120,20 @@ the manifests, the shared version, the unchanged features against the
 migration baseline, the license copies and the Core compatibility table
 without building.
 
+The `consumer` check then builds a new project against those exact archives for
+each feature set, through a local Cargo registry that replaces crates.io; see the
+[quality gates](quality-gates.md#checks) and the
+[registry build validation](validation/registry-builds.md). To run it on any two
+archives, for example those of a release:
+
+```sh
+python -B scripts/registry_consumer.py --packages <directory with both .crate files> \
+  --work build/consumers --output build/consumers.json
+```
+
+The target directories are `<work>/<n>`, so on Windows `--work` must fit the
+[path limit](#remaining-cratesio-prerequisites).
+
 To inspect the packages locally, from the repository root:
 
 ```sh
@@ -261,10 +275,20 @@ the identity and archive checks of `v0.1.0`:
 - **Order.** `opentlv-sys` must be published before `opentlv`, whose exact
   requirement must resolve from the registry.
 - **Core availability.** A build needs CMake, a C99 compiler, Python 3.11,
-  an authenticated GitHub CLI and network access to GitHub. The locked
+  an authenticated GitHub CLI and network access to GitHub, even when
+  `OPENTLV_LIB_DIR` links a prebuilt library. The locked
   Core v0.8.0 release assets and attestations must remain available. A
   compatible Verified Binary avoids compiling Core; otherwise the verified
-  source is built locally.
+  source is built locally. The
+  [registry build validation](validation/registry-builds.md#consumer-requirements)
+  shows how each requirement fails, and that a clean machine cannot build the
+  crates; this needs a decision before publishing.
+- **Windows paths.** With the Visual Studio generator, the Cargo target directory
+  can have at most 49 characters, or 47 with `--release`. A short
+  `CARGO_TARGET_DIR` works around it; a deep project otherwise fails with an
+  MSBuild error.
+- **Targets.** `build.rs` gives CMake no target, so cross compilation is not
+  supported.
 - **docs.rs.** docs.rs builds without network access, so the default build
   script cannot fetch Core there; an offline build of the released archive
   fails. Rendering the documentation on docs.rs needs a documentation-only

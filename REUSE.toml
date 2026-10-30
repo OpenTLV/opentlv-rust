@@ -27,6 +27,7 @@ path = [
     "docs/validation/layout.md",
     "docs/validation/licensing.md",
     "docs/validation/packaging.md",
+    "docs/validation/registry-builds.md",
     "docs/validation/standalone-build.json",
     "docs/validation/standalone-build.md",
     "opentlv-sys/README.md",

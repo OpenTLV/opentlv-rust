@@ -11,7 +11,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 import ci  # noqa: E402
 from ci_contract import CRATES, REPOSITORY  # noqa: E402
-from ci_support import ROOT, read  # noqa: E402
+from ci_support import ROOT, read, run  # noqa: E402
 
 INHERITED = ('version', 'edition', 'rust-version', 'license', 'repository', 'keywords')
 
@@ -89,6 +89,31 @@ class Packaging(unittest.TestCase):
                f"{lock['release_tag'] or 'none locked'} |")
         for path in (ROOT / 'docs/packaging.md', ROOT / 'opentlv-sys/README.md'):
             self.assertIn(row, path.read_text(encoding='utf-8'), path)
+
+
+class PackagedFiles(unittest.TestCase):
+    """The build files that a registry build of each archive needs."""
+
+    def test_build_files_are_tracked_and_used(self):
+        tracked = {crate: set(run('git', 'ls-files', '--', crate, capture=True).splitlines())
+                   for crate in CRATES}
+        for crate, names in ci.BUILD_FILES.items():
+            self.assertLessEqual({f'{crate}/{name}' for name in names}, tracked[crate])
+        build = (ROOT / 'opentlv-sys/build.rs').read_text(encoding='utf-8')
+        for name in ci.BUILD_FILES['opentlv-sys'] - {'build.rs', 'core/probe/CMakeLists.txt'}:
+            self.assertIn(name, build)
+        self.assertIn('core/probe', build)
+
+    def test_rejects_missing_or_unexpected_files(self):
+        for crate, names in ci.BUILD_FILES.items():
+            ci.packaged_files(crate, set(names), set(names))
+            for name in names:
+                with self.subTest(crate=crate, name=name):
+                    # The tracked list can lose a file too; the build files stay required.
+                    with self.assertRaisesRegex(ValueError, 'build files'):
+                        ci.packaged_files(crate, names - {name}, names - {name})
+            with self.assertRaisesRegex(ValueError, 'tracked sources'):
+                ci.packaged_files(crate, names | {'extra'}, set(names))
 
 
 class PackagedManifest(unittest.TestCase):

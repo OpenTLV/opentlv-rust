@@ -104,6 +104,8 @@ class Payload(unittest.TestCase):
                     path = packages / f'{crate}-0.1.0.crate'
                     path.write_bytes((crate + ' tested bytes').encode())
                     record['package'][crate] = digest(path)
+                for consumer in record['consumer'].values():
+                    consumer['packages'] = record['package']
             write(self.evidence / 'builds' / record['configuration']['id'] / 'record.json', record)
         self.quality = release.validate_records(self.data, 'full', IDENTITY, DEFINITIONS, CHECKS, True)
         write(self.evidence / 'quality.json', self.quality)

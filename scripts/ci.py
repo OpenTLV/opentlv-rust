@@ -18,6 +18,7 @@ from ci_support import ROOT, digest, read, require, run, stream, write
 from ci_contract import (CRATES, REPOSITORY, TIERS, cargo_tests, definition_hashes,
                          expected_tests, identity, lock, matrix, policy, validate_dependency,
                          validate_records)
+from registry_consumer import consumers
 
 # Variables that select or replace Core; each check sets the ones it needs.
 CORE_OVERRIDES = ("OPENTLV_LIB_DIR", "OPENTLV_LINK_KIND", "OPENTLV_CORE_SOURCE",
@@ -32,6 +33,12 @@ CORE_OPTIONS = ("-DOPENTLV_READER=ON", "-DOPENTLV_WRITER=ON", "-DOPENTLV_QUERY=O
                 "-DOPENTLV_WARNINGS_AS_ERRORS=OFF")
 # Files Cargo adds to every package besides the tracked crate sources.
 GENERATED = {".cargo_vcs_info.json", "Cargo.toml", "Cargo.toml.orig", "Cargo.lock"}
+# Without these a registry build cannot select and authenticate Core.
+BUILD_FILES = {
+    "opentlv-sys": {"build.rs", "core/core-artifact.json", "core/select.rs", "core/verified_core.py",
+                    "core/probe/CMakeLists.txt"},
+    "opentlv": {"build.rs"},
+}
 # What crates.io shows and consumers resolve; a published version cannot be corrected.
 REGISTRY_SHARED = {"edition": "2021", "rust-version": "1.82", "build": "build.rs", "publish": None,
                    "keywords": ["tlv", "ber", "asn1", "emv", "parser"]}
@@ -189,6 +196,12 @@ def packaged_manifest(crate, version, manifest):
             f"Wrong packaged {crate} dependencies")
 
 
+def packaged_files(crate, names, expected):
+    """Check the files of an archive; the build files are required even if untracked."""
+    require(BUILD_FILES[crate] <= names, f"Packaged {crate} lacks its build files")
+    require(names == expected, f"Packaged {crate} files differ from its tracked sources")
+
+
 def package(cargo, record):
     arguments = ["package", "--workspace", "--locked"]
     if record["identity"]["dirty"]:
@@ -211,8 +224,7 @@ def package(cargo, record):
             members = archive.getmembers()
             require(all(member.isfile() and member.name.startswith(prefix) for member in members),
                     "Unexpected crate archive entry")
-            require({member.name.removeprefix(prefix) for member in members} == expected,
-                    f"Packaged {crate} files differ from its tracked sources")
+            packaged_files(crate, {member.name.removeprefix(prefix) for member in members}, expected)
             vcs = json.load(archive.extractfile(prefix + ".cargo_vcs_info.json"))
             manifest = tomllib.load(archive.extractfile(prefix + "Cargo.toml"))
             require(archive.extractfile(prefix + "LICENSE").read() == (ROOT / "LICENSE").read_bytes(),
@@ -316,6 +328,9 @@ def build(args):
         record["docs"] = True
     if "package" in checks:
         record["package"] = package(cargo, record)
+    if "consumer" in checks:
+        # Short: MSBuild's path limit also binds the hosted Windows work directory.
+        record["consumer"] = consumers(work / "target/package", work / "c", cargo.env)
     if "linking" in checks:
         record["linking"] = linking(cargo, source, configuration)
     if "sanitizer" in checks:

@@ -30,7 +30,10 @@ and links its compatible static binary or builds the verified source with CMake.
 You need Rust 1.82 or newer, CMake 3.16 or newer, a C99 compiler, Git,
 Python 3.11 or newer, an authenticated GitHub CLI (`gh auth login`) and network
 access to GitHub. On Windows, use the MSVC Rust toolchain
-with Visual Studio. See [Build](../development/rust.md#build) for the Core
+with Visual Studio, and keep the Cargo target directory at 49 characters or
+fewer, 47 with `--release`, or set a short `CARGO_TARGET_DIR`; longer paths fail
+in MSBuild. Core is built for the host, so cross compilation is not supported.
+See [Build](../development/rust.md#build) for the Core
 dependency. To link a library you built yourself, set `OPENTLV_LIB_DIR` (and
 optionally `OPENTLV_LINK_KIND`); see
 [Linking a prebuilt library](../development/rust.md#linking-a-prebuilt-library).
