@@ -32,6 +32,20 @@ CORE_OPTIONS = ("-DOPENTLV_READER=ON", "-DOPENTLV_WRITER=ON", "-DOPENTLV_QUERY=O
                 "-DOPENTLV_WARNINGS_AS_ERRORS=OFF")
 # Files Cargo adds to every package besides the tracked crate sources.
 GENERATED = {".cargo_vcs_info.json", "Cargo.toml", "Cargo.toml.orig", "Cargo.lock"}
+# What crates.io shows and consumers resolve; a published version cannot be corrected.
+REGISTRY_SHARED = {"edition": "2021", "rust-version": "1.82", "build": "build.rs", "publish": None,
+                   "keywords": ["tlv", "ber", "asn1", "emv", "parser"]}
+REGISTRY_CRATES = {
+    "opentlv-sys": {
+        "description": "Raw FFI bindings to the OpenTLV C API", "links": "tlv",
+        "categories": ["external-ffi-bindings"],
+        "features": {"default": ["lldp", "document", "nfc"], "lldp": [], "nfc": [], "document": []}},
+    "opentlv": {
+        "description": "Safe Rust bindings for OpenTLV", "links": None,
+        "categories": ["parser-implementations", "encoding", "api-bindings"],
+        "features": {"default": ["lldp", "document", "nfc"], "lldp": ["opentlv-sys/lldp"],
+                     "nfc": ["opentlv-sys/nfc"], "document": ["opentlv-sys/document"]}},
+}
 
 
 class Cargo:
@@ -160,6 +174,9 @@ def packaged_manifest(crate, version, manifest):
             (crate, version, "MIT", "README.md"), f"Wrong packaged {crate} metadata")
     require(package.get("repository") == f"https://github.com/{REPOSITORY}",
             f"Wrong packaged {crate} repository")
+    expected = {**REGISTRY_SHARED, **REGISTRY_CRATES[crate]}
+    require({key: manifest.get(key) if key == "features" else package.get(key) for key in expected} ==
+            expected, f"Wrong packaged {crate} registry identity")
     tables = [manifest.get(key, {}) for key in ("dependencies", "dev-dependencies", "build-dependencies")]
     tables += [target.get(key, {}) for target in manifest.get("target", {}).values()
                for key in ("dependencies", "dev-dependencies", "build-dependencies")]

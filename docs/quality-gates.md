@@ -402,7 +402,7 @@ Intentional changes to tests, examples, features, toolchains or the pinned
 Core corpus must update [`ci/matrix.json`](../ci/matrix.json) in the same
 change, with reviewed evidence. Updating the stable toolchain or the sanitizer
 nightly is a deliberate matrix change; raising the MSRV also changes
-`rust-version`.
+`rust-version` and the registry identity in `scripts/ci.py`.
 
 ## Local validation
 
