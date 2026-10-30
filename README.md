@@ -48,7 +48,7 @@ publication is separate post-migration work.
 | `docs/migration/` | Source inventory, original CI configuration and validation evidence |
 | `docs/quality-gates.md` | CI entry points, supported configurations, test ownership and evidence |
 | `docs/packaging.md` | Package identities, versioning, Core compatibility and crates.io prerequisites |
-| `docs/validation/` | Standalone build, CI, packaging, layout and licensing validation |
+| `docs/validation/` | Standalone build, CI, packaging, crates.io identity, layout and licensing validation |
 | `scripts/verify_baseline.py` | Verifies the inventory against the pinned Core tree |
 | `scripts/verify_migration.py` | Verifies the imported files against the inventory and the pinned Core tree |
 

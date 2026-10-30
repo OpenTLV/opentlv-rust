@@ -95,7 +95,7 @@ generated `Cargo.toml`, `Cargo.toml.orig`, `Cargo.lock` and
 
 | Crate | Files |
 | --- | --- |
-| `opentlv-sys` | `README.md`, `LICENSE`, `build.rs`, `src/`, the native integration files in `core/` (lock, selection module, release verifier and CMake toolchain probe) and the tests with the C ABI probes in `tests/abi_probe/` and `tests/compose_abi_probe/` |
+| `opentlv-sys` | `README.md`, `LICENSE`, `build.rs`, `src/`, the native integration files in `core/` (lock, selection module, release verifier and CMake toolchain probe) and the tests with the C ABI probes in `tests/abi_probe/`, `tests/codec_abi_probe/` and `tests/compose_abi_probe/` |
 | `opentlv` | `README.md`, `LICENSE`, `build.rs`, `src/`, `tests/` and the eleven examples |
 
 The build scripts and tests read only files inside their own package, the
@@ -111,8 +111,11 @@ stable [CI configurations](quality-gates.md), runs
 archives. It requires the exact file lists above, a `LICENSE` equal to the
 repository license and, in each archive's normalized `Cargo.toml`, the crate
 name, the workspace version, `MIT`, the `README.md` readme, this repository
-URL, no dependency `path` and the dependency `opentlv-sys = "=<version>"` for
-`opentlv` only. [`tests/test_packaging.py`](../tests/test_packaging.py) checks
+URL, the registry identity in `scripts/ci.py` (description, keywords, categories,
+edition, `rust-version`, `links`, build script, features and no `publish`
+restriction), no dependency `path` and the dependency
+`opentlv-sys = "=<version>"` for `opentlv` only.
+[`tests/test_packaging.py`](../tests/test_packaging.py) checks
 the manifests, the shared version, the unchanged features against the
 migration baseline, the license copies and the Core compatibility table
 without building.
@@ -244,11 +247,17 @@ or hosted acceptance; a new Full run on the fix commit is still required.
 ## Remaining crates.io prerequisites
 
 These are not part of this preparation and must be resolved before or at the
-first publication:
+first publication. The [crates.io validation](validation/crates-io.md) records
+the identity and archive checks of `v0.1.0`:
 
+- **Version.** The `v0.1.0` archives must not be published, because their
+  contents have the documentation and docs.rs problems below. The first
+  crates.io version needs a new commit and a new version, such as `0.1.1`, so
+  that each version has one archive.
 - **Names and owners.** Neither `opentlv` nor `opentlv-sys` existed on
-  crates.io on 2026-10-22. The first publication claims both names; crate
-  owners, such as an OpenTLV GitHub team, are set then.
+  crates.io on 2026-10-30, and crates.io does not reserve names. The first
+  publication claims both names; crate owners, such as an OpenTLV GitHub team,
+  are set then.
 - **Order.** `opentlv-sys` must be published before `opentlv`, whose exact
   requirement must resolve from the registry.
 - **Core availability.** A build needs CMake, a C99 compiler, Python 3.11,
@@ -257,8 +266,9 @@ first publication:
   compatible Verified Binary avoids compiling Core; otherwise the verified
   source is built locally.
 - **docs.rs.** docs.rs builds without network access, so the default build
-  script cannot fetch Core there. Rendering the documentation on docs.rs needs
-  a documentation-only build path in `build.rs`.
+  script cannot fetch Core there; an offline build of the released archive
+  fails. Rendering the documentation on docs.rs needs a documentation-only
+  build path in `build.rs`.
 - **Documentation.** The crate-level Rustdoc, the crate READMEs and the
   [user guide](guides/rust.md) describe a path dependency on an opentlv-rust
   checkout. They need the crates.io dependency once the crates are published.

@@ -63,6 +63,25 @@ class Packaging(unittest.TestCase):
             self.assertEqual((ROOT / crate / 'LICENSE').read_bytes(), license_text, crate)
             self.assertTrue((ROOT / crate / 'README.md').is_file(), crate)
 
+    def test_manifests_declare_the_registry_identity(self):
+        for crate, data in self.crates.items():
+            package = {**self.workspace, **data['package']}
+            expected = {**ci.REGISTRY_SHARED, **ci.REGISTRY_CRATES[crate]}
+            for key, value in expected.items():
+                actual = data.get(key) if key == 'features' else package.get(key)
+                if isinstance(actual, dict) and actual.get('workspace'):
+                    actual = self.workspace[key]
+                self.assertEqual(actual, value, (crate, key))
+
+    def test_registry_identity_respects_crates_io_limits(self):
+        keywords = ci.REGISTRY_SHARED['keywords']
+        self.assertLessEqual(len(keywords), 5)
+        for keyword in keywords:
+            self.assertRegex(keyword, r'^[a-zA-Z][a-zA-Z0-9_+-]{0,19}$')
+        for crate, identity in ci.REGISTRY_CRATES.items():
+            self.assertTrue(identity['description'], crate)
+            self.assertTrue(1 <= len(identity['categories']) <= 5, crate)
+
     def test_core_compatibility_is_recorded(self):
         lock = read(ROOT / 'opentlv-sys/core/core-artifact.json')
         version = self.workspace['version']
@@ -76,9 +95,12 @@ class PackagedManifest(unittest.TestCase):
     """The normalized manifest checks of the CI `package` check."""
 
     def manifest(self, crate='opentlv'):
+        identity = {**ci.REGISTRY_SHARED, **ci.REGISTRY_CRATES[crate]}
+        features = identity.pop('features')
         package = {'name': crate, 'version': '0.7.1', 'license': 'MIT', 'readme': 'README.md',
-                   'repository': f'https://github.com/{REPOSITORY}'}
-        data = {'package': package, 'lib': {'path': 'src/lib.rs'}}
+                   'repository': f'https://github.com/{REPOSITORY}',
+                   **{key: value for key, value in identity.items() if value is not None}}
+        data = {'package': package, 'features': features, 'lib': {'path': 'src/lib.rs'}}
         if crate == 'opentlv':
             data['dependencies'] = {'opentlv-sys': {'version': '=0.7.1', 'default-features': False}}
         return data
@@ -97,6 +119,15 @@ class PackagedManifest(unittest.TestCase):
             (('package', 'repository'), 'https://github.com/marekcingel/OpenTLV', 'repository'),
             (('package', 'version'), '0.7.2', 'metadata'),
             (('package', 'readme'), None, 'metadata'),
+            (('package', 'description'), 'Other', 'registry identity'),
+            (('package', 'keywords'), ['tlv'], 'registry identity'),
+            (('package', 'categories'), [], 'registry identity'),
+            (('package', 'edition'), '2024', 'registry identity'),
+            (('package', 'rust-version'), '1.83', 'registry identity'),
+            (('package', 'links'), 'tlv', 'registry identity'),
+            (('package', 'build'), False, 'registry identity'),
+            (('package', 'publish'), False, 'registry identity'),
+            (('features', 'lldp'), [], 'registry identity'),
         ]
         for keys, value, message in cases:
             with self.subTest(keys=keys):
@@ -111,6 +142,10 @@ class PackagedManifest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'dependencies'):
             sys_manifest = self.manifest('opentlv-sys')
             sys_manifest['dependencies'] = {'opentlv': {'version': '=0.7.1'}}
+            ci.packaged_manifest('opentlv-sys', '0.7.1', sys_manifest)
+        with self.assertRaisesRegex(ValueError, 'registry identity'):
+            sys_manifest = self.manifest('opentlv-sys')
+            del sys_manifest['package']['links']
             ci.packaged_manifest('opentlv-sys', '0.7.1', sys_manifest)
 
 

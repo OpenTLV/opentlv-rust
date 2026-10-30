@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Validate the crates.io identities and the released `v0.1.0` archives of `opentlv-sys` and `opentlv`: both names are free with no owners yet, and metadata, license, dependencies and file lists match the tag. The `package` check also rejects an archive whose description, keywords, categories, edition, `rust-version`, `links`, build script, features or `publish` setting differs from the registry identity. Record that these archives must not be published, because their documentation says the crates are unpublished and docs.rs cannot build them, so the first crates.io version needs a new version. Nothing was published. (#37)
+
+### Fixed
+
+- List `tests/codec_abi_probe/` in the packaging document's `opentlv-sys` archive contents, which the archive already contained. (#37)
+
 ## [0.1.0] - 2026-10-28
 
 ### Changed
