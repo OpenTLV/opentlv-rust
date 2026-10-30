@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - List `tests/codec_abi_probe/` in the packaging document's `opentlv-sys` archive contents, which the archive already contained. (#37)
 
+### Added
+
+- Add the manual `Rust crates.io` workflow, which publishes the crate pair of an existing GitHub release after approval of the protected `crates-io` environment; nothing was published. Before any upload, and again after the approval, `scripts/crates_io.py` requires a dispatch from `main` with `main` and the tag at the same commit, an environment with a required reviewer, no administrator bypass and only `main` as its deployment branch, a recorded approval, the attested assets of the public release with their complete Full evidence and quality gate, and crates.io ownership of existing crates. `opentlv-sys` is uploaded first and must be served before `opentlv` follows. Because Cargo packs the crate again, each `cargo package` must reproduce the tested digest before its `cargo publish`, and the index entry and download must have it afterwards; this reproduction was measured on the `v0.1.0` assets. Versions already on crates.io are never replaced, so a retry uploads only what is missing. Trusted Publishing is used once both crates exist; as crates.io requires a token for the first version of a crate, that first publication uses an environment secret which is removed afterwards. The environment and token are not configured yet, and hosted publication has not run. (#39)
+
 ## [0.1.0] - 2026-10-28
 
 ### Changed

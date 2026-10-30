@@ -23,6 +23,7 @@ path = [
     "docs/validation/ci.json",
     "docs/validation/ci.md",
     "docs/validation/codecs-generator.md",
+    "docs/validation/crates-io-publication.md",
     "docs/validation/crates-io.md",
     "docs/validation/layout.md",
     "docs/validation/licensing.md",

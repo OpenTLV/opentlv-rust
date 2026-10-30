@@ -49,13 +49,13 @@ def version_for(tag):
     return version
 
 
-def hosted_identity():
+def hosted_identity(workflow=SIGNER):
     current = identity()
     require(current['hosted'] and not current['dirty'] and current['repository'] == REPOSITORY,
             'Release requires the official clean hosted checkout')
     require(os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch' and
             os.environ.get('GITHUB_REF') == 'refs/heads/main' and
-            os.environ.get('GITHUB_WORKFLOW_REF') == SIGNER + '@refs/heads/main' and
+            os.environ.get('GITHUB_WORKFLOW_REF') == workflow + '@refs/heads/main' and
             os.environ.get('GITHUB_WORKFLOW_SHA') == current['commit'],
             'Release requires a main dispatch with matching workflow SHA')
     return current
@@ -145,10 +145,14 @@ def assemble(evidence, output):
 
 
 def verify_payload(directory):
+    validate_request(read(directory / 'release-manifest.json')['request'])
+    return verify_contents(directory)
+
+
+def verify_contents(directory):
     manifest = read(directory / 'release-manifest.json')
     require(manifest.get('schema') == 1, 'Unsupported release manifest')
     request = manifest['request']
-    validate_request(request)
     check_full(manifest['quality'], manifest['records'], request)
     linux = next(r for r in manifest['records'] if r['configuration']['id'] == 'linux-stable')
     packages = {f'{c}-{request["version"]}.crate': linux['package'][c] for c in CRATES}
@@ -166,10 +170,15 @@ def verify_payload(directory):
 
 
 def verify_published_assets(release, directory, request, draft):
-    require(release.get('tag_name') == request['tag'] and release.get('draft') is draft and
-            release.get('prerelease') is False and
-            release.get('body', '').strip() == NOTES.read_text(encoding='utf-8').strip(),
+    require(release.get('body', '').strip() == NOTES.read_text(encoding='utf-8').strip(),
             'Published release metadata differs')
+    verify_release_files(release, directory, request, draft)
+
+
+def verify_release_files(release, directory, request, draft):
+    """The release state and assets; a maintainer can still edit the text of a public release."""
+    require(release.get('tag_name') == request['tag'] and release.get('draft') is draft and
+            release.get('prerelease') is False, 'Published release metadata differs')
     assets = release.get('assets', [])
     paths = {p.name: p for p in directory.iterdir()}
     require(len(assets) == len(paths) and {a['name'] for a in assets} == set(paths),
@@ -180,12 +189,16 @@ def verify_published_assets(release, directory, request, draft):
                 asset.get('digest') == 'sha256:' + digest(path), 'Published asset digest differs')
 
 
-def publish(directory):
-    request = verify_payload(directory)
-    commit = request['identity']['commit']
+def verify_attestations(directory, commit):
     for path in sorted(directory.iterdir()):
         run('gh', 'attestation', 'verify', path, '--repo', REPOSITORY,
             '--signer-workflow', SIGNER, '--source-digest', commit)
+
+
+def publish(directory):
+    request = verify_payload(directory)
+    commit = request['identity']['commit']
+    verify_attestations(directory, commit)
     # Final read before the first write; never overwrite an existing tag/release.
     unused_tag(request['tag'], commit)
     run('gh', 'api', '--method', 'POST', f'repos/{REPOSITORY}/git/refs',

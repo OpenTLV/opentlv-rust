@@ -1,0 +1,84 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Marek Cingel
+name: Rust crates.io
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published Rust GitHub release at the current main commit (v0.1.1)
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: rust-crates-io
+  cancel-in-progress: false
+env:
+  PYTHONDONTWRITEBYTECODE: '1'
+jobs:
+  prepare:
+    # Runs first and without a credential: a job referencing a missing environment would create it
+    # unprotected, so this job proves the protection before the next one can request approval.
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      attestations: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 -B scripts/crates_io.py prepare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rust-crates-io-plan-${{ github.run_attempt }}
+          path: build/crates-io/plan.json
+          if-no-files-found: error
+  publish:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    # Required reviewers approve each publication and the environment is limited to main. Trusted
+    # Publishing accepts only this repository, workflow and environment.
+    environment:
+      name: crates-io
+      url: https://crates.io/crates/opentlv
+    permissions:
+      contents: read
+      actions: read
+      attestations: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      # An approval can come much later, so everything is verified again after it.
+      - id: prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 -B scripts/crates_io.py prepare --approved
+      - id: auth
+        if: steps.prepare.outputs.auth == 'trusted'
+        uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9 # v1.0.6
+      - name: Upload through Trusted Publishing
+        if: steps.prepare.outputs.auth == 'trusted'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        run: python3 -B scripts/crates_io.py upload
+      - name: Upload the first versions with the bootstrap token
+        if: steps.prepare.outputs.auth == 'bootstrap'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_BOOTSTRAP_TOKEN }}
+        run: python3 -B scripts/crates_io.py upload
+      - name: Confirm the published bytes
+        run: python3 -B scripts/crates_io.py confirm
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rust-crates-io-${{ github.run_attempt }}
+          path: |
+            build/crates-io/plan.json
+            build/crates-io/receipt.json
+          if-no-files-found: error

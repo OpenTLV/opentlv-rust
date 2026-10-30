@@ -37,10 +37,11 @@ publication is separate post-migration work.
 | `opentlv-sys/README.md`, `opentlv/README.md`, `*/LICENSE` | Package readme and license text of each crate |
 | `LICENSE`, `LICENSES/`, `REUSE.toml` | MIT license, the license text for REUSE and the metadata of files without a header |
 | `.pre-commit-config.yaml`, `requirements-dev.txt` | Optional contributor hooks and the Python tools of the quality checks |
-| `.github/workflows/` | PR, Main and Full CI, source quality, CodeQL and the documentation portal notification |
+| `.github/workflows/` | PR, Main and Full CI, source quality, CodeQL, the GitHub release, crates.io publication and the documentation portal notification |
 | `ci/matrix.json` | CI toolchains, platforms, feature sets and test inventory |
 | `scripts/ci.py` | Runs one CI configuration, or checks the evidence of all of them |
 | `scripts/registry_consumer.py` | Builds isolated consumers of the `.crate` archives from a local Cargo registry |
+| `scripts/crates_io.py` | Publishes the attested crate pair of a GitHub release to crates.io after approval |
 | `scripts/docs_notification.py` | Records documentation changes for the portal notification |
 | `tests/` | Tests for the release verifier, the CI infrastructure and the documentation notification |
 | `docs/guides/rust.md` | Rust user guide |
@@ -48,8 +49,8 @@ publication is separate post-migration work.
 | `docs/migration.md` | Migration baseline, source import, validation results and completion record |
 | `docs/migration/` | Source inventory, original CI configuration and validation evidence |
 | `docs/quality-gates.md` | CI entry points, supported configurations, test ownership and evidence |
-| `docs/packaging.md` | Package identities, versioning, Core compatibility and crates.io prerequisites |
-| `docs/validation/` | Standalone build, CI, packaging, crates.io identity, registry build, layout and licensing validation |
+| `docs/packaging.md` | Package identities, versioning, Core compatibility, the release procedures and crates.io prerequisites |
+| `docs/validation/` | Standalone build, CI, packaging, crates.io identity and publication, registry build, layout and licensing validation |
 | `scripts/verify_baseline.py` | Verifies the inventory against the pinned Core tree |
 | `scripts/verify_migration.py` | Verifies the imported files against the inventory and the pinned Core tree |
 
