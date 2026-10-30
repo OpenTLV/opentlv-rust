@@ -2,7 +2,8 @@
 
 The two crates of this repository are prepared as independent Cargo packages
 ([issue #4](https://github.com/OpenTLV/opentlv-rust/issues/4)). They are not
-published to crates.io: registry publication is a separate step. The first
+published to crates.io yet: [registry publication](#cratesio-publication) is a
+separate, approved step. The first
 GitHub release is prepared as `v0.1.0` against Core `v0.8.0` (#33). The
 [packaging validation](validation/packaging.md) records the local results.
 
@@ -258,6 +259,109 @@ passed with the actual Core v0.8.0 source archive and an offline acquisition
 fixture. These checks cover compilation and reruns, not online authentication
 or hosted acceptance; a new Full run on the fix commit is still required.
 
+## crates.io publication
+
+The manual `Rust crates.io` workflow,
+[`rust-crates-io.yml`](../.github/workflows/rust-crates-io.yml), publishes the
+crate pair of an existing GitHub release. It is the only workflow with a registry
+credential; `Rust Release` still holds none. It has no pull request, push or tag
+trigger. The [publication validation](validation/crates-io-publication.md) records
+what has and has not been exercised.
+
+### Procedure
+
+1. Finish the [GitHub release](#github-release) of the new version, and keep `main`
+   at its commit: any later commit, even a documentation change, requires a new
+   version.
+2. Resolve the [remaining prerequisites](#remaining-cratesio-prerequisites). The
+   workflow cannot check these decisions for you.
+3. Dispatch `Rust crates.io` on `main` with the release tag. The `prepare` job runs
+   every check below without a credential and uploads
+   `rust-crates-io-plan-<attempt>`, which lists the crates, digests and credential
+   of this publication.
+4. Review that plan, then approve the `crates-io` environment. After approval the
+   `publish` job repeats every check, because an approval can come much later.
+5. It uploads `opentlv-sys`, waits until crates.io serves it, and only then uploads
+   `opentlv`. It emits `rust-crates-io-<attempt>` with the plan, the approving
+   reviewers and the published URLs.
+
+### What the workflow checks
+
+Before any upload, `scripts/crates_io.py prepare` requires:
+
+- a manual dispatch of this workflow from `main` on the official clean checkout,
+  with `main` and the tag both at that commit;
+- an environment with a required reviewer, no administrator bypass and only `main`
+  as its deployment branch. A job that references a missing environment would
+  create it without protection, so `prepare` runs first and stops the run;
+- in the `publish` job, a recorded approval of this run for that environment;
+- the public, non-draft GitHub release: its asset names, sizes and digests, the
+  attestation of every asset by `rust-release.yml` at this commit, and its
+  `SHA256SUMS`. The text on the release page is not compared, because maintainers
+  can edit it; the attested `release-notes.md` is;
+- the release's complete Full evidence and attempt-bound quality gate, including
+  the [consumer builds](#validation) of the same archive digests, with Main CI
+  successful on this commit and the definition hashes, Core lock and release notes
+  equal to this checkout;
+- for each crate that already exists, `marekcingel` among its crates.io owners, so
+  that a name taken by someone else stops the publication before the first upload;
+- for each version already on crates.io, the tested digest and no yank.
+
+Cargo cannot upload an existing archive: `cargo publish` packs the crate again.
+The published bytes stay the tested ones because packaging is reproducible, which
+the [validation](validation/crates-io-publication.md#package-reproduction) measured
+on the `v0.1.0` assets. Each `cargo package` must produce the tested digest
+before that crate's `cargo publish` runs. Both use the Linux stable toolchain that
+built the archives, with `--locked` and `--no-verify`: the archives were tested in
+Full CI, and no build script runs near a credential. Afterwards, the index entry and
+the downloaded archive must both have the tested digest.
+
+### Credentials
+
+crates.io accepts Trusted Publishing only for a crate that already exists, so the
+workflow selects the credential from the registry state:
+
+| Registry state | `auth` | Credential |
+| --- | --- | --- |
+| Either crate does not exist yet | `bootstrap` | `CRATES_IO_BOOTSTRAP_TOKEN`, a secret of the environment |
+| Both crates exist | `trusted` | A 30-minute token from [`rust-lang/crates-io-auth-action`](https://github.com/rust-lang/crates-io-auth-action), which revokes it at the end of the job |
+| This version is already complete | `none` | None; the job only confirms the published bytes |
+
+Only the upload step receives the credential, without `GH_TOKEN`, and only the
+`cargo publish` call receives it from that step. Only the `publish` job has
+`id-token: write`.
+
+### Retry and immutability
+
+A published version cannot be changed. The workflow never replaces one: a version
+already on crates.io with other bytes, or yanked, fails with *release a new version*.
+To finish an interrupted publication, re-run the job or dispatch again while `main`
+is still at the release commit. Crates that already have the tested bytes are
+confirmed, and only the missing ones are uploaded. If `main` has moved, publish
+a new version of both crates, because `opentlv` requires exactly its `opentlv-sys`
+version.
+
+The `v0.1.0` archives cannot pass this workflow: its tag is not at the current
+`main` commit, and its Full evidence predates the `consumer` check.
+
+### One-time configuration
+
+These settings live outside this repository and are made by a maintainer:
+
+1. In the repository settings, create the environment `crates-io` as `luarocks` is
+   configured in `opentlv-lua`: a required reviewer, administrators cannot bypass,
+   and deployment limited to the branch `main`.
+2. With the `marekcingel` crates.io account, create an API token for the first
+   publication only: scope `publish-new`, limited to `opentlv` and `opentlv-sys`,
+   with the shortest practical expiry. Store it as the **environment** secret
+   `CRATES_IO_BOOTSTRAP_TOKEN` of `crates-io`, not as a repository secret.
+3. After the first publication, add a GitHub trusted publisher in each crate's
+   crates.io settings: owner `OpenTLV`, repository `opentlv-rust`, workflow
+   `rust-crates-io.yml`, environment `crates-io`.
+4. Delete the secret and revoke the token. Add further crate owners, such as an
+   OpenTLV GitHub team, with `cargo owner`; `marekcingel` must stay an owner, or
+   `OWNER` in `scripts/crates_io.py` must change with it.
+
 ## Remaining crates.io prerequisites
 
 These are not part of this preparation and must be resolved before or at the
@@ -272,8 +376,6 @@ the identity and archive checks of `v0.1.0`:
   crates.io on 2026-10-30, and crates.io does not reserve names. The first
   publication claims both names; crate owners, such as an OpenTLV GitHub team,
   are set then.
-- **Order.** `opentlv-sys` must be published before `opentlv`, whose exact
-  requirement must resolve from the registry.
 - **Core availability.** A build needs CMake, a C99 compiler, Python 3.11,
   an authenticated GitHub CLI and network access to GitHub, even when
   `OPENTLV_LIB_DIR` links a prebuilt library. The locked
@@ -296,6 +398,6 @@ the identity and archive checks of `v0.1.0`:
 - **Documentation.** The crate-level Rustdoc, the crate READMEs and the
   [user guide](guides/rust.md) describe a path dependency on an opentlv-rust
   checkout. They need the crates.io dependency once the crates are published.
-- **Registry process.** A crates.io token or trusted publishing configuration
-  and a registry-specific publish gate remain to be defined. The GitHub
+- **Registry settings.** The [one-time configuration](#one-time-configuration) of
+  the environment and the bootstrap token has not been made. The GitHub
   release workflow publishes source packages only to GitHub Releases.

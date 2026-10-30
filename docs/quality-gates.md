@@ -375,6 +375,9 @@ The manual [Rust Release workflow](../.github/workflows/rust-release.yml)
 uses this mode, revalidates every Full record and publishes the exact Linux
 stable `.crate` files tested by Cargo packaging. It also requires successful
 Main CI on the dispatch commit. See the [release procedure](packaging.md#github-release).
+The separate manual `Rust crates.io` workflow revalidates this attested evidence
+before it [publishes the same bytes](packaging.md#cratesio-publication) after
+approval.
 The compiler evidence includes the verified-binary toolchain probe, even
 when a compatible binary means that no Core source compilation is needed.
 
