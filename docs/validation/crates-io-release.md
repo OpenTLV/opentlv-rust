@@ -24,8 +24,14 @@ needed these decisions before a version that cannot change:
 | Verified Binaries are not selected in practice | Unchanged: fixing it needs a new Core release. Consumers compile Core |
 | Cross compilation is not supported | Unchanged, and now stated in the crate READMEs |
 
-The version is `0.1.1`, with the public API unchanged, because the `v0.1.0` archives
+The version is `0.2.0`, with the public API unchanged, because the `v0.1.0` archives
 [must not be published](crates-io.md#findings-that-block-publishing-these-archives).
+The candidate was renamed from `0.1.1` to `0.2.0` on 2026-11-01. The build
+results and archive hashes below describe the earlier `0.1.1` candidate;
+publication requires fresh release evidence and archives for `0.2.0`.
+After the version change, Cargo metadata and the release-version checks agree on
+`0.2.0`, the old `v0.1.1` tag is rejected, and all 66 release, publication and
+published-verification regression tests passed. `git diff --check` also passed.
 
 ### What the digest does and does not prove
 
@@ -88,7 +94,9 @@ post-publication jobs still need to run after approval.
 Local logs and reports are under `build/issue40-*` (ignored by Git). Tests also
 cover mismatched Core identity, accidental GitHub authentication, inherited Core
 overrides, missing owners, stale success reports and the shared docs.rs deadline.
-Both Linux reports' definition hashes match the completed implementation.
+Both Linux reports' definition hashes match the validation snapshot before
+changelog closure and the version change to 0.2.0. Hosted release checks must
+validate the final revision.
 
 The Windows candidate archive hashes, also checked in every consumer's lockfile:
 
@@ -124,12 +132,12 @@ Only hosted runs and the publication itself can prove these:
 Each is made by a maintainer, in this order. Steps 3 and 5 are the approval that the
 issue requires, and nothing in this repository takes them:
 
-1. Merge this change, and close the changelog under `## [0.1.1] - <date>` in a
-   following commit, as the [release procedure](../packaging.md#github-release) requires.
+1. Merge this change, including the changelog closed under `## [0.2.0] - 2026-11-01`,
+   as the [release procedure](../packaging.md#github-release) requires.
 2. Wait for Rust Main CI on that commit, and keep `main` there until the publication.
-3. Dispatch `Rust Release` with `tag: v0.1.1`.
+3. Dispatch `Rust Release` with `tag: v0.2.0`.
 4. Make the [one-time configuration](../packaging.md#one-time-configuration).
-5. Dispatch `Rust crates.io` with `tag: v0.1.1`, review the plan and approve the
+5. Dispatch `Rust crates.io` with `tag: v0.2.0`, review the plan and approve the
    `crates-io` environment. This claims both crate names permanently.
 6. Finish the one-time configuration: add the trusted publishers, delete the secret
    and revoke the token.

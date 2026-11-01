@@ -13,7 +13,7 @@ against an explicitly pinned Core dependency, and since
 [PR, Main and Full CI](docs/quality-gates.md). Since
 [issue #4](https://github.com/OpenTLV/opentlv-rust/issues/4) both crates are
 prepared as independent Cargo packages with their own
-[versioning](docs/packaging.md), and from version `0.1.1` they are released to
+[versioning](docs/packaging.md), and from version `0.2.0` they are released to
 crates.io through the [approved publication](docs/packaging.md#cratesio-publication). Since
 [issue #5](https://github.com/OpenTLV/opentlv-rust/issues/5) the Cargo
 workspace is at the repository root, and since

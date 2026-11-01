@@ -1,7 +1,7 @@
-# OpenTLV Rust v0.1.1
+# OpenTLV Rust v0.2.0
 
 First Rust release for crates.io: `opentlv-sys` and `opentlv` are versioned
-together as **0.1.1**, independently of Core. The public API is unchanged from
+together as **0.2.0**, independently of Core. The public API is unchanged from
 0.1.0, which remains a GitHub release only.
 
 - Pins OpenTLV Core **v0.8.0** at
@@ -15,7 +15,7 @@ together as **0.1.1**, independently of Core. The public API is unchanged from
 - Distributes the two tested `.crate` archives, release evidence and SHA-256
   checksums through GitHub Releases. These archives contain Rust sources and
   build scripts; Core is resolved when building. See
-  [packaging](https://github.com/OpenTLV/opentlv-rust/blob/v0.1.1/docs/packaging.md).
+  [packaging](https://github.com/OpenTLV/opentlv-rust/blob/v0.2.0/docs/packaging.md).
 
 The crates.io publication of these same archives is a separate, approved step.
 Cross compilation is not supported. Windows

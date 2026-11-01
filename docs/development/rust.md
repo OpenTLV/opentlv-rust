@@ -308,7 +308,7 @@ for development only and are not release evidence.
 
 `opentlv` and `opentlv-sys` share the Cargo workspace version
 (`version.workspace = true` in each crate's `Cargo.toml`). The first standalone
-release is `0.1.0`, and the first on crates.io is `0.1.1`; `0.7.1` was an unpublished migration baseline. It is independent of the OpenTLV C library's
+release is `0.1.0`, and the first on crates.io is `0.2.0`; `0.7.1` was an unpublished migration baseline. It is independent of the OpenTLV C library's
 version; it is not derived from Core's Git tags. `opentlv` requires exactly the
 `opentlv-sys` version it is released with, and each `opentlv-sys` version
 records its compatible Core dependency. `opentlv::version()` is a separate

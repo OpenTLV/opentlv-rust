@@ -2,7 +2,7 @@
 
 The two crates of this repository are prepared as independent Cargo packages
 ([issue #4](https://github.com/OpenTLV/opentlv-rust/issues/4)). The first
-GitHub release was `v0.1.0` against Core `v0.8.0` (#33), and `0.1.1` is the first
+GitHub release was `v0.1.0` against Core `v0.8.0` (#33), and `0.2.0` is the first
 version for crates.io: [registry publication](#cratesio-publication) is a
 separate, approved step. The
 [packaging validation](validation/packaging.md) records the local results.
@@ -24,7 +24,7 @@ the root `Cargo.toml`:
 
 | Field | Value |
 | --- | --- |
-| `version` | `0.1.1` |
+| `version` | `0.2.0` |
 | `edition` | `2021` |
 | `rust-version` | `1.82` |
 | `license` | `MIT` |
@@ -39,7 +39,7 @@ license text. Both copies must equal the root `LICENSE`.
 
 The Rust bindings have their own version, independent of OpenTLV Core:
 
-- The first standalone Rust release is `0.1.0`, and `0.1.1` is the first version
+- The first standalone Rust release is `0.1.0`, and `0.2.0` is the first version
   meant for crates.io. The inherited `0.7.1` was
   an unpublished migration baseline, not a previous Rust release. There were
   no Rust repository tags or GitHub releases when checked on 2026-10-27.
@@ -61,7 +61,7 @@ The Rust bindings have their own version, independent of OpenTLV Core:
 `opentlv` depends on exactly the `opentlv-sys` version it is released with:
 
 ```toml
-opentlv-sys = { version = "=0.1.1", path = "../opentlv-sys", default-features = false }
+opentlv-sys = { version = "=0.2.0", path = "../opentlv-sys", default-features = false }
 ```
 
 The exact requirement is deliberate. `links = "tlv"` permits only one
@@ -80,7 +80,7 @@ which is part of the package:
 | Crates | Core version | Core commit | Core release |
 | --- | --- | --- | --- |
 | 0.1.0 | 0.8.0 | `345c77acb29266036df5f27d04ce315bb61853cc` | v0.8.0 |
-| 0.1.1 | 0.8.0 | `345c77acb29266036df5f27d04ce315bb61853cc` | v0.8.0 |
+| 0.2.0 | 0.8.0 | `345c77acb29266036df5f27d04ce315bb61853cc` | v0.8.0 |
 
 The packages do not contain Core. A build from an archive selects Core exactly
 as a build from the repository does, as described in the
@@ -184,7 +184,7 @@ versioned release notes are the publication text and are included in the
 hashed CI definitions. No crates.io credentials or uploads are involved.
 
 1. Review and merge the release preparation. Wait for successful Rust Main CI
-   on that exact commit. Dispatch `Rust Release` on `main` with `tag: v0.1.1`.
+   on that exact commit. Dispatch `Rust Release` on `main` with `tag: v0.2.0`.
 2. The workflow rejects a foreign, dirty or non-main checkout, a changed main
    tip, an existing tag/release, wrong versions or missing Main evidence.
    It runs Full CI with `require_verified_core: true`: all seven configurations,
@@ -192,8 +192,8 @@ hashed CI definitions. No crates.io credentials or uploads are involved.
 3. Assembly revalidates every record against the current commit, run, attempt,
    Core lock and source hashes. It copies the exact two Linux stable packages
    whose digests the Full record contains. It does not rebuild them.
-4. The workflow attests all five assets: `opentlv-sys-0.1.1.crate`,
-   `opentlv-0.1.1.crate`, `release-manifest.json`, `release-notes.md` and
+4. The workflow attests all five assets: `opentlv-sys-0.2.0.crate`,
+   `opentlv-0.2.0.crate`, `release-manifest.json`, `release-notes.md` and
    `SHA256SUMS`. Publication rechecks evidence, checksums, attestations and
    unused tag status, then creates the tag and a draft release. Only after the
    uploaded asset names, sizes, SHA-256 digests, notes and tag commit match
@@ -215,14 +215,14 @@ the exact registry dependency back to the extracted raw crate:
 
 ```toml
 [dependencies]
-opentlv = { path = "vendor/opentlv-0.1.1" }
+opentlv = { path = "vendor/opentlv-0.2.0" }
 
 [patch.crates-io]
-opentlv-sys = { path = "vendor/opentlv-sys-0.1.1" }
+opentlv-sys = { path = "vendor/opentlv-sys-0.2.0" }
 ```
 
 The normal Core build requirements still apply. Rust's crate version is
-`0.1.1`; `opentlv::version()` should report linked Core `0.8.0`.
+`0.2.0`; `opentlv::version()` should report linked Core `0.8.0`.
 
 ### Local preparation evidence (2026-10-27)
 

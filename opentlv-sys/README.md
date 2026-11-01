@@ -15,7 +15,7 @@ package:
 
 | `opentlv-sys` | Core version | Core commit | Core release |
 | --- | --- | --- | --- |
-| 0.1.1 | 0.8.0 | `345c77acb29266036df5f27d04ce315bb61853cc` | v0.8.0 |
+| 0.2.0 | 0.8.0 | `345c77acb29266036df5f27d04ce315bb61853cc` | v0.8.0 |
 
 The package does not contain Core. `core/verified_core.py` downloads the locked
 Core release and authenticates it through the SHA-256 of its `SHA256SUMS`, which
