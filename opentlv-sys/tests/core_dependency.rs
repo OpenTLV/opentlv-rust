@@ -84,6 +84,7 @@ fn lock_text(field: &str, value: &str) -> String {
         ("version", "\"0.7.1\"".to_string()),
         ("commit", format!("\"{}\"", "a".repeat(40))),
         ("release_tag", "null".to_string()),
+        ("release_sha256sums", "null".to_string()),
         ("allow_verified_source", "true".to_string()),
     ];
     for entry in &mut fields {
@@ -103,6 +104,7 @@ fn lock_for(commit: &str) -> Lock {
         version: "0.7.1".to_string(),
         commit: commit.to_string(),
         release_tag: None,
+        release_sha256sums: None,
         allow_verified_source: true,
     }
 }
@@ -113,13 +115,40 @@ fn committed_lock_pins_an_exact_core_commit() {
     assert_eq!(lock.commit, "345c77acb29266036df5f27d04ce315bb61853cc");
     assert_eq!(lock.version, "0.8.0");
     assert_eq!(lock.release_tag.as_deref(), Some("v0.8.0"));
+    assert_eq!(
+        lock.release_sha256sums.as_deref(),
+        Some("e84f3827c16f17a96ab93d21053c32f21f50e548ceb01bcea5dc2639b5af1589")
+    );
     assert!(lock.allow_verified_source);
 }
 
 #[test]
 fn lock_accepts_matching_release_tag() {
-    let lock = select::parse_lock(&lock_text("release_tag", "\"v0.7.1\"")).unwrap();
+    let digest = "a".repeat(64);
+    let text = lock_text("release_tag", "\"v0.7.1\"").replace(
+        "\"release_sha256sums\": null",
+        &format!("\"release_sha256sums\": \"{digest}\""),
+    );
+    let lock = select::parse_lock(&text).unwrap();
     assert_eq!(lock.release_tag.as_deref(), Some("v0.7.1"));
+    assert_eq!(lock.release_sha256sums, Some(digest));
+}
+
+#[test]
+fn lock_requires_the_checksum_digest_of_exactly_a_release() {
+    let digest = format!("\"{}\"", "a".repeat(64));
+    let short = format!("\"{}\"", "a".repeat(63));
+    for (tag, sums) in [
+        ("\"v0.7.1\"", "null"),
+        ("\"v0.7.1\"", short.as_str()),
+        ("null", digest.as_str()),
+    ] {
+        let text = lock_text("release_tag", tag).replace(
+            "\"release_sha256sums\": null",
+            &format!("\"release_sha256sums\": {sums}"),
+        );
+        assert!(select::parse_lock(&text).is_err(), "{text} was accepted");
+    }
 }
 
 #[test]
@@ -307,17 +336,20 @@ fn pinned_clone_rejects_identity_mismatch() {
 fn verified_result_must_match_lock() {
     let commit = "c".repeat(40);
     let lock = lock_for(&commit);
-    let source =
-        format!("mode=verified-source\nversion=0.7.1\ncommit={commit}\nsource_dir=/core\n");
+    let source = format!(
+        "mode=verified-source\nversion=0.7.1\ncommit={commit}\nsource_dir=/core\nattested=false\n"
+    );
     let selection = select::parse_verified(&source, &lock).unwrap();
     assert!(selection.verified);
+    assert!(!selection.attested);
     assert_eq!(selection.lib_dir, None);
 
     let binary = format!(
         "mode=verified-binary\nversion=0.7.1\ncommit={commit}\nsource_dir=/core\n\
-         lib_dir=/pkg/lib\ninclude_dir=/pkg/include\n"
+         lib_dir=/pkg/lib\ninclude_dir=/pkg/include\nattested=true\n"
     );
     let selection = select::parse_verified(&binary, &lock).unwrap();
+    assert!(selection.attested);
     assert_eq!(selection.lib_dir, Some(PathBuf::from("/pkg/lib")));
 
     for text in [
@@ -325,6 +357,8 @@ fn verified_result_must_match_lock() {
         source.replace("0.7.1", "0.7.2"),
         source.replace("verified-source", "pinned-git"),
         binary.replace("lib_dir=/pkg/lib\n", ""),
+        source.replace("attested=false\n", ""),
+        source.replace("attested=false", "attested=maybe"),
         format!("{source}mode=verified-source\n"),
         format!("{source}garbage\n"),
     ] {
@@ -381,6 +415,7 @@ fn evidence_records_selection_and_lock() {
     let selection = select::Selection {
         mode: "local-source".to_string(),
         verified: false,
+        attested: false,
         identity: Identity {
             commit: "e".repeat(40),
             version: "0.8.0".to_string(),
@@ -394,6 +429,7 @@ fn evidence_records_selection_and_lock() {
     for expected in [
         "\"mode\": \"local-source\"",
         "\"verified\": false",
+        "\"attested\": false",
         "\"dirty\": true",
         "\"version\": \"0.8.0\"",
         "\"locked_commit\": \"345c77acb29266036df5f27d04ce315bb61853cc\"",

@@ -3,9 +3,11 @@
 """Authenticate a locked Core release (Core #637 schema-2 assets) for build.rs.
 
 Run by build.rs only when core-artifact.json locks a release. Downloads the
-release manifest, checksums and selected archives with the GitHub CLI,
-verifies their GitHub Artifact Attestations, and selects a compatible static
-Verified Binary or the Verified Source archive. Uses only the standard library.
+release manifest, checksums and selected archives, authenticates them through
+the SHA256SUMS digest in the lock, and selects a compatible static Verified
+Binary or the Verified Source archive. A logged-in GitHub CLI, or a build that
+requires it, also verifies their GitHub Artifact Attestations. Uses only the
+standard library.
 """
 
 import argparse
@@ -14,10 +16,12 @@ import json
 from pathlib import Path, PurePosixPath
 import platform
 import re
+import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
+import urllib.request
 import zipfile
 
 REPOSITORY = 'OpenTLV/opentlv'
@@ -86,6 +90,9 @@ def lock(path):
     tag = value.get('release_tag')
     require(tag is not None, 'A published Core schema-2 release must be locked for verified builds')
     require(tag == 'v' + value['version'], 'Core version/tag mismatch')
+    require(isinstance(value.get('release_sha256sums'), str) and
+            re.fullmatch('[0-9a-f]{64}', value['release_sha256sums']),
+            'Expected the SHA-256 of the Core SHA256SUMS')
     return value
 
 
@@ -230,8 +237,13 @@ def compatible(record, probe, target, host, crt_static, components):
             all(options.get(name) == value for name, value in components.items()))
 
 
-def authenticated_release(work, selected):
-    work.mkdir(parents=True, exist_ok=False)
+def logged_in():
+    """Whether the GitHub CLI can verify attestations; a registry user need not have it."""
+    return shutil.which('gh') is not None and subprocess.run(
+        ['gh', 'auth', 'status'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+
+
+def attested_downloader(work, selected):
     release = api(f"repos/{REPOSITORY}/releases/tags/{selected['release_tag']}")
     require(not release.get('draft') and release.get('tag_name') == selected['release_tag'], 'Core release unavailable')
     resolved = api(f"repos/{REPOSITORY}/commits/{selected['release_tag']}")
@@ -247,13 +259,35 @@ def authenticated_release(work, selected):
             '--signer-workflow', SIGNER, '--source-digest', selected['commit'])
         return path
 
+    return download, {'release_id': release['id']}
+
+
+def public_downloader(work, selected):
+    """The public release URLs; only the digests decide whether the files are accepted."""
+    def download(name):
+        safe_name(name)
+        path = work / name
+        url = f"https://github.com/{REPOSITORY}/releases/download/{selected['release_tag']}/{name}"
+        print('+ download ' + url, file=sys.stderr, flush=True)
+        with urllib.request.urlopen(url, timeout=120) as response, path.open('wb') as output:
+            shutil.copyfileobj(response, output)
+        return path
+
+    return download, {'release_id': None}
+
+
+def authenticated_release(work, selected, attest):
+    work.mkdir(parents=True, exist_ok=False)
+    download, identity = (attested_downloader if attest else public_downloader)(work, selected)
     manifest_path = download('release-manifest.json')
     sums_path = download('SHA256SUMS')
+    # The lock travels in the immutable crate, so this digest authenticates every asset below.
+    require(digest(sums_path) == selected['release_sha256sums'], 'Core SHA256SUMS differs from the lock')
     sums = checksums(sums_path)
     require(sums.get(manifest_path.name) == digest(manifest_path), 'Core manifest checksum mismatch')
     manifest = read(manifest_path)
     verify_manifest(manifest, selected)
-    return manifest, sums, download, {'release_id': release['id'], 'manifest_sha256': digest(manifest_path)}
+    return manifest, sums, download, {**identity, 'manifest_sha256': digest(manifest_path)}
 
 
 def single(paths, message):
@@ -262,13 +296,16 @@ def single(paths, message):
     return paths[0]
 
 
-def resolve(lock_path, work, target, host, components, probe=None, crt_static=False):
+def resolve(lock_path, work, target, host, components, probe=None, crt_static=False,
+            require_attestation=False):
     """Authenticate the locked release; probe=None selects the Verified Source only."""
     selected = lock(lock_path)
     work.mkdir(parents=True, exist_ok=True)
     # A fresh attempt directory; never reuse files from a failed verification.
-    attempt = Path(tempfile.mkdtemp(prefix='release-', dir=work))
-    manifest, sums, download, release_identity = authenticated_release(attempt / 'assets', selected)
+    # Short names: the Visual Studio generator limits the length of the build paths.
+    attempt = Path(tempfile.mkdtemp(prefix='r-', dir=work))
+    attest = require_attestation or logged_in()
+    manifest, sums, download, release_identity = authenticated_release(attempt / 'assets', selected, attest)
     sources = [r for r in manifest['artifacts'] if r.get('kind') == 'source']
     require(len(sources) == 1, 'Expected one Verified Source artifact')
     binaries = [] if probe is None else [
@@ -304,10 +341,10 @@ def resolve(lock_path, work, target, host, components, probe=None, crt_static=Fa
         require((version_h.parent / 'config.h').is_file(), 'Core package lacks tlv/config.h')
         location.update(lib_dir=str(library.parent.resolve()),
                         include_dir=str(version_h.parent.parent.resolve()))
-    evidence = {'mode': mode, 'verified': True, 'version': selected['version'],
+    evidence = {'mode': mode, 'verified': True, 'attested': attest, 'version': selected['version'],
                 'repository': REPOSITORY, 'commit': selected['commit'], **location,
                 'release_tag': selected['release_tag'], **release_identity,
-                'signer_workflow': SIGNER, 'artifact': record, 'probe': probe,
+                'signer_workflow': SIGNER if attest else None, 'artifact': record, 'probe': probe,
                 'target': target, 'components': components}
     write(attempt / 'verification.json', evidence)
     return evidence
@@ -325,6 +362,8 @@ def main():
     parser.add_argument('--probe', type=Path, help='C toolchain probe; omit with --source-only')
     parser.add_argument('--source-only', action='store_true')
     parser.add_argument('--crt-static', action='store_true')
+    parser.add_argument('--require-attestation', action='store_true',
+                        help='Fail instead of relying on the locked digest alone')
     args = parser.parse_args()
     # A failed verification must not leave an apparently valid previous result.
     args.output.unlink(missing_ok=True)
@@ -334,12 +373,13 @@ def main():
         require(all(re.fullmatch('OPENTLV_[A-Z0-9_]+', k) and v in ('ON', 'OFF')
                     for k, v in components.items()), 'Invalid Core components')
         evidence = resolve(args.lock, args.work, args.target, args.host, components,
-                           None if args.source_only else read(args.probe), args.crt_static)
+                           None if args.source_only else read(args.probe), args.crt_static,
+                           args.require_attestation)
         keys = ('mode', 'version', 'commit', 'source_dir', 'lib_dir', 'include_dir')
-        args.output.write_text(''.join(f'{k}={evidence[k]}\n' for k in keys if k in evidence),
-                               encoding='utf-8')
-        print(f"Rust Core: {evidence['mode']} {evidence['version']} {evidence['commit']}",
-              file=sys.stderr)
+        args.output.write_text(''.join(f'{k}={evidence[k]}\n' for k in keys if k in evidence) +
+                               f"attested={str(evidence['attested']).lower()}\n", encoding='utf-8')
+        print(f"Rust Core: {evidence['mode']} {evidence['version']} {evidence['commit']} "
+              f"({'attested' if evidence['attested'] else 'locked digest'})", file=sys.stderr)
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
         parser.exit(1, f'Core dependency verification failed: {error}\n')
 

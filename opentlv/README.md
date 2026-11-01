@@ -27,23 +27,20 @@ fn main() -> opentlv::Result<()> {
 }
 ```
 
-## Status
+## Installation
 
-The crates are not published to crates.io yet. Until they are, depend on a
-checkout of [opentlv-rust](https://github.com/OpenTLV/opentlv-rust):
-
-```toml
-[dependencies]
-opentlv = { path = "opentlv-rust/opentlv" }
+```sh
+cargo add opentlv
 ```
 
 ## Build requirements
 
-Rust 1.82 or newer, CMake 3.16 or newer, a C99 compiler, Git, Python 3.11 or newer
-and an authenticated GitHub CLI (`gh auth login`). On Windows,
-use the MSVC Rust toolchain with Visual Studio. By default `opentlv-sys` verifies
-the pinned Core v0.8.0 release artifacts and links a compatible static binary
-or builds the verified source;
+Rust 1.82 or newer, CMake 3.16 or newer, a C99 compiler, Python 3.11 or newer and
+network access to GitHub. No GitHub login is needed. On Windows, use the MSVC Rust
+toolchain with Visual Studio, and keep the Cargo target directory at 76 characters
+or fewer, 74 with `--release`, or set a short `CARGO_TARGET_DIR`. Core is built for the host, so cross compilation is not supported.
+By default `opentlv-sys` authenticates the pinned Core v0.8.0 release artifacts
+and links a compatible static binary or builds the verified source;
 see its README for the Core dependency and for linking a prebuilt library.
 
 ## Cargo features

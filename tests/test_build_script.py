@@ -26,6 +26,7 @@ import tempfile
 parser = argparse.ArgumentParser()
 for key in ('lock', 'work', 'output', 'target', 'host', 'components', 'probe'):
     parser.add_argument('--' + key)
+parser.add_argument('--require-attestation', action='store_true')
 args = parser.parse_args()
 if os.environ.get('TEST_RESOLVER_FAIL'):
     raise SystemExit('fixture attestation failure')
@@ -56,7 +57,7 @@ add_subdirectory(tlv)
 ''')
 Path(args.output).write_text(
     'mode=verified-source\nversion=' + lock['version'] + '\ncommit=' + lock['commit']
-    + '\nsource_dir=' + str(source) + '\n')
+    + '\nsource_dir=' + str(source) + '\nattested=' + str(args.require_attestation).lower() + '\n')
 """
 
 
@@ -88,6 +89,7 @@ class BuildScript(unittest.TestCase):
                 selected = json.loads((output / 'core-selection.json').read_text())
                 self.assertEqual(selected['mode'], 'verified-source')
                 self.assertTrue(selected['verified'])
+                self.assertTrue(selected['attested'])
                 source = Path(selected['source_dir'])
                 self.assertTrue(source.resolve().is_relative_to(output.resolve()))
                 sources.append(source)
@@ -108,6 +110,14 @@ class BuildScript(unittest.TestCase):
             self.assertFalse((output / 'core-release.txt').exists())
             self.assertNotIn('cargo:rustc-link-lib=', result.stdout)
             self.assertEqual([path.read_bytes() for path in libraries], previous)
+
+            # docs.rs has no network and only runs Rustdoc: nothing selects or links Core.
+            docs = subprocess.run([str(executable)], env={**env, 'TEST_RESOLVER_FAIL': '1', 'DOCS_RS': '1'},
+                                  capture_output=True, text=True)
+            self.assertEqual(docs.returncode, 0, docs.stdout + docs.stderr)
+            self.assertIn('cargo:core_source=\n', docs.stdout)
+            self.assertNotIn('cargo:rustc-link-lib=', docs.stdout)
+            self.assertFalse((output / 'core-selection.json').exists())
 
 
 if __name__ == '__main__':

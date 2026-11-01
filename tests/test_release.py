@@ -22,8 +22,8 @@ from test_ci_contract import CHECKS, DEFINITIONS, IDENTITY, records  # noqa: E40
 
 class Preflight(unittest.TestCase):
     def test_version_and_notes_match_the_first_release(self):
-        self.assertEqual(release.version_for('v0.1.0'), '0.1.0')
-        for tag in ('v0.8.0', 'v0.7.1', '0.1.0', 'v0.1.0-rc1', 'v00.1.0', '../main'):
+        self.assertEqual(release.version_for('v0.2.0'), '0.2.0')
+        for tag in ('v0.8.0', 'v0.7.1', '0.2.0', 'v0.2.0-rc1', 'v00.2.0', '../main'):
             with self.subTest(tag=tag), self.assertRaises(ValueError):
                 release.version_for(tag)
 
@@ -61,16 +61,16 @@ class Preflight(unittest.TestCase):
         main = {'object': {'sha': IDENTITY['commit']}}
         with mock.patch.object(release, 'api', side_effect=[main, []]), \
                 mock.patch.object(release, 'pages', return_value=[]):
-            release.unused_tag('v0.1.0', IDENTITY['commit'])
-        for refs, releases in (([{'ref': 'refs/tags/v0.1.0'}], []),
-                               ([], [{'tag_name': 'v0.1.0', 'draft': True}])):
+            release.unused_tag('v0.2.0', IDENTITY['commit'])
+        for refs, releases in (([{'ref': 'refs/tags/v0.2.0'}], []),
+                               ([], [{'tag_name': 'v0.2.0', 'draft': True}])):
             with mock.patch.object(release, 'api', side_effect=[main, refs]), \
                     mock.patch.object(release, 'pages', return_value=releases), \
                     self.assertRaises(ValueError):
-                release.unused_tag('v0.1.0', IDENTITY['commit'])
+                release.unused_tag('v0.2.0', IDENTITY['commit'])
         with mock.patch.object(release, 'api', return_value={'object': {'sha': 'b' * 40}}), \
                 self.assertRaisesRegex(ValueError, 'Main moved'):
-            release.unused_tag('v0.1.0', IDENTITY['commit'])
+            release.unused_tag('v0.2.0', IDENTITY['commit'])
 
     def test_gate_is_attempt_scoped_and_unique(self):
         good = {'name': 'full / checks / Rust quality gate',
@@ -92,7 +92,7 @@ class Payload(unittest.TestCase):
         self.evidence = self.root / 'evidence'
         self.output = self.root / 'release'
         self.data = records('full')
-        self.request = {'schema': 1, 'tag': 'v0.1.0', 'version': '0.1.0',
+        self.request = {'schema': 1, 'tag': 'v0.2.0', 'version': '0.2.0',
                         'identity': copy.deepcopy(IDENTITY), 'definitions': DEFINITIONS,
                         'notes_sha256': digest(release.NOTES), 'core': release.lock(True)}
         packages = self.evidence / 'packages'
@@ -101,11 +101,12 @@ class Payload(unittest.TestCase):
             record['require_release'] = True
             if record['configuration']['id'] == 'linux-stable':
                 for crate in release.CRATES:
-                    path = packages / f'{crate}-0.1.0.crate'
+                    path = packages / f'{crate}-0.2.0.crate'
                     path.write_bytes((crate + ' tested bytes').encode())
                     record['package'][crate] = digest(path)
                 for consumer in record['consumer'].values():
-                    consumer['packages'] = record['package']
+                    consumer['packages'] = {crate: record['package'][crate]
+                                            for crate in consumer['packages']}
             write(self.evidence / 'builds' / record['configuration']['id'] / 'record.json', record)
         self.quality = release.validate_records(self.data, 'full', IDENTITY, DEFINITIONS, CHECKS, True)
         write(self.evidence / 'quality.json', self.quality)
@@ -188,7 +189,7 @@ class Payload(unittest.TestCase):
 
     def test_remote_asset_metadata_is_checked(self):
         self.assemble()
-        published = {'tag_name': 'v0.1.0', 'draft': True, 'prerelease': False,
+        published = {'tag_name': 'v0.2.0', 'draft': True, 'prerelease': False,
                      'body': release.NOTES.read_text(encoding='utf-8'),
                      'assets': [{'name': p.name, 'size': p.stat().st_size,
                                  'state': 'uploaded', 'digest': 'sha256:' + digest(p)}
@@ -205,8 +206,8 @@ class Payload(unittest.TestCase):
 
     def test_publication_verifies_draft_before_making_it_public(self):
         self.assemble()
-        draft = {'id': 42, 'html_url': 'https://github.com/OpenTLV/opentlv-rust/releases/tag/v0.1.0',
-                 'tag_name': 'v0.1.0', 'draft': True, 'prerelease': False,
+        draft = {'id': 42, 'html_url': 'https://github.com/OpenTLV/opentlv-rust/releases/tag/v0.2.0',
+                 'tag_name': 'v0.2.0', 'draft': True, 'prerelease': False,
                  'body': release.NOTES.read_text(encoding='utf-8'),
                  'assets': [{'name': p.name, 'size': p.stat().st_size,
                              'state': 'uploaded', 'digest': 'sha256:' + digest(p)}

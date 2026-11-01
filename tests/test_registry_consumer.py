@@ -13,8 +13,11 @@ import tarfile
 import tempfile
 import tomllib
 import unittest
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
+import ci  # noqa: E402
+import ci_contract as contract  # noqa: E402
 import registry_consumer as consumer  # noqa: E402
 from ci_support import digest  # noqa: E402
 
@@ -124,7 +127,72 @@ class Registry(Fixture):
             consumer.check_lock(project / 'Cargo.lock', {**digests, 'opentlv': '0' * 64})
 
 
+class Selections(unittest.TestCase):
+    def test_the_provenance_check_leaves_out_the_consumers_that_have_no_login(self):
+        lock = contract.lock()
+        selected = {'repository': lock['repository'], 'version': lock['version'], 'commit': lock['commit'],
+                    'locked_version': lock['version'], 'locked_commit': lock['commit'],
+                    'release_tag': lock['release_tag'], 'dirty': False, 'mode': 'verified-source',
+                    'verified': True}
+        evidence = {'mode': 'verified-source', 'release_tag': lock['release_tag'], 'release_id': 7,
+                    'manifest_sha256': 'd' * 64, 'signer_workflow': contract.SIGNER}
+        with tempfile.TemporaryDirectory() as temp:
+            work = Path(temp).resolve()
+
+            def build(place, attested):
+                source = work / place / 'r/source/core'
+                source.mkdir(parents=True)
+                (work / place / 'r/verification.json').write_text(
+                    json.dumps({**evidence, 'attested': attested}), encoding='utf-8')
+                (work / place / 'core-selection.json').write_text(
+                    json.dumps({**selected, 'attested': attested, 'source_dir': str(source)}), encoding='utf-8')
+
+            build(ci.CONSUMER_WORK + '/0', False)
+            with self.assertRaisesRegex(ValueError, 'No Core selection'):
+                ci.selections(work, False)
+            build('target', True)
+            self.assertEqual([item['attested'] for item in ci.selections(work, False)], [True])
+            build('other', False)
+            with self.assertRaisesRegex(ValueError, 'incomplete'):
+                ci.selections(work, False)
+
+
 class Consumer(unittest.TestCase):
+    def build(self, selected):
+        core = contract.lock()
+        digests = {crate: 'a' * 64 for crate in contract.CRATES}
+        environment = {name: 'unwanted' for name in (
+            *consumer.NOT_ON_A_CLEAN_MACHINE, 'OPENTLV_LIB_DIR', 'OPENTLV_CORE_SOURCE',
+            'OPENTLV_PYTHON', 'OPENTLV_REQUIRE_VERIFIED_CORE')}
+        environment['PATH'] = 'toolchain'
+        with tempfile.TemporaryDirectory() as temp, \
+                mock.patch.object(consumer, 'stream', return_value=f"linked Core {core['version']}\n") as run, \
+                mock.patch.object(consumer, 'check_lock'), \
+                mock.patch.object(consumer, 'selection', return_value=selected):
+            result = consumer.build_consumers(Path(temp), '0.1.1', digests, core, environment, False)
+            for call in run.call_args_list:
+                env = call.kwargs['env']
+                self.assertEqual(env['PATH'], 'toolchain')
+                self.assertFalse(any(key in env for key in environment if key != 'PATH'))
+            return result
+
+    def test_consumers_are_isolated_and_raw_evidence_names_only_the_raw_crate(self):
+        selected = {**contract.lock(), 'verified': True, 'attested': False,
+                    'dirty': False, 'mode': 'verified-source'}
+        result = self.build(selected)
+        self.assertEqual(set(result), {*contract.policy()['features'], 'opentlv-sys'})
+        self.assertEqual(result['opentlv-sys']['packages'], {'opentlv-sys': 'a' * 64})
+        self.assertEqual(set(result['default']['packages']), set(contract.CRATES))
+
+    def test_wrong_core_and_authenticated_consumers_are_rejected(self):
+        selected = {**contract.lock(), 'verified': True, 'attested': False,
+                    'dirty': False, 'mode': 'verified-source'}
+        for key, value in (('verified', False), ('attested', True), ('dirty', True),
+                           ('commit', 'b' * 40), ('version', '0.9.0'),
+                           ('repository', 'other/core'), ('mode', 'local-source')):
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                self.build({**selected, key: value})
+
     def test_manifest_requires_exact_version_and_selected_features(self):
         data = tomllib.loads(consumer.consumer_manifest('1.2.3', None))
         self.assertEqual(data['dependencies'], {'opentlv': '=1.2.3'})

@@ -13,7 +13,8 @@ against an explicitly pinned Core dependency, and since
 [PR, Main and Full CI](docs/quality-gates.md). Since
 [issue #4](https://github.com/OpenTLV/opentlv-rust/issues/4) both crates are
 prepared as independent Cargo packages with their own
-[versioning](docs/packaging.md); they are not published yet. Since
+[versioning](docs/packaging.md), and from version `0.2.0` they are released to
+crates.io through the [approved publication](docs/packaging.md#cratesio-publication). Since
 [issue #5](https://github.com/OpenTLV/opentlv-rust/issues/5) the Cargo
 workspace is at the repository root, and since
 [issue #6](https://github.com/OpenTLV/opentlv-rust/issues/6) this repository
@@ -74,9 +75,9 @@ exclusions and limitations for the pinned Core.
 ## Building
 
 Requirements: Rust 1.82 or newer, CMake 3.16 or newer,
-a C99 compiler, Git, Python 3.11 or newer and an authenticated GitHub CLI
-(`gh auth login`). On Windows, use the MSVC Rust toolchain with Visual
-Studio, and keep the Cargo target directory at 49 characters or fewer, 47 with
+a C99 compiler and Python 3.11 or newer. A build needs no GitHub login. On Windows,
+use the MSVC Rust toolchain with Visual
+Studio, and keep the Cargo target directory at 76 characters or fewer, 74 with
 `--release`, or set a short `CARGO_TARGET_DIR`. The first build of each
 configuration downloads Core from GitHub. Core is built for the host, so cross
 compilation is not supported.
@@ -110,6 +111,7 @@ Core:
 | `version` | `0.8.0` |
 | `commit` | `345c77acb29266036df5f27d04ce315bb61853cc` |
 | `release_tag` | `v0.8.0`: default builds require authenticated Core release artifacts |
+| `release_sha256sums` | `e84f3827c16f17a96ab93d21053c32f21f50e548ceb01bcea5dc2639b5af1589`: the SHA-256 of that release's `SHA256SUMS`, which authenticates its assets |
 | `allow_verified_source` | `true` |
 
 The `opentlv-sys` build script selects Core before it runs any Core build
@@ -118,14 +120,15 @@ file:
 | Mode | Selected when | Verification |
 | --- | --- | --- |
 | `pinned-git` | Default while `release_tag` is `null` | Clones `OpenTLV/opentlv` into `OUT_DIR` once, checks out the locked commit and requires a matching commit, version tag and clean tree. Git commit IDs identify the content; no archive is involved. |
-| `verified-binary` or `verified-source` | `release_tag` is set, or `OPENTLV_REQUIRE_VERIFIED_CORE=1` | [`verified_core.py`](opentlv-sys/core/verified_core.py) checks the release and that its tag resolves to the locked commit. It verifies the GitHub Artifact Attestations of the manifest, `SHA256SUMS` and every downloaded archive (signer `core-release.yml`, source digest of the locked commit), along with the archive checksums, Core's Full CI evidence and the configuration bound to the source. It uses a static Verified Binary only when it matches the target, the C compiler of a CMake probe, the MSVC runtime or declared Linux PIC and glibc, and the Core components of the enabled Cargo features. Otherwise it uses the Verified Source, if `allow_verified_source` permits. It never falls back to Git. Needs Python 3.11 or newer and an authenticated [GitHub CLI](https://cli.github.com/). |
+| `verified-binary` or `verified-source` | `release_tag` is set, or `OPENTLV_REQUIRE_VERIFIED_CORE=1` | [`verified_core.py`](opentlv-sys/core/verified_core.py) requires the locked digest of `SHA256SUMS` and, through it, the checksums of the manifest and every downloaded archive, along with Core's Full CI evidence and the configuration bound to the source. A public download needs no login. With a logged-in [GitHub CLI](https://cli.github.com/), or always with `OPENTLV_REQUIRE_VERIFIED_CORE=1` as in this repository's CI, it also checks the release and that its tag resolves to the locked commit, and verifies the GitHub Artifact Attestations of the manifest, `SHA256SUMS` and every downloaded archive (signer `core-release.yml`, source digest of the locked commit); a failure stops the build. It uses a static Verified Binary only when it matches the target, the C compiler of a CMake probe, the MSVC runtime or declared Linux PIC and glibc, and the Core components of the enabled Cargo features. Otherwise it uses the Verified Source, if `allow_verified_source` permits. It never falls back to Git. Needs Python 3.11 or newer. |
 | `local-source` | `OPENTLV_CORE_SOURCE` is set | Records the commit, version and dirty state of the local checkout without verifying them, and prints a Cargo warning. Rejected when `CI` or `GITHUB_ACTIONS` is set, or with `OPENTLV_REQUIRE_VERIFIED_CORE`. |
 
 After building Core, or before linking a Verified Binary, the build script
 checks that the public `tlv/version.h` and `tlv/config.h` report the selected
 version, commit and Core components. Each build records its selection in
 `core-selection.json` in the `opentlv-sys` `OUT_DIR`
-(`target/<profile>/build/opentlv-sys-*/out/`).
+(`target/<profile>/build/opentlv-sys-*/out/`), where `attested` tells whether an
+attestation was verified as well.
 
 When no compatible Verified Binary is available, Core is built in `OUT_DIR`
 with CMake as a Release static,
@@ -133,11 +136,13 @@ position-independent library without C++, tests, examples or
 warnings-as-errors. Cargo reuses a successful build until its inputs change.
 When the build script reruns, it authenticates release artifacts in a fresh
 attempt directory and compiles Verified Source in that attempt's own
-`cmake-build`, so CMake never reuses a cache bound to an earlier extraction.
+build directory, so CMake never reuses a cache bound to an earlier extraction.
 Cargo configurations with their own `OUT_DIR`, such as
 another profile or feature set, resolve Core separately.
 
-`OPENTLV_LIB_DIR` and `OPENTLV_LINK_KIND` still link a prebuilt library.
+With `DOCS_RS` set, as on docs.rs, the build script selects and links no Core at
+all, because Rustdoc needs neither. `OPENTLV_LIB_DIR` and `OPENTLV_LINK_KIND` still
+link a prebuilt library.
 The build script still selects Core for its headers and test data, but does not
 build it, and the prebuilt library is not verified.
 

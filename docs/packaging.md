@@ -1,10 +1,10 @@
 # Packaging and versioning
 
 The two crates of this repository are prepared as independent Cargo packages
-([issue #4](https://github.com/OpenTLV/opentlv-rust/issues/4)). They are not
-published to crates.io yet: [registry publication](#cratesio-publication) is a
-separate, approved step. The first
-GitHub release is prepared as `v0.1.0` against Core `v0.8.0` (#33). The
+([issue #4](https://github.com/OpenTLV/opentlv-rust/issues/4)). The first
+GitHub release was `v0.1.0` against Core `v0.8.0` (#33), and `0.2.0` is the first
+version for crates.io: [registry publication](#cratesio-publication) is a
+separate, approved step. The
 [packaging validation](validation/packaging.md) records the local results.
 
 ## Package identities
@@ -24,7 +24,7 @@ the root `Cargo.toml`:
 
 | Field | Value |
 | --- | --- |
-| `version` | `0.1.0` |
+| `version` | `0.2.0` |
 | `edition` | `2021` |
 | `rust-version` | `1.82` |
 | `license` | `MIT` |
@@ -39,7 +39,8 @@ license text. Both copies must equal the root `LICENSE`.
 
 The Rust bindings have their own version, independent of OpenTLV Core:
 
-- The first standalone Rust release is `0.1.0`. The inherited `0.7.1` was
+- The first standalone Rust release is `0.1.0`, and `0.2.0` is the first version
+  meant for crates.io. The inherited `0.7.1` was
   an unpublished migration baseline, not a previous Rust release. There were
   no Rust repository tags or GitHub releases when checked on 2026-10-27.
   The Rust version is independent of Core's `0.8.0` dependency version.
@@ -60,7 +61,7 @@ The Rust bindings have their own version, independent of OpenTLV Core:
 `opentlv` depends on exactly the `opentlv-sys` version it is released with:
 
 ```toml
-opentlv-sys = { version = "=0.1.0", path = "../opentlv-sys", default-features = false }
+opentlv-sys = { version = "=0.2.0", path = "../opentlv-sys", default-features = false }
 ```
 
 The exact requirement is deliberate. `links = "tlv"` permits only one
@@ -79,11 +80,13 @@ which is part of the package:
 | Crates | Core version | Core commit | Core release |
 | --- | --- | --- | --- |
 | 0.1.0 | 0.8.0 | `345c77acb29266036df5f27d04ce315bb61853cc` | v0.8.0 |
+| 0.2.0 | 0.8.0 | `345c77acb29266036df5f27d04ce315bb61853cc` | v0.8.0 |
 
 The packages do not contain Core. A build from an archive selects Core exactly
 as a build from the repository does, as described in the
 [README](../README.md#core-dependency): it authenticates the locked Core release
-and selects its compatible static binary or builds its verified source.
+through the digest in the lock, and through its attestations with a logged-in GitHub
+CLI, and selects its compatible static binary or builds its verified source.
 `opentlv::version()` reports the
 version of the Core library actually linked at run time, which can differ from
 the pinned one when `OPENTLV_LIB_DIR` links a prebuilt library.
@@ -122,7 +125,8 @@ migration baseline, the license copies and the Core compatibility table
 without building.
 
 The `consumer` check then builds a new project against those exact archives for
-each feature set, through a local Cargo registry that replaces crates.io; see the
+each feature set and for `opentlv-sys` alone, through a local Cargo registry that
+replaces crates.io and without a GitHub login; see the
 [quality gates](quality-gates.md#checks) and the
 [registry build validation](validation/registry-builds.md). To run it on any two
 archives, for example those of a release:
@@ -133,7 +137,7 @@ python -B scripts/registry_consumer.py --packages <directory with both .crate fi
 ```
 
 The target directories are `<work>/<n>`, so on Windows `--work` must fit the
-[path limit](#remaining-cratesio-prerequisites).
+[path limit](#consumer-requirements).
 
 To inspect the packages locally, from the repository root:
 
@@ -180,7 +184,7 @@ versioned release notes are the publication text and are included in the
 hashed CI definitions. No crates.io credentials or uploads are involved.
 
 1. Review and merge the release preparation. Wait for successful Rust Main CI
-   on that exact commit. Dispatch `Rust Release` on `main` with `tag: v0.1.0`.
+   on that exact commit. Dispatch `Rust Release` on `main` with `tag: v0.2.0`.
 2. The workflow rejects a foreign, dirty or non-main checkout, a changed main
    tip, an existing tag/release, wrong versions or missing Main evidence.
    It runs Full CI with `require_verified_core: true`: all seven configurations,
@@ -188,8 +192,8 @@ hashed CI definitions. No crates.io credentials or uploads are involved.
 3. Assembly revalidates every record against the current commit, run, attempt,
    Core lock and source hashes. It copies the exact two Linux stable packages
    whose digests the Full record contains. It does not rebuild them.
-4. The workflow attests all five assets: `opentlv-sys-0.1.0.crate`,
-   `opentlv-0.1.0.crate`, `release-manifest.json`, `release-notes.md` and
+4. The workflow attests all five assets: `opentlv-sys-0.2.0.crate`,
+   `opentlv-0.2.0.crate`, `release-manifest.json`, `release-notes.md` and
    `SHA256SUMS`. Publication rechecks evidence, checksums, attestations and
    unused tag status, then creates the tag and a draft release. Only after the
    uploaded asset names, sizes, SHA-256 digests, notes and tag commit match
@@ -205,20 +209,20 @@ retrying; the workflow deliberately refuses to overwrite either. Earlier
 attempts' artifacts cannot satisfy a new attempt. A new main commit or a new
 Main run requires a new release attempt with matching evidence.
 
-For GitHub release archives before crates.io publication, extract both `.crate`
+To use GitHub release archives instead of crates.io, extract both `.crate`
 files into adjacent directories, then use a Cargo path dependency and patch
 the exact registry dependency back to the extracted raw crate:
 
 ```toml
 [dependencies]
-opentlv = { path = "vendor/opentlv-0.1.0" }
+opentlv = { path = "vendor/opentlv-0.2.0" }
 
 [patch.crates-io]
-opentlv-sys = { path = "vendor/opentlv-sys-0.1.0" }
+opentlv-sys = { path = "vendor/opentlv-sys-0.2.0" }
 ```
 
 The normal Core build requirements still apply. Rust's crate version is
-`0.1.0`; `opentlv::version()` should report linked Core `0.8.0`.
+`0.2.0`; `opentlv::version()` should report linked Core `0.8.0`.
 
 ### Local preparation evidence (2026-10-27)
 
@@ -273,8 +277,9 @@ what has and has not been exercised.
 1. Finish the [GitHub release](#github-release) of the new version, and keep `main`
    at its commit: any later commit, even a documentation change, requires a new
    version.
-2. Resolve the [remaining prerequisites](#remaining-cratesio-prerequisites). The
-   workflow cannot check these decisions for you.
+2. Make the [one-time configuration](#one-time-configuration) and review the
+   [consumer requirements](#consumer-requirements). The workflow cannot check
+   these decisions for you.
 3. Dispatch `Rust crates.io` on `main` with the release tag. The `prepare` job runs
    every check below without a credential and uploads
    `rust-crates-io-plan-<attempt>`, which lists the crates, digests and credential
@@ -284,6 +289,9 @@ what has and has not been exercised.
 5. It uploads `opentlv-sys`, waits until crates.io serves it, and only then uploads
    `opentlv`. It emits `rust-crates-io-<attempt>` with the plan, the approving
    reviewers and the published URLs.
+6. The [verification jobs](#verification-after-publication) check the published
+   versions as a new user sees them. Record the result in the
+   [release validation](validation/crates-io-release.md).
 
 ### What the workflow checks
 
@@ -315,6 +323,31 @@ before that crate's `cargo publish` runs. Both use the Linux stable toolchain th
 built the archives, with `--locked` and `--no-verify`: the archives were tested in
 Full CI, and no build script runs near a credential. Afterwards, the index entry and
 the downloaded archive must both have the tested digest.
+
+### Verification after publication
+
+[`scripts/verify_published.py`](../scripts/verify_published.py) runs in two jobs
+after `publish`. They hold no credential and no GitHub token:
+
+- `verify-registry` requires the tested digests in the index and the download. It
+  compares the crates.io metadata and owner with the
+  [registry identity](#validation), and waits up to 30 minutes for docs.rs to report
+  a successful documentation build of both crates.
+- `verify-consumers` runs the [consumer builds](#validation) against crates.io
+  itself on Linux, Windows and macOS stable. It requires the tested digests in
+  `Cargo.lock`, the locked Core version and commit, and `attested: false`, which
+  proves the build needed no login. Both crates are libraries, so there is no
+  `cargo install` to check.
+
+The jobs upload `published-registry.json` and one `published-consumers.json` per
+platform. The registry report records verified metadata, owners, archive digests
+and versioned documentation URLs. Consumer reports list the packages each project
+actually resolved; the raw-crate project lists only `opentlv-sys`. A failed rerun
+removes an earlier success report before verification starts.
+
+A failure cannot change the published bytes. Re-run a job for a temporary cause, such
+as a docs.rs queue. For a defect, release a new version, and yank the faulty one with
+`cargo yank` if it harms users.
 
 ### Credentials
 
@@ -362,42 +395,26 @@ These settings live outside this repository and are made by a maintainer:
    OpenTLV GitHub team, with `cargo owner`; `marekcingel` must stay an owner, or
    `OWNER` in `scripts/crates_io.py` must change with it.
 
-## Remaining crates.io prerequisites
+## Consumer requirements
 
-These are not part of this preparation and must be resolved before or at the
-first publication. The [crates.io validation](validation/crates-io.md) records
-the identity and archive checks of `v0.1.0`:
+What a crates.io user needs, as the
+[release validation](validation/crates-io-release.md) measured it:
 
-- **Version.** The `v0.1.0` archives must not be published, because their
-  contents have the documentation and docs.rs problems below. The first
-  crates.io version needs a new commit and a new version, such as `0.1.1`, so
-  that each version has one archive.
-- **Names and owners.** Neither `opentlv` nor `opentlv-sys` existed on
-  crates.io on 2026-10-30, and crates.io does not reserve names. The first
-  publication claims both names; crate owners, such as an OpenTLV GitHub team,
-  are set then.
-- **Core availability.** A build needs CMake, a C99 compiler, Python 3.11,
-  an authenticated GitHub CLI and network access to GitHub, even when
-  `OPENTLV_LIB_DIR` links a prebuilt library. The locked
-  Core v0.8.0 release assets and attestations must remain available. A
-  compatible Verified Binary avoids compiling Core; otherwise the verified
-  source is built locally. The
-  [registry build validation](validation/registry-builds.md#consumer-requirements)
-  shows how each requirement fails, and that a clean machine cannot build the
-  crates; this needs a decision before publishing.
+- **Core availability.** A build needs CMake, a C99 compiler, Python 3.11 and
+  network access to GitHub, even when `OPENTLV_LIB_DIR` links a prebuilt library.
+  It needs neither Git nor a GitHub login. The locked Core v0.8.0 release assets
+  must remain available with the same bytes, because a published version cannot
+  change its lock. A compatible Verified Binary avoids compiling Core; otherwise
+  the verified source is built locally.
+- **Authentication.** Without a logged-in GitHub CLI, the `SHA256SUMS` digest in the
+  lock authenticates the Core assets, and it is as trustworthy as the published
+  crate that contains it. With a logged-in GitHub CLI, the build verifies the
+  attestations as well, and a failure stops it.
 - **Windows paths.** With the Visual Studio generator, the Cargo target directory
-  can have at most 49 characters, or 47 with `--release`. A short
+  can have at most 76 characters, or 74 with `--release`. A short
   `CARGO_TARGET_DIR` works around it; a deep project otherwise fails with an
   MSBuild error.
 - **Targets.** `build.rs` gives CMake no target, so cross compilation is not
   supported.
-- **docs.rs.** docs.rs builds without network access, so the default build
-  script cannot fetch Core there; an offline build of the released archive
-  fails. Rendering the documentation on docs.rs needs a documentation-only
-  build path in `build.rs`.
-- **Documentation.** The crate-level Rustdoc, the crate READMEs and the
-  [user guide](guides/rust.md) describe a path dependency on an opentlv-rust
-  checkout. They need the crates.io dependency once the crates are published.
-- **Registry settings.** The [one-time configuration](#one-time-configuration) of
-  the environment and the bootstrap token has not been made. The GitHub
-  release workflow publishes source packages only to GitHub Releases.
+- **Documentation.** docs.rs builds without network access, so `DOCS_RS` selects no
+  Core, and only Rustdoc runs there.

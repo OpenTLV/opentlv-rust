@@ -27,6 +27,7 @@ path = [
     "docs/validation/crates-io.md",
     "docs/validation/layout.md",
     "docs/validation/licensing.md",
+    "docs/validation/crates-io-release.md",
     "docs/validation/packaging.md",
     "docs/validation/registry-builds.md",
     "docs/validation/standalone-build.json",

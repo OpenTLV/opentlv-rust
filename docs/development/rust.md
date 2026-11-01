@@ -240,8 +240,9 @@ The DOL component is not bound yet.
 
 ## Build
 
-Requirements: Rust 1.82 or newer, CMake 3.16 or newer, a C99 compiler, Git,
-Python 3.11 or newer and an authenticated GitHub CLI (`gh auth login`).
+Requirements: Rust 1.82 or newer, CMake 3.16 or newer, a C99 compiler and
+Python 3.11 or newer. A build needs no GitHub login; with a logged-in GitHub CLI it
+verifies the Core attestations as well, and `scripts/ci.py` requires them.
 On Windows use the MSVC Rust toolchain with Visual Studio. The first build of
 each configuration downloads Core from GitHub.
 
@@ -307,7 +308,7 @@ for development only and are not release evidence.
 
 `opentlv` and `opentlv-sys` share the Cargo workspace version
 (`version.workspace = true` in each crate's `Cargo.toml`). The first standalone
-release is `0.1.0`; `0.7.1` was an unpublished migration baseline. It is independent of the OpenTLV C library's
+release is `0.1.0`, and the first on crates.io is `0.2.0`; `0.7.1` was an unpublished migration baseline. It is independent of the OpenTLV C library's
 version; it is not derived from Core's Git tags. `opentlv` requires exactly the
 `opentlv-sys` version it is released with, and each `opentlv-sys` version
 records its compatible Core dependency. `opentlv::version()` is a separate

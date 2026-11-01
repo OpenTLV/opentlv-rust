@@ -4,5 +4,6 @@
   "version": "0.8.0",
   "commit": "345c77acb29266036df5f27d04ce315bb61853cc",
   "release_tag": "v0.8.0",
+  "release_sha256sums": "e84f3827c16f17a96ab93d21053c32f21f50e548ceb01bcea5dc2639b5af1589",
   "allow_verified_source": true
 }

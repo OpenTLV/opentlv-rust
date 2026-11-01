@@ -15,18 +15,21 @@ package:
 
 | `opentlv-sys` | Core version | Core commit | Core release |
 | --- | --- | --- | --- |
-| 0.1.0 | 0.8.0 | `345c77acb29266036df5f27d04ce315bb61853cc` | v0.8.0 |
+| 0.2.0 | 0.8.0 | `345c77acb29266036df5f27d04ce315bb61853cc` | v0.8.0 |
 
-The package does not contain Core. `core/verified_core.py` authenticates the
-locked Core release artifacts, selects a compatible static binary or builds
-the verified source with CMake as a static Release library in Cargo's `OUT_DIR`.
-It never falls back to an unauthenticated Git checkout. The build script checks that
-Core's public headers report the pinned version, commit and components.
+The package does not contain Core. `core/verified_core.py` downloads the locked
+Core release and authenticates it through the SHA-256 of its `SHA256SUMS`, which
+the lock records. With a logged-in GitHub CLI it also verifies the GitHub Artifact
+Attestations, and a failed attestation stops the build. It selects a compatible
+static binary or builds the verified source with CMake as a static Release library
+in Cargo's `OUT_DIR`. It never falls back to an unauthenticated Git checkout. The
+build script checks that Core's public headers report the pinned version, commit
+and components.
 
-Requirements: Rust 1.82 or newer, CMake 3.16 or newer, a C99 compiler, Git,
-Python 3.11 or newer and an authenticated GitHub CLI (`gh auth login`),
-plus network access to GitHub. On Windows, use the MSVC
-Rust toolchain with Visual Studio.
+Requirements: Rust 1.82 or newer, CMake 3.16 or newer, a C99 compiler,
+Python 3.11 or newer and network access to GitHub; no GitHub login. On Windows, use
+the MSVC Rust toolchain with Visual Studio, and keep the Cargo target directory at
+76 characters or fewer, 74 with `--release`, or set a short `CARGO_TARGET_DIR`. Core is built for the host, so cross compilation is not supported.
 
 ## Build environment
 
@@ -35,7 +38,7 @@ Rust toolchain with Visual Studio.
 | `OPENTLV_LIB_DIR` | Links a prebuilt library from this directory instead of building Core. The pinned Core tree is still selected for its headers and test data; the prebuilt library is not verified and must be built with the Core components of the enabled features. |
 | `OPENTLV_LINK_KIND` | `static` or `dylib` (default) for `OPENTLV_LIB_DIR` |
 | `OPENTLV_CORE_SOURCE` | Absolute path of a local Core checkout, for development only; rejected in CI |
-| `OPENTLV_REQUIRE_VERIFIED_CORE` | Requires an attested Core release; fails while none is locked |
+| `OPENTLV_REQUIRE_VERIFIED_CORE` | Requires a GitHub Artifact Attestation, and so a logged-in GitHub CLI, instead of the locked digest alone; fails while no release is locked |
 
 ## Cargo features
 
