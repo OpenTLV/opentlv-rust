@@ -24,11 +24,14 @@ jobs:
       contents: read
       actions: read
       attestations: read
+    outputs:
+      published: ${{ steps.plan.outputs.published }}
     steps:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - env:
+      - id: plan
+        env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
         run: python3 -B scripts/crates_io.py prepare
@@ -81,4 +84,54 @@ jobs:
           path: |
             build/crates-io/plan.json
             build/crates-io/receipt.json
+          if-no-files-found: error
+  # The published versions are immutable, so these jobs hold no credential or GitHub token and
+  # see crates.io as a new user does. A failure means a new version, not a changed one.
+  verify-registry:
+    needs: [prepare, publish]
+    runs-on: ubuntu-24.04
+    # docs.rs builds from a queue.
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - env:
+          PUBLISHED: ${{ needs.prepare.outputs.published }}
+        run: python3 -B scripts/verify_published.py registry
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rust-crates-io-registry-${{ github.run_attempt }}
+          path: build/published-registry.json
+          if-no-files-found: error
+  verify-consumers:
+    needs: [prepare, publish]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {id: linux-stable, os: ubuntu-24.04}
+          - {id: windows-stable, os: windows-latest}
+          - {id: macos-stable, os: macos-latest}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - env:
+          PUBLISHED: ${{ needs.prepare.outputs.published }}
+          CONFIGURATION: ${{ matrix.id }}
+        run: python -B scripts/verify_published.py consumers
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rust-crates-io-consumers-${{ matrix.id }}-${{ github.run_attempt }}
+          path: build/published-consumers.json
           if-no-files-found: error

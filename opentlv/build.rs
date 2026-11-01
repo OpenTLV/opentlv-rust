@@ -6,6 +6,7 @@
 
 fn main() {
     println!("cargo:rerun-if-env-changed=DEP_TLV_CORE_SOURCE");
+    // Empty on docs.rs, where only Rustdoc runs and no test reads the tree.
     let source = std::env::var("DEP_TLV_CORE_SOURCE")
         .expect("opentlv-sys did not report the selected Core source");
     println!("cargo:rustc-env=OPENTLV_CORE_SOURCE_DIR={source}");

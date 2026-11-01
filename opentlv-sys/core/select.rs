@@ -19,6 +19,8 @@ pub struct Lock {
     pub version: String,
     pub commit: String,
     pub release_tag: Option<String>,
+    /// SHA-256 of the release `SHA256SUMS`, which authenticates its assets.
+    pub release_sha256sums: Option<String>,
     pub allow_verified_source: bool,
 }
 
@@ -36,6 +38,8 @@ pub struct Selection {
     pub mode: String,
     /// True only for authenticated release artifacts.
     pub verified: bool,
+    /// True when a GitHub Artifact Attestation also confirmed those artifacts.
+    pub attested: bool,
     pub identity: Identity,
     /// Core source tree: built in source modes, headers and test data otherwise.
     pub source_dir: PathBuf,
@@ -142,6 +146,13 @@ fn is_commit(value: &str) -> bool {
             .all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
 }
 
+fn is_sha256(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+}
+
 fn is_number(value: &str) -> bool {
     !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit())
 }
@@ -175,6 +186,7 @@ pub fn parse_lock(text: &str) -> Result<Lock, String> {
         "version",
         "commit",
         "release_tag",
+        "release_sha256sums",
         "allow_verified_source",
     ];
     if fields.len() != expected.len() || !expected.iter().all(|k| fields.contains_key(*k)) {
@@ -204,10 +216,16 @@ pub fn parse_lock(text: &str) -> Result<Lock, String> {
         Value::Text(tag) if *tag == format!("v{version}") => Some(tag.clone()),
         _ => return Err("Core release tag must be null or `v<version>`".to_string()),
     };
+    let release_sha256sums = match (&release_tag, &fields["release_sha256sums"]) {
+        (None, Value::Null) => None,
+        (Some(_), Value::Text(digest)) if is_sha256(digest) => Some(digest.clone()),
+        _ => return Err("a Core release must lock the SHA-256 of its SHA256SUMS".to_string()),
+    };
     Ok(Lock {
         version,
         commit,
         release_tag,
+        release_sha256sums,
         allow_verified_source,
     })
 }
@@ -339,6 +357,7 @@ pub fn select_local(source: &Path, ci: bool, require_verified: bool) -> Result<S
     Ok(Selection {
         mode: "local-source".to_string(),
         verified: false,
+        attested: false,
         identity: git_identity(source)?,
         source_dir: source.to_path_buf(),
         lib_dir: None,
@@ -398,6 +417,7 @@ pub fn select_pinned(lock: &Lock, work: &Path, url: &str) -> Result<Selection, S
     Ok(Selection {
         mode: "pinned-git".to_string(),
         verified: false,
+        attested: false,
         identity,
         source_dir: source,
         lib_dir: None,
@@ -428,6 +448,11 @@ pub fn parse_verified(text: &str, lock: &Lock) -> Result<Selection, String> {
         "verified-source" => false,
         _ => return Err(format!("unexpected verified Core mode `{mode}`")),
     };
+    let attested = match field("attested")? {
+        "true" => true,
+        "false" => false,
+        other => return Err(format!("unexpected Core attestation state `{other}`")),
+    };
     if field("commit")? != lock.commit || field("version")? != lock.version {
         return Err("verified Core identity differs from the lock".to_string());
     }
@@ -435,6 +460,7 @@ pub fn parse_verified(text: &str, lock: &Lock) -> Result<Selection, String> {
     Ok(Selection {
         mode: mode.to_string(),
         verified: true,
+        attested,
         identity: Identity {
             commit: lock.commit.clone(),
             version: lock.version.clone(),
@@ -477,11 +503,12 @@ pub fn evidence(selection: &Selection, lock: &Lock) -> String {
         None => "null".to_string(),
     };
     format!(
-        "{{\n  \"mode\": {},\n  \"verified\": {},\n  \"repository\": {},\n  \"version\": {},\n  \
+        "{{\n  \"mode\": {},\n  \"verified\": {},\n  \"attested\": {},\n  \"repository\": {},\n  \"version\": {},\n  \
          \"commit\": {},\n  \"dirty\": {},\n  \"locked_version\": {},\n  \"locked_commit\": {},\n  \
          \"release_tag\": {},\n  \"source_dir\": {},\n  \"lib_dir\": {},\n  \"include_dir\": {}\n}}\n",
         json_string(&selection.mode),
         selection.verified,
+        selection.attested,
         json_string(REPOSITORY),
         json_string(&selection.identity.version),
         json_string(&selection.identity.commit),

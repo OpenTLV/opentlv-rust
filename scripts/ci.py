@@ -31,6 +31,10 @@ CORE_OPTIONS = ("-DOPENTLV_READER=ON", "-DOPENTLV_WRITER=ON", "-DOPENTLV_QUERY=O
                 "-DCMAKE_POSITION_INDEPENDENT_CODE=ON", "-DOPENTLV_BUILD_CXX=OFF",
                 "-DOPENTLV_BUILD_TESTS=OFF", "-DOPENTLV_BUILD_EXAMPLES=OFF",
                 "-DOPENTLV_WARNINGS_AS_ERRORS=OFF")
+# The Core build directory of build.rs.
+CORE_BUILD_DIR = "b"
+# Short: MSBuild's path limit also binds the hosted Windows work directory.
+CONSUMER_WORK = "c"
 # Files Cargo adds to every package besides the tracked crate sources.
 GENERATED = {".cargo_vcs_info.json", "Cargo.toml", "Cargo.toml.orig", "Cargo.lock"}
 # Without these a registry build cannot select and authenticate Core.
@@ -64,7 +68,8 @@ class Cargo:
         env = {key: value for key, value in os.environ.items() if key not in CORE_OVERRIDES}
         env.update(RUSTUP_TOOLCHAIN=configuration["toolchain"], CARGO_TERM_COLOR="never",
                    RUSTFLAGS="-D warnings")
-        if require_release:
+        # CI evidence needs the attestation that a registry user may skip.
+        if require_release or lock()["release_tag"] is not None:
             env["OPENTLV_REQUIRE_VERIFIED_CORE"] = "1"
         if self.sanitizer:
             sanitizer = policy()["sanitizer"]
@@ -99,7 +104,9 @@ def install(configuration):
 
 def selections(work, require_release):
     """Validate every Core selection recorded by an opentlv-sys build script."""
-    found = sorted(work.rglob("core-selection.json"))
+    # A registry consumer has no login on purpose; the consumer check requires its own state.
+    found = sorted(path for path in work.rglob("core-selection.json")
+                   if not path.is_relative_to(work / CONSUMER_WORK))
     require(found, "No Core selection evidence")
     result = []
     for path in found:
@@ -110,7 +117,7 @@ def selections(work, require_release):
         if selected.get("verified"):
             evidence = read(source.parents[1] / "verification.json")
             selected["release"] = {key: evidence.get(key) for key in (
-                "mode", "release_tag", "release_id", "manifest_sha256", "signer_workflow")}
+                "mode", "attested", "release_tag", "release_id", "manifest_sha256", "signer_workflow")}
         validate_dependency(selected, require_release)
         result.append(selected)
     return result
@@ -124,7 +131,7 @@ def core_identity(selected):
 def compilers(work):
     found = set()
     for path in work.rglob("CMakeCCompiler.cmake"):
-        if "cmake-build" in path.parts or "core-probe" in path.parts:
+        if CORE_BUILD_DIR in path.parts or "core-probe" in path.parts:
             text = path.read_text(encoding="utf-8")
             values = [re.search(rf'set\(CMAKE_C_COMPILER_{key} "([^"]*)"\)', text)
                       for key in ("ID", "VERSION")]
@@ -267,7 +274,7 @@ def linking(cargo, source, configuration):
 
 
 def sanitized(work):
-    caches = [path for path in work.rglob("CMakeCache.txt") if path.parent.name == "cmake-build"]
+    caches = [path for path in work.rglob("CMakeCache.txt") if path.parent.name == CORE_BUILD_DIR]
     flags = policy()["sanitizer"]["cflags"]
     require(caches and all(f"CMAKE_C_FLAGS:STRING={flags}" in path.read_text(encoding="utf-8")
                            for path in caches), "Core was not built with the sanitizer")
@@ -329,8 +336,7 @@ def build(args):
     if "package" in checks:
         record["package"] = package(cargo, record)
     if "consumer" in checks:
-        # Short: MSBuild's path limit also binds the hosted Windows work directory.
-        record["consumer"] = consumers(work / "target/package", work / "c", cargo.env)
+        record["consumer"] = consumers(work / "target/package", work / CONSUMER_WORK, cargo.env)
     if "linking" in checks:
         record["linking"] = linking(cargo, source, configuration)
     if "sanitizer" in checks:

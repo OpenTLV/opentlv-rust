@@ -135,7 +135,8 @@ def validate_dependency(selected, require_release=False):
         require(mode in ("verified-source", "verified-binary") and selected.get("verified") is True,
                 "Core release attestation is required")
         release = selected.get("release", {})
-        require(release.get("mode") == mode and release.get("release_tag") == pinned["release_tag"]
+        require(release.get("mode") == mode and release.get("attested") is True
+                and release.get("release_tag") == pinned["release_tag"]
                 and release.get("release_id") and release.get("signer_workflow") == SIGNER
                 and HEX.fullmatch(str(release.get("manifest_sha256", ""))),
                 "Core release identity is incomplete")
@@ -211,11 +212,15 @@ def validate_checks(record, configuration, data):
             require(set(value) == set(CRATES) and all(HEX.fullmatch(str(item)) for item in value.values()),
                     "Missing crate package digests")
         elif check == "consumer":
-            # Every consumer must have used the exact archives the package check recorded.
-            accepted = [{"packages": record["package"], "core": lock()["version"], "selection": mode}
+            # Every consumer must have used the exact archives the package check recorded,
+            # and the locked digest alone, as a user without a GitHub login does.
+            require(set(value) == {*data["features"], CRATES[0]}
+                    and all(item in [
+                        {"packages": ({CRATES[0]: record["package"][CRATES[0]]}
+                                      if name == CRATES[0] else record["package"]),
+                         "core": lock()["version"], "selection": mode, "attested": False}
                         for mode in ("verified-source", "verified-binary")]
-            require(set(value) == set(data["features"])
-                    and all(item in accepted for item in value.values()),
+                        for name, item in value.items()),
                     "Incomplete registry consumer builds")
         elif check == "linking":
             dylib = ("unsupported" if configuration["system"] == "Windows"

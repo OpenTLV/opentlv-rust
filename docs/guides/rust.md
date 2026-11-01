@@ -13,25 +13,17 @@ crate layout, schemas, codecs, canonical validation and CI, see
 
 ## Cargo setup
 
-The crates are not published to crates.io yet. Depend on them by path from a
-checkout of [opentlv-rust](https://github.com/OpenTLV/opentlv-rust):
-
 ```sh
-git clone https://github.com/OpenTLV/opentlv-rust.git
-```
-
-```toml
-[dependencies]
-opentlv = { path = "opentlv-rust/opentlv" }
+cargo add opentlv
 ```
 
 The build script of `opentlv-sys` authenticates the pinned Core v0.8.0 release
 and links its compatible static binary or builds the verified source with CMake.
-You need Rust 1.82 or newer, CMake 3.16 or newer, a C99 compiler, Git,
-Python 3.11 or newer, an authenticated GitHub CLI (`gh auth login`) and network
-access to GitHub. On Windows, use the MSVC Rust toolchain
-with Visual Studio, and keep the Cargo target directory at 49 characters or
-fewer, 47 with `--release`, or set a short `CARGO_TARGET_DIR`; longer paths fail
+You need Rust 1.82 or newer, CMake 3.16 or newer, a C99 compiler,
+Python 3.11 or newer and network access to GitHub. No GitHub login is needed. On
+Windows, use the MSVC Rust toolchain
+with Visual Studio, and keep the Cargo target directory at 76 characters or
+fewer, 74 with `--release`, or set a short `CARGO_TARGET_DIR`; longer paths fail
 in MSBuild. Core is built for the host, so cross compilation is not supported.
 See [Build](../development/rust.md#build) for the Core
 dependency. To link a library you built yourself, set `OPENTLV_LIB_DIR` (and

@@ -18,13 +18,10 @@
 //!
 //! # Setup
 //!
-//! Add the crate by path from an opentlv-rust checkout; the build script builds
-//! and links the C library with CMake (see `docs/guides/rust.md`).
-//!
-//! ```toml
-//! [dependencies]
-//! opentlv = { path = "opentlv-rust/opentlv" }
-//! ```
+//! Add the crate with `cargo add opentlv`. The build script downloads the pinned
+//! C library release from GitHub, authenticates it and builds and links it with
+//! CMake, so a build needs network access, CMake, a C99 compiler and Python; see
+//! the [user guide](https://github.com/OpenTLV/opentlv-rust/blob/main/docs/guides/rust.md).
 //!
 //! # Reading and writing
 //!

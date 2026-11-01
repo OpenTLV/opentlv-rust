@@ -55,5 +55,5 @@ dependencies, caret requirements, extra dependencies, the previous repository
 URL, a different version and a missing readme.
 
 Neither `opentlv` nor `opentlv-sys` was found in the crates.io index
-(`cargo info`). The [remaining crates.io prerequisites](../packaging.md#remaining-cratesio-prerequisites)
+(`cargo info`). The [remaining crates.io prerequisites](../packaging.md#consumer-requirements)
 were not addressed.

@@ -19,6 +19,7 @@ CORE = Path(__file__).resolve().parents[1] / 'opentlv-sys/core'
 sys.path.insert(0, str(CORE))
 import verified_core as verified  # noqa: E402
 
+REAL_LOGGED_IN = verified.logged_in
 PIN = json.loads((CORE / 'core-artifact.json').read_text(encoding='utf-8'))
 COMMIT = PIN['commit']
 VERSION = PIN['version']
@@ -46,6 +47,7 @@ class Fixture(unittest.TestCase):
         self.addCleanup(lambda: __import__('shutil').rmtree(self.tmp, ignore_errors=True))
         self.lock_path = self.tmp / 'core-artifact.json'
         self.release_lock = {**PIN, 'release_tag': 'v' + VERSION}
+        self.patch('logged_in', lambda: False)
         self.lock_path.write_text(json.dumps(self.release_lock), encoding='utf-8')
         self.probe = {'COMPILER_ID': 'MSVC', 'COMPILER_VERSION': '19.44', 'SIZEOF_DATA_PTR': '8',
                       'SYSTEM': 'Windows', 'COMPILER_ARCHITECTURE': 'x64', 'PROCESSOR': 'AMD64',
@@ -101,6 +103,7 @@ class LockTest(Fixture):
         selected = verified.lock(CORE / 'core-artifact.json')
         self.assertEqual(selected['release_tag'], 'v0.8.0')
         self.assertEqual(selected['commit'], '345c77acb29266036df5f27d04ce315bb61853cc')
+        self.assertRegex(selected['release_sha256sums'], '^[0-9a-f]{64}$')
 
     def test_null_lock_cannot_verify_a_release(self):
         self.lock_path.write_text(json.dumps({**PIN, 'release_tag': None}), encoding='utf-8')
@@ -113,7 +116,9 @@ class LockTest(Fixture):
     def test_invalid_lock(self):
         for field, value in [('commit', 'main'), ('commit', 'abc1234'), ('version', None),
                              ('release_tag', 'v9.0.0'), ('allow_verified_source', 'yes'),
-                             ('repository', 'other/repo'), ('schema', 2)]:
+                             ('repository', 'other/repo'), ('schema', 2),
+                             ('release_sha256sums', None), ('release_sha256sums', 'A' * 64),
+                             ('release_sha256sums', 'a' * 63)]:
             with self.subTest(field=field):
                 self.lock_path.write_text(json.dumps({**self.release_lock, field: value}))
                 with self.assertRaises(ValueError):
@@ -249,6 +254,8 @@ class ResolveTest(Fixture):
         result = self.resolve()
         self.assertEqual(result['mode'], 'verified-source')
         self.assertTrue(result['verified'])
+        self.assertFalse(result['attested'])
+        self.assertIsNone(result['signer_workflow'])
         self.assertTrue(Path(result['source_dir'], 'opentlv-source.txt').is_file())
         self.assertNotIn('lib_dir', result)
 
@@ -317,7 +324,7 @@ class AuthenticationTest(Fixture):
 
         self.patch('run', command)
         with self.assertRaises(subprocess.CalledProcessError):
-            verified.authenticated_release(self.tmp / 'assets', self.release_lock)
+            verified.authenticated_release(self.tmp / 'assets', self.release_lock, True)
         self.assertEqual(calls[-1][1:3], ('attestation', 'verify'))
         self.assertEqual(calls[-1][-4:], ('--signer-workflow', verified.SIGNER,
                                           '--source-digest', COMMIT))
@@ -327,7 +334,7 @@ class AuthenticationTest(Fixture):
                    {'id': 42, 'draft': False, 'tag_name': self.release_lock['release_tag'],
                     'assets': []})
         with self.assertRaisesRegex(ValueError, 'moved'):
-            verified.authenticated_release(self.tmp / 'assets', self.release_lock)
+            verified.authenticated_release(self.tmp / 'assets', self.release_lock, True)
 
     def test_authenticated_manifest(self):
         files = self.tmp / 'download'
@@ -336,6 +343,7 @@ class AuthenticationTest(Fixture):
         (files / 'SHA256SUMS').write_text(
             verified.digest(files / 'release-manifest.json') + '  release-manifest.json\n')
         self.releases(['release-manifest.json', 'SHA256SUMS'])
+        selected = {**self.release_lock, 'release_sha256sums': verified.digest(files / 'SHA256SUMS')}
         calls = []
 
         def command(*args, capture=False):
@@ -346,13 +354,82 @@ class AuthenticationTest(Fixture):
                 (destination / name).write_bytes((files / name).read_bytes())
 
         self.patch('run', command)
-        actual, _, _, identity = verified.authenticated_release(self.tmp / 'assets', self.release_lock)
+        actual, _, _, identity = verified.authenticated_release(self.tmp / 'assets', selected, True)
         self.assertEqual((actual, identity['release_id']), (self.manifest, 42))
         attestations = [args for args in calls if args[1:3] == ('attestation', 'verify')]
         self.assertEqual(len(attestations), 2)
         for args in attestations:
             self.assertEqual(args[-4:], ('--signer-workflow', verified.SIGNER,
                                          '--source-digest', COMMIT))
+
+
+class PublicDownloadTest(Fixture):
+    def serve(self, sums=None):
+        """Answer the public release URLs from files; the GitHub CLI must stay unused."""
+        files = self.tmp / 'download'
+        files.mkdir()
+        verified.write(files / 'release-manifest.json', self.manifest)
+        (files / 'SHA256SUMS').write_text(
+            sums or verified.digest(files / 'release-manifest.json') + '  release-manifest.json\n')
+        self.urls = []
+
+        def urlopen(url, timeout):
+            self.urls.append(url)
+            return io.BytesIO((files / url.rsplit('/', 1)[1]).read_bytes())
+
+        self.patch('run', mock.Mock(side_effect=AssertionError('the GitHub CLI must not run')))
+        self.patch('api', mock.Mock(side_effect=AssertionError('the GitHub API must not run')))
+        patcher = mock.patch.object(verified.urllib.request, 'urlopen', urlopen)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        return verified.digest(files / 'SHA256SUMS')
+
+    def test_locked_digest_authenticates_public_assets_without_the_cli(self):
+        selected = {**self.release_lock, 'release_sha256sums': self.serve()}
+        actual, _, _, identity = verified.authenticated_release(self.tmp / 'assets', selected, False)
+        self.assertEqual(actual, self.manifest)
+        self.assertIsNone(identity['release_id'])
+        self.assertEqual(self.urls, [
+            f'https://github.com/{verified.REPOSITORY}/releases/download/v{VERSION}/' + name
+            for name in ('release-manifest.json', 'SHA256SUMS')])
+
+    def test_other_checksums_stop_before_the_manifest_is_parsed(self):
+        self.serve()
+        self.manifest['schema'] = 'never parsed'
+        selected = {**self.release_lock, 'release_sha256sums': 'a' * 64}
+        with self.assertRaisesRegex(ValueError, 'differs from the lock'):
+            verified.authenticated_release(self.tmp / 'assets', selected, False)
+
+    def test_other_manifest_stops_at_the_locked_checksums(self):
+        selected = {**self.release_lock, 'release_sha256sums': self.serve(('b' * 64) + '  release-manifest.json\n')}
+        with self.assertRaisesRegex(ValueError, 'manifest checksum'):
+            verified.authenticated_release(self.tmp / 'assets', selected, False)
+
+    def test_attestation_is_used_when_required_or_logged_in(self):
+        for required, login, attest in ((True, False, True), (False, True, True), (False, False, False)):
+            with self.subTest(required=required, login=login):
+                self.setUp()
+                self.patch('logged_in', lambda value=login: value)
+                seen = []
+
+                def stop(_, __, chosen, seen=seen):
+                    seen.append(chosen)
+                    raise ValueError('stop')
+
+                self.patch('authenticated_release', stop)
+                with self.assertRaisesRegex(ValueError, 'stop'):
+                    verified.resolve(self.lock_path, self.tmp / 'work', TARGET, TARGET, COMPONENTS,
+                                     require_attestation=required)
+                self.assertEqual(seen, [attest])
+
+    def test_logged_in_needs_the_cli_and_a_login(self):
+        with mock.patch.object(verified.shutil, 'which', return_value=None):
+            self.assertFalse(REAL_LOGGED_IN())
+        for code, expected in ((0, True), (1, False)):
+            with mock.patch.object(verified.shutil, 'which', return_value='gh'), \
+                    mock.patch.object(verified.subprocess, 'run',
+                                      return_value=mock.Mock(returncode=code)):
+                self.assertEqual(REAL_LOGGED_IN(), expected)
 
 
 class CommandLineTest(Fixture):
@@ -370,12 +447,13 @@ class CommandLineTest(Fixture):
         return 0, output
 
     def test_result_for_build_script(self):
-        self.patch('resolve', lambda *a: {'mode': 'verified-source', 'version': VERSION,
+        self.patch('resolve', lambda *a: {'mode': 'verified-source', 'version': VERSION, 'attested': True,
                                           'commit': COMMIT, 'source_dir': '/core'})
         code, output = self.main('--source-only')
         self.assertEqual(code, 0)
         self.assertEqual(output.read_text(),
-                         f'mode=verified-source\nversion={VERSION}\ncommit={COMMIT}\nsource_dir=/core\n')
+                         f'mode=verified-source\nversion={VERSION}\ncommit={COMMIT}\nsource_dir=/core\n'
+                         'attested=true\n')
 
     def test_failure_removes_previous_result(self):
         self.patch('resolve', mock.Mock(side_effect=ValueError('attestation failed')))

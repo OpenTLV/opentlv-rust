@@ -160,6 +160,9 @@ def prepare(tag, approved):
     print(json.dumps(plan, indent=2))
     with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
         output.write(f'auth={auth}\n')
+        # The verifying jobs must not need the release, which would take a GitHub token.
+        output.write('published=' + json.dumps({'version': version, 'packages': packages},
+                                               separators=(',', ':')) + '\n')
 
 
 def published(crate, version, expected):

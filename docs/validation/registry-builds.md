@@ -116,6 +116,8 @@ the same error, before it links anything.
 
 ## Findings for the first publication
 
+[Issue #40](crates-io-release.md#decisions) later decided findings 1, 2 and 4.
+
 These follow the [crates.io findings](crates-io.md#findings-that-block-publishing-these-archives),
 and need decisions before [issue #40](https://github.com/OpenTLV/opentlv-rust/issues/40).
 No epic issue names their fixes yet, and this issue changes no crate source.
@@ -151,7 +153,7 @@ No epic issue names their fixes yet, and this issue changes no crate source.
   Rust 1.82.0 is not part of this check.
 - The check keeps its target directories at `build\ci\c\<n>`: 43 characters on the
   hosted Windows runner, within the limit above.
-- [`docs/packaging.md`](../packaging.md#remaining-cratesio-prerequisites) lists the
+- [`docs/packaging.md`](../packaging.md#consumer-requirements) lists the
   requirements.
 
 ## Local validation

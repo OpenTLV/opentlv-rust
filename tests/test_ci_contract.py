@@ -48,7 +48,7 @@ def record(configuration, tier):
                   'version': pinned['version'], 'commit': pinned['commit'], 'dirty': False,
                   'locked_version': pinned['version'], 'locked_commit': pinned['commit'],
                   'release_tag': pinned['release_tag'],
-                  'release': {'mode': 'verified-source', 'release_tag': pinned['release_tag'],
+                  'release': {'mode': 'verified-source', 'attested': True, 'release_tag': pinned['release_tag'],
                               'release_id': 7, 'manifest_sha256': 'd' * 64,
                               'signer_workflow': contract.SIGNER}}],
         'tests': {name: contract.expected_tests(name, sanitizer)
@@ -57,9 +57,11 @@ def record(configuration, tier):
         'smoke': True, 'lint': True, 'docs': True, 'examples': contract.policy()['examples'],
         'query': contract.policy()['query'],
         'package': {crate: 'c' * 64 for crate in contract.CRATES},
-        'consumer': {name: {'packages': {crate: 'c' * 64 for crate in contract.CRATES},
-                            'core': pinned['version'], 'selection': 'verified-source'}
-                     for name in contract.policy()['features']},
+        'consumer': {name: {'packages': {crate: 'c' * 64 for crate in
+                                        (contract.CRATES[:1] if name == contract.CRATES[0] else contract.CRATES)},
+                            'core': pinned['version'], 'selection': 'verified-source',
+                            'attested': False}
+                     for name in [*contract.policy()['features'], contract.CRATES[0]]},
         'linking': {'static': {'tests': default, 'quick_start': True},
                     'dylib': 'unsupported' if configuration['system'] == 'Windows'
                     else {'tests': default, 'quick_start': True}},
@@ -134,6 +136,9 @@ class Gate(unittest.TestCase):
             ('linux-stable', ('consumer', 'nfc'), None),
             ('linux-stable', ('consumer', 'none', 'core'), '0.0.0'),
             ('linux-stable', ('consumer', 'lldp', 'selection'), 'local-source'),
+            ('linux-stable', ('consumer', 'default', 'attested'), True),
+            ('linux-stable', ('consumer', 'opentlv-sys', 'packages'),
+             {crate: 'c' * 64 for crate in contract.CRATES}),
             ('windows-stable', ('consumer', 'default', 'packages', 'opentlv'), 'd' * 64),
             ('linux-stable', ('linking', 'static', 'tests'), 1),
             ('linux-stable', ('linking', 'dylib'), 'unsupported'),
@@ -197,7 +202,7 @@ class Gate(unittest.TestCase):
         released = {**pinned, 'release_tag': 'v' + pinned['version']}
         selected = {**records()[0]['core'][0], 'release_tag': released['release_tag'],
                     'mode': 'pinned-git', 'verified': False}
-        release = {'mode': 'verified-source', 'release_tag': released['release_tag'],
+        release = {'mode': 'verified-source', 'attested': True, 'release_tag': released['release_tag'],
                    'release_id': 7, 'manifest_sha256': 'd' * 64, 'signer_workflow': contract.SIGNER}
         with mock.patch.object(contract, 'lock', lambda _=False: released):
             with self.assertRaisesRegex(ValueError, 'attestation'):
@@ -205,7 +210,7 @@ class Gate(unittest.TestCase):
             verified = {**selected, 'mode': 'verified-source', 'verified': True, 'release': release}
             contract.validate_dependency(verified, True)
             for key, value in (('signer_workflow', 'other.yml'), ('manifest_sha256', 'bad'),
-                               ('release_id', None), ('mode', 'verified-binary')):
+                               ('release_id', None), ('mode', 'verified-binary'), ('attested', False)):
                 with self.subTest(key=key), self.assertRaisesRegex(ValueError, 'incomplete'):
                     contract.validate_dependency(
                         {**verified, 'release': {**release, key: value}}, True)

@@ -102,8 +102,11 @@ Only the first hosted run can prove these, and issue
 
 ## Open before the first publication
 
+[Issue #40](crates-io-release.md) later resolved the crate contents; the environment
+and the token are still its open steps.
+
 This issue does not resolve the
-[remaining prerequisites](../packaging.md#remaining-cratesio-prerequisites), which
+[remaining prerequisites](../packaging.md#consumer-requirements), which
 the workflow cannot detect: the documentation that still says the crates are
 unpublished, docs.rs, and the GitHub login that a default build needs. The
 environment and the token have not been configured. Without the environment, the

@@ -9,7 +9,8 @@
 //! authenticates its artifacts instead. `OPENTLV_CORE_SOURCE` selects a local
 //! Core checkout for development. Set `OPENTLV_LIB_DIR` to link a prebuilt
 //! library instead; `OPENTLV_LINK_KIND` (`static` or `dylib`, default
-//! `dylib`) selects how.
+//! `dylib`) selects how. docs.rs builds without network access and only runs
+//! Rustdoc, so `DOCS_RS` selects no Core at all.
 
 #[path = "core/select.rs"]
 mod select;
@@ -20,6 +21,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+/// Short: the Visual Studio generator limits the length of the build paths.
+const CORE_BUILD_DIR: &str = "b";
+
 fn main() {
     for name in [
         "OPENTLV_LIB_DIR",
@@ -27,10 +31,17 @@ fn main() {
         "OPENTLV_CORE_SOURCE",
         "OPENTLV_REQUIRE_VERIFIED_CORE",
         "OPENTLV_PYTHON",
+        "DOCS_RS",
         "CI",
         "GITHUB_ACTIONS",
     ] {
         println!("cargo:rerun-if-env-changed={name}");
+    }
+
+    if env::var_os("DOCS_RS").is_some() {
+        // Only the tests read the Core tree; Rustdoc links nothing.
+        println!("cargo:core_source=");
+        return;
     }
 
     let prebuilt = env::var_os("OPENTLV_LIB_DIR");
@@ -146,6 +157,7 @@ fn resolve_verified(
     println!("cargo:rerun-if-changed={}", script.display());
     println!("cargo:rerun-if-changed={}", probe_dir.display());
     let output = out_dir.join("core-release.txt");
+    let require_attestation = select::is_set(env::var("OPENTLV_REQUIRE_VERIFIED_CORE").ok());
     let _ = fs::remove_file(&output);
     let wanted: Vec<String> = components()
         .iter()
@@ -160,7 +172,8 @@ fn resolve_verified(
         .arg("--lock")
         .arg(lock_path)
         .arg("--work")
-        .arg(out_dir.join("core-release"))
+        // Short: the Visual Studio generator limits the length of the build paths.
+        .arg(out_dir.join("c"))
         .arg("--output")
         .arg(&output)
         .arg("--target")
@@ -169,6 +182,9 @@ fn resolve_verified(
         .arg(env::var("HOST").unwrap())
         .arg("--components")
         .arg(wanted.join(","));
+    if require_attestation {
+        command.arg("--require-attestation");
+    }
     if source_only {
         command.arg("--source-only");
     } else {
@@ -214,7 +230,7 @@ fn build_from_source(core: &Selection) {
     } else {
         PathBuf::from(env::var_os("OUT_DIR").unwrap())
     };
-    let build_dir = build_root.join("cmake-build");
+    let build_dir = build_root.join(CORE_BUILD_DIR);
 
     for path in ["CMakeLists.txt", "cmake", "tlv"] {
         println!("cargo:rerun-if-changed={}", source_dir.join(path).display());

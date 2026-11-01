@@ -4,7 +4,8 @@
 
 A local Cargo registry replaces crates.io, so each consumer resolves the exact
 `.crate` archives through an index, checks their digests and unpacks them into
-its own Cargo home. Nothing is published and no checkout path is involved.
+its own Cargo home. Nothing is published and no checkout path is involved. After
+a publication, `published_consumers` runs the same builds against crates.io.
 """
 
 import argparse
@@ -21,6 +22,9 @@ from ci_support import digest, require, stream, write
 
 CRATES_IO = "registry+https://github.com/rust-lang/crates.io-index"
 CONSUMER = "opentlv-registry-consumer"
+# A crates.io user has no GitHub login; the CI builds themselves prove the attestation.
+NOT_ON_A_CLEAN_MACHINE = ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN",
+                          "DOCS_RS", "CARGO_REGISTRY_TOKEN")
 # Uses the Rust API of each Cargo feature, so a feature lost in packaging cannot compile.
 PROGRAM = """\
 use opentlv::{{ByteOrder, FixedFormat, FixedFormatConfig, Format, Reader, Tag, Writer}};
@@ -44,6 +48,14 @@ FEATURE_CODE = {
     "nfc": '    assert_eq!("nfc-type2".parse::<Format>().unwrap(), Format::NfcType2);\n',
     "document": "    assert_eq!(opentlv::Document::parse(&[4, 1, 42], Format::Ber, 2, 2)?.len(), 1);\n",
 }
+
+
+RAW_PROGRAM = """\
+fn main() {
+    let version = unsafe { std::ffi::CStr::from_ptr(opentlv_sys::tlv_version_string()) };
+    println!("linked Core {}", version.to_str().unwrap());
+}
+"""
 
 
 def find_archives(packages):
@@ -97,6 +109,11 @@ def consumer_manifest(version, features):
             f"publish = false\n\n[dependencies]\nopentlv = {requirement}\n\n[workspace]\n")
 
 
+def raw_manifest(version):
+    return (f'[package]\nname = "{CONSUMER}"\nversion = "0.0.0"\nedition = "2021"\n'
+            f'publish = false\n\n[dependencies]\nopentlv-sys = "={version}"\n\n[workspace]\n')
+
+
 def consumer_program(features):
     enabled = list(FEATURE_CODE) if features is None else features
     formats = 4 + sum(name in enabled for name in ("lldp", "nfc"))
@@ -120,40 +137,69 @@ def selection(target):
     return json.loads(found[0].read_text(encoding="utf-8"))
 
 
-def consumers(packages, work, env=None):
-    """Build and run one fresh consumer per feature set; returns the per-set results."""
-    archives = find_archives(packages)
+def build_consumers(work, version, digests, core, env, offline):
+    """Build and run a fresh consumer per feature set and of the raw crate alone."""
+    base = {key: value for key, value in (os.environ if env is None else env).items()
+            if key not in NOT_ON_A_CLEAN_MACHINE and not key.startswith("OPENTLV_")}
+    (work / "gh").mkdir()
+    base.update(CARGO_HOME=str(work / "cargo-home"), GH_CONFIG_DIR=str(work / "gh"))
+    projects = [(name, consumer_manifest(version, features), consumer_program(features), digests)
+                for name, features in policy()["features"].items()]
+    projects.append((CRATES[0], raw_manifest(version), RAW_PROGRAM, {CRATES[0]: digests[CRATES[0]]}))
+    network = ["--offline"] if offline else []
+    results = {}
+    for index, (name, manifest, program, resolved) in enumerate(projects):
+        directory = work / name
+        # Short: a Core build on Windows limits the length of this path.
+        target = work / str(index)
+        (directory / "src").mkdir(parents=True)
+        (directory / "Cargo.toml").write_text(manifest, encoding="utf-8")
+        (directory / "src/main.rs").write_text(program, encoding="utf-8")
+        cargo_env = {**base, "CARGO_TARGET_DIR": str(target)}
+        stream("cargo", "generate-lockfile", *network, cwd=directory, env=cargo_env)
+        check_lock(directory / "Cargo.lock", resolved)
+        output = stream("cargo", "run", "--locked", *network, cwd=directory, env=cargo_env)
+        require(f"linked Core {core['version']}\n" in output, "Consumer linked a different Core version")
+        selected = selection(target)
+        require(selected["verified"] is True and selected["commit"] == core["commit"]
+                and selected["repository"] == core["repository"]
+                and selected["version"] == core["version"] and selected["dirty"] is False
+                and selected["mode"] in ("verified-source", "verified-binary"),
+                "Consumer selected a different Core")
+        require(selected["attested"] is False, "Consumer unexpectedly used a GitHub login")
+        results[name] = {"packages": resolved, "core": core["version"],
+                         "selection": selected["mode"], "attested": selected["attested"]}
+    return results
+
+
+def fresh_home(work):
     work = Path(work).resolve()
     require(not work.exists(), "Use a fresh consumer work directory")
+    (work / "cargo-home").mkdir(parents=True)
+    return work
+
+
+def consumers(packages, work, env=None):
+    """The consumer builds with these archives, through a local registry."""
+    archives = find_archives(packages)
+    work = fresh_home(work)
     registry = work / "registry"
-    home = work / "cargo-home"
-    registry.mkdir(parents=True)
-    home.mkdir()
+    registry.mkdir()
     local_registry(archives, registry)
+    home = work / "cargo-home"
     (home / "config.toml").write_text(
         '[source.crates-io]\nreplace-with = "opentlv-packages"\n\n[source.opentlv-packages]\n'
         f"local-registry = {json.dumps(registry.as_posix())}\n", encoding="utf-8")
     version = archives["opentlv"][0]
     digests = {crate: digest(path) for crate, (_, path) in archives.items()}
     core = json.loads(archive_file(archives["opentlv-sys"][1], "opentlv-sys", version,
-                                   "core/core-artifact.json"))["version"]
-    results = {}
-    for index, (name, features) in enumerate(policy()["features"].items()):
-        directory = work / name
-        # Short: a Core build on Windows allows at most 49 characters in this path.
-        target = work / str(index)
-        (directory / "src").mkdir(parents=True)
-        (directory / "Cargo.toml").write_text(consumer_manifest(version, features), encoding="utf-8")
-        (directory / "src/main.rs").write_text(consumer_program(features), encoding="utf-8")
-        cargo_env = {**(os.environ if env is None else env), "CARGO_HOME": str(home),
-                     "CARGO_TARGET_DIR": str(target)}
-        stream("cargo", "generate-lockfile", "--offline", cwd=directory, env=cargo_env)
-        check_lock(directory / "Cargo.lock", digests)
-        output = stream("cargo", "run", "--locked", "--offline", cwd=directory, env=cargo_env)
-        require(f"linked Core {core}\n" in output, "Consumer linked a different Core version")
-        results[name] = {"packages": digests, "core": core,
-                         "selection": selection(target)["mode"]}
-    return results
+                                   "core/core-artifact.json"))
+    return build_consumers(work, version, digests, core, env, offline=True)
+
+
+def published_consumers(version, digests, core, work, env=None):
+    """The consumer builds with the published crates, from crates.io itself."""
+    return build_consumers(fresh_home(work), version, digests, core, env, offline=False)
 
 
 def main():

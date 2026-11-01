@@ -1,24 +1,24 @@
-# OpenTLV Rust v0.1.0
+# OpenTLV Rust v0.1.1
 
-First standalone Rust release: `opentlv-sys` and `opentlv` are versioned
-together as **0.1.0**, independently of Core. The inherited, unpublished
-0.7.1 migration version is not a previous Rust release.
+First Rust release for crates.io: `opentlv-sys` and `opentlv` are versioned
+together as **0.1.1**, independently of Core. The public API is unchanged from
+0.1.0, which remains a GitHub release only.
 
 - Pins OpenTLV Core **v0.8.0** at
-  `345c77acb29266036df5f27d04ce315bb61853cc` and requires its attested release
-  artifacts for default builds.
-- Includes the safe Reader/Writer, composed Formats, Schema, Document, Query,
-  generic Codec, StructureCodec and deterministic Generator APIs. The `lldp`,
-  `nfc` and `document` features remain enabled by default.
+  `345c77acb29266036df5f27d04ce315bb61853cc`. A build authenticates the release
+  through the SHA-256 of its `SHA256SUMS` in the lock, so it no longer needs a
+  GitHub login; with a logged-in GitHub CLI it verifies the attestations as well.
 - Requires Rust 1.82 or newer, CMake, a C99 compiler, Python 3.11 or newer and
-  an authenticated GitHub CLI for Core verification. Windows uses MSVC.
+  network access to GitHub. Windows uses MSVC, with at most 76 characters in the
+  Cargo target directory, or 74 with `--release`.
+- Builds its documentation on docs.rs, without Core.
 - Distributes the two tested `.crate` archives, release evidence and SHA-256
   checksums through GitHub Releases. These archives contain Rust sources and
   build scripts; Core is resolved when building. See
-  [packaging](https://github.com/OpenTLV/opentlv-rust/blob/v0.1.0/docs/packaging.md)
-  for using the pair locally.
+  [packaging](https://github.com/OpenTLV/opentlv-rust/blob/v0.1.1/docs/packaging.md).
 
-crates.io publication and docs.rs hosting remain separate follow-ups. Windows
+The crates.io publication of these same archives is a separate, approved step.
+Cross compilation is not supported. Windows
 shared linking remains unsupported; the release tests static linking there.
 Generic Core symbol coverage is complete, but symbol references do not prove
 functional parity and Builtins-specific parity remains outside this release.

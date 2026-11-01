@@ -183,11 +183,14 @@ Rustdoc, `RUSTFLAGS=-D warnings`.
 - **Registry consumers.** [`scripts/registry_consumer.py`](../scripts/registry_consumer.py)
   serves the two archives from a local Cargo registry that replaces crates.io.
   For each feature set, a new project outside the workspace depends on
-  `opentlv = "=<version>"`, and Cargo resolves it offline and unpacks the archives
-  into a Cargo home of its own. `Cargo.lock` must name crates.io as the source and
+  `opentlv = "=<version>"`, and one more on `opentlv-sys` alone. Cargo resolves it
+  offline and unpacks the archives into a Cargo home of its own. These builds have
+  no GitHub token, an empty GitHub CLI configuration and no
+  `OPENTLV_REQUIRE_VERIFIED_CORE`, so they prove what a machine without a login does:
+  the gate requires `attested: false`, and the Core provenance check below does not
+  apply to them. `Cargo.lock` must name crates.io as the source and
   the archive digests as checksums. The consumer uses the Rust API of its features,
-  runs, and must link the Core version locked in the archive. Each consumer's Core
-  selection passes the Core provenance check below. The
+  runs, and must link the Core version and commit locked in the archive. The
   [registry build validation](validation/registry-builds.md) records the results
   and what this does not cover.
 - **Native linking.** Core from the selected tree is built once as a static
@@ -211,7 +214,8 @@ Rustdoc, `RUSTFLAGS=-D warnings`.
   `opentlv-sys` build script in the work directory is checked against the
   lock: repository, commit, version, release tag and a clean tree. With the
   current `release_tag: v0.8.0` this requires `verified-source` or
-  `verified-binary`, with authenticated Core release artifacts.
+  `verified-binary`, with attested Core release artifacts: every tier runs Cargo
+  with `OPENTLV_REQUIRE_VERIFIED_CORE=1`.
   Core must have been resolved inside the work directory, so a local
   `OPENTLV_CORE_SOURCE` is never accepted; `build.rs` also rejects it in CI.
 
@@ -355,14 +359,15 @@ jobs:
 
 That mode requires Full CI and rejects any null release lock before
 building. Core v0.8.0 is locked; every Cargo command runs with
-`OPENTLV_REQUIRE_VERIFIED_CORE=1`. Each selection must then be
+`OPENTLV_REQUIRE_VERIFIED_CORE=1`, except the registry consumers. Each selection
+must then be
 `verified-binary` or `verified-source`, and its `verification.json` must name
 the locked release tag, a release ID, the manifest SHA-256 and the
 `core-release.yml` signer. Failed attestations, checksums or producer evidence
 stop the build in `build.rs`; they never fall back to Git. Testing fixtures is
 not evidence that a real published Core attestation was consumed.
 
-Each Verified Source resolution has its own `cmake-build` directory beside
+Each Verified Source resolution has its own build directory `b` beside
 the attempt's `source/` directory. Repeated Cargo commands in one `OUT_DIR`
 therefore cannot reuse a CMake cache pointing to a previous extraction.
 `tests/test_build_script.py` compiles the real build script with `rustc` and
@@ -377,7 +382,7 @@ stable `.crate` files tested by Cargo packaging. It also requires successful
 Main CI on the dispatch commit. See the [release procedure](packaging.md#github-release).
 The separate manual `Rust crates.io` workflow revalidates this attested evidence
 before it [publishes the same bytes](packaging.md#cratesio-publication) after
-approval.
+approval, and then verifies the published versions without any credential.
 The compiler evidence includes the verified-binary toolchain probe, even
 when a compatible binary means that no Core source compilation is needed.
 
@@ -424,8 +429,8 @@ nightly is a deliberate matrix change; raising the MSRV also changes
 
 The runner installs the configured toolchain with rustup; use an isolated
 `RUSTUP_HOME` and `CARGO_HOME` to leave your global setup unchanged. It needs
-Python 3.11 or newer, CMake, a C compiler, Git and network access to GitHub and
-crates.io:
+Python 3.11 or newer, CMake, a C compiler, Git, a logged-in GitHub CLI and network
+access to GitHub and crates.io:
 
 ```sh
 python -m pip install -r requirements-dev.txt
