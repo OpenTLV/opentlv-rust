@@ -1,9 +1,10 @@
 # crates.io Trusted Publishing validation
 
 Validation for [issue #45](https://github.com/OpenTLV/opentlv-rust/issues/45) on
-2026-11-03. **Nothing was published, no crates.io credential was used, and the
-OIDC-only workflow has not run on GitHub.** The
-[procedure](../packaging.md#cratesio-publication) describes the workflow.
+2026-11-03, which also prepares the `0.2.1` patch release. **Nothing was tagged or
+published, no crates.io credential was used, and the OIDC-only workflow has not run
+on GitHub.** The [procedure](../packaging.md#cratesio-publication) describes the
+workflow, and [Open steps](#open-steps) lists what remains.
 
 ## Configuration
 
@@ -62,13 +63,56 @@ published and immutable versions, a missing crate with no token fallback, a plan
 that is not `trusted`, a missing credential, and `id-token: write` in the
 `publish` job only. It mocks crates.io, GitHub and Cargo.
 
-The Rust crates, the build script and the CI matrix are unchanged, so the PR and
-Main `scripts/ci.py build` tiers were not run locally. Full CI was not run locally.
+## Release 0.2.1
+
+Both crates and `Cargo.lock` are `0.2.1`, and `opentlv` requires exactly
+`opentlv-sys` `0.2.1`; the Core lock is unchanged. `release.version_for('v0.2.1')`
+accepts the real manifests, lock and release notes. These ran on WSL Ubuntu 24.04 with
+Rust 1.99.1 and the local `gh` stand-in of the
+[registry build validation](registry-builds.md#method), from the uncommitted tree:
+
+| Command | Result |
+| --- | --- |
+| `scripts/ci.py build --tier pr --configuration linux-stable` | Passed in 766 s: 300 and 277 tests, 10 examples, 171 Query fixtures with 2,133 native executions, attested `verified-source` Core `0.8.0` |
+| `scripts/ci.py build --tier main --configuration linux-stable` | Passed in 184 s |
+| `cargo package --workspace --locked --no-verify` | Both archives have the file lists of the published `0.2.0` archives, 33 and 77 files |
+
+Compared with the `0.2.0` archives downloaded from crates.io, the `0.2.1` archives
+differ only in the version in `Cargo.toml`, `Cargo.toml.orig` and `Cargo.lock`, the
+`opentlv-sys` checksum in the `opentlv` lock, `.cargo_vcs_info.json`, and the new
+`0.2.1` row of the Core table in the `opentlv-sys` README. Every source, build script
+and Core selection file is identical, so the public API, features and linking are
+unchanged. The release archives come from Full CI on the release commit, so these
+local digests are not release evidence.
+
+Full CI, including the Linux, Windows and macOS consumer builds, was not run
+locally.
 
 ## Not verified
 
-- A real publication through GitHub OIDC from a `workflow_dispatch` run. It is
-  deferred to the next legitimate Rust release; no release is made only to test it.
+- A real publication through GitHub OIDC from a `workflow_dispatch` run. It waits
+  for the publication of `0.2.1`, a real patch release; no release is made only to
+  test it.
 - The rejection of an API token by *Require trusted publishing for all new
   versions*.
 - The `auth` step against the configured trusted publishers.
+
+## Open steps
+
+Each is made by a maintainer after review, in this order. Issue #45 closes only
+after step 5:
+
+1. Merge this change, with the changelog closed under `## [0.2.1] - 2026-11-03`. If
+   the release happens on a later day, correct the date before merging.
+2. Wait for Rust Main CI on that commit, and keep `main` there until the publication.
+3. Dispatch `Rust Release` with `tag: v0.2.1`. It runs Full CI on the release
+   commit, then attests and publishes the GitHub release.
+4. Dispatch `Rust crates.io` with `tag: v0.2.1`, review the plan, which must show
+   `auth: trusted`, and approve the `crates-io` environment.
+5. Record below the release and workflow run links, the `auth` step result, the
+   published digests, the `verify-registry` and `verify-consumers` results, and the
+   crates.io and docs.rs URLs.
+
+## Publication
+
+Not done yet.

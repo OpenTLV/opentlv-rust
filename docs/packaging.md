@@ -24,7 +24,7 @@ the root `Cargo.toml`:
 
 | Field | Value |
 | --- | --- |
-| `version` | `0.2.0` |
+| `version` | `0.2.1` |
 | `edition` | `2021` |
 | `rust-version` | `1.82` |
 | `license` | `MIT` |
@@ -61,7 +61,7 @@ The Rust bindings have their own version, independent of OpenTLV Core:
 `opentlv` depends on exactly the `opentlv-sys` version it is released with:
 
 ```toml
-opentlv-sys = { version = "=0.2.0", path = "../opentlv-sys", default-features = false }
+opentlv-sys = { version = "=0.2.1", path = "../opentlv-sys", default-features = false }
 ```
 
 The exact requirement is deliberate. `links = "tlv"` permits only one
@@ -81,6 +81,7 @@ which is part of the package:
 | --- | --- | --- | --- |
 | 0.1.0 | 0.8.0 | `345c77acb29266036df5f27d04ce315bb61853cc` | v0.8.0 |
 | 0.2.0 | 0.8.0 | `345c77acb29266036df5f27d04ce315bb61853cc` | v0.8.0 |
+| 0.2.1 | 0.8.0 | `345c77acb29266036df5f27d04ce315bb61853cc` | v0.8.0 |
 
 The packages do not contain Core. A build from an archive selects Core exactly
 as a build from the repository does, as described in the
@@ -184,7 +185,7 @@ versioned release notes are the publication text and are included in the
 hashed CI definitions. No crates.io credentials or uploads are involved.
 
 1. Review and merge the release preparation. Wait for successful Rust Main CI
-   on that exact commit. Dispatch `Rust Release` on `main` with `tag: v0.2.0`.
+   on that exact commit. Dispatch `Rust Release` on `main` with `tag: v0.2.1`.
 2. The workflow rejects a foreign, dirty or non-main checkout, a changed main
    tip, an existing tag/release, wrong versions or missing Main evidence.
    It runs Full CI with `require_verified_core: true`: all seven configurations,
@@ -192,8 +193,8 @@ hashed CI definitions. No crates.io credentials or uploads are involved.
 3. Assembly revalidates every record against the current commit, run, attempt,
    Core lock and source hashes. It copies the exact two Linux stable packages
    whose digests the Full record contains. It does not rebuild them.
-4. The workflow attests all five assets: `opentlv-sys-0.2.0.crate`,
-   `opentlv-0.2.0.crate`, `release-manifest.json`, `release-notes.md` and
+4. The workflow attests all five assets: `opentlv-sys-0.2.1.crate`,
+   `opentlv-0.2.1.crate`, `release-manifest.json`, `release-notes.md` and
    `SHA256SUMS`. Publication rechecks evidence, checksums, attestations and
    unused tag status, then creates the tag and a draft release. Only after the
    uploaded asset names, sizes, SHA-256 digests, notes and tag commit match
@@ -215,14 +216,14 @@ the exact registry dependency back to the extracted raw crate:
 
 ```toml
 [dependencies]
-opentlv = { path = "vendor/opentlv-0.2.0" }
+opentlv = { path = "vendor/opentlv-0.2.1" }
 
 [patch.crates-io]
-opentlv-sys = { path = "vendor/opentlv-sys-0.2.0" }
+opentlv-sys = { path = "vendor/opentlv-sys-0.2.1" }
 ```
 
 The normal Core build requirements still apply. Rust's crate version is
-`0.2.0`; `opentlv::version()` should report linked Core `0.8.0`.
+`0.2.1`; `opentlv::version()` should report linked Core `0.8.0`.
 
 ### Local preparation evidence (2026-10-27)
 

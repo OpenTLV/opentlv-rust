@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Published Rust GitHub release at the current main commit (v0.2.0)
+        description: Published Rust GitHub release at the current main commit (v0.2.1)
         required: true
         type: string
 permissions:
