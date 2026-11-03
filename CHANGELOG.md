@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Finish a GitHub release whose new draft is missing from the release list read right after its creation, as happened to `v0.2.1`: `scripts/release.py publish` waits up to five minutes for exactly one release of the tag, failing at once on a duplicate, and publishes the verified draft by its release ID instead of looking it up by tag. A new dispatch of the same commit resumes an interrupted publication instead of stopping at the existing tag: it creates the missing draft for a tag at this commit, or downloads an existing draft and publishes it unchanged only when its asset listing, attestations, own Full evidence and gate, tag, version, definition hashes, Core lock, notes and crate digests match this run. A tag at another commit, a published release or prerelease, duplicate releases, a release without its tag, and a partial or mismatched draft stop the run before any write; nothing is ever overwritten, retargeted or deleted. (#45)
+- Stop resuming an existing draft whose asset list is incomplete, has duplicates or unexpected names with a clear error before anything is downloaded, instead of a `FileNotFoundError` for its missing manifest, and read the draft again by its release ID just before publication, so that a change after its verification stops the run. The regression test of a partial draft no longer depends on the platform's file order, which made it fail on Linux. (#45)
 
 ## [0.2.1] - 2026-11-03
 

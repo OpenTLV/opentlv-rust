@@ -286,7 +286,8 @@ class Payload(unittest.TestCase):
             remote = copy.deepcopy(draft)
             if corrupt:
                 remote['assets'][0]['digest'] = 'sha256:' + '0' * 64
-            replies = [remote, {'sha': IDENTITY['commit']},
+            # find_draft, the read just before publication, the tag, the public release and tag.
+            replies = [draft, remote, {'sha': IDENTITY['commit']},
                        {**self.draft(), 'draft': False}, {'sha': IDENTITY['commit']}]
             with self.subTest(corrupt=corrupt):
                 if corrupt:
@@ -309,7 +310,7 @@ class Payload(unittest.TestCase):
 
     def test_an_existing_tag_of_this_commit_gets_its_draft_without_a_new_tag(self):
         self.resume({'draft': None})
-        self.publish({'draft': None}, [self.draft(), {'sha': IDENTITY['commit']},
+        self.publish({'draft': None}, [self.draft(), self.draft(), {'sha': IDENTITY['commit']},
                                        {**self.draft(), 'draft': False}, {'sha': IDENTITY['commit']}])
         self.assertEqual(self.written('git/refs'), [])
         self.assertEqual(len(self.written('release create')), 1)
@@ -320,7 +321,7 @@ class Payload(unittest.TestCase):
         self.resume({'draft': 42})
         earlier = self.root / 'earlier'
         shutil.copytree(self.output, earlier)
-        self.publish({'draft': 42}, [self.draft(earlier), {'sha': IDENTITY['commit']},
+        self.publish({'draft': 42}, [self.draft(earlier), self.draft(earlier), {'sha': IDENTITY['commit']},
                                      {**self.draft(earlier), 'draft': False}, {'sha': IDENTITY['commit']}],
                      earlier)
         self.assertEqual(self.downloads, 5)
@@ -333,7 +334,9 @@ class Payload(unittest.TestCase):
     def test_a_mismatched_or_partial_draft_is_never_changed(self):
         self.resume({'draft': 42})
         earlier = self.root / 'earlier'
-        for kind, message in (('partial', 'asset set'), ('notes', 'Release notes changed'),
+        incomplete = 'incomplete or unexpected asset set'
+        for kind, message in (('partial', incomplete), ('duplicate', incomplete), ('extra', incomplete),
+                              ('notes', 'Release notes changed'),
                               ('digest', 'digest'), ('crate', 'checksums differ'),
                               ('state', 'not a release of this verified state'),
                               ('rebuilt', 'other crate bytes than this run tested')):
@@ -341,10 +344,17 @@ class Payload(unittest.TestCase):
             shutil.copytree(self.output, earlier)
             # Self-consistent evidence that verify_contents returns for the downloaded draft only.
             substitute = None
+            draft = self.draft(earlier)
             if kind == 'partial':
-                # An upload interrupted after three assets.
-                draft = self.draft(earlier)
-                draft['assets'] = draft['assets'][:3]
+                # An upload interrupted before the manifest and the notes.
+                draft['assets'] = [asset for asset in draft['assets']
+                                   if asset['name'] not in ('release-manifest.json', 'release-notes.md')]
+            elif kind == 'duplicate':
+                manifest = next(a for a in draft['assets'] if a['name'] == 'release-manifest.json')
+                draft['assets'] = [a for a in draft['assets'] if a['name'] != 'release-notes.md']
+                draft['assets'].append({**manifest, 'id': 99})
+            elif kind == 'extra':
+                draft['assets'].append({**draft['assets'][0], 'id': 99, 'name': 'extra.txt'})
             elif kind == 'notes':
                 (earlier / 'release-notes.md').write_bytes(b'# OpenTLV Rust v0.2.2\n\n- Other\n')
                 (earlier / 'SHA256SUMS').write_text(''.join(
@@ -360,7 +370,7 @@ class Payload(unittest.TestCase):
                 write(earlier / 'release-manifest.json', {**manifest, 'packages': {
                     name: 'c' * 64 for name in manifest['packages']}})
                 substitute = self.request
-            if kind != 'partial':
+            if kind in ('notes', 'crate', 'rebuilt'):
                 draft = self.draft(earlier)
             if kind == 'digest':
                 draft['assets'][0]['digest'] = 'sha256:' + '0' * 64
@@ -373,6 +383,28 @@ class Payload(unittest.TestCase):
             with self.subTest(kind=kind), self.assertRaisesRegex(ValueError, message), \
                     mock.patch.object(release, 'verify_contents', side_effect=contents):
                 self.publish({'draft': 42}, [draft], earlier)
+            self.assertEqual(self.written('--method') + self.written('release create'), [])
+            if message == incomplete:
+                # Checked against the listing, before anything is downloaded or read.
+                self.assertEqual(self.downloads, 0)
+
+    def test_a_draft_changed_after_its_verification_is_not_published(self):
+        self.resume({'draft': 42})
+        earlier = self.root / 'earlier'
+        shutil.copytree(self.output, earlier)
+        for change, message in (('digest', 'digest'), ('asset', 'asset set differs'),
+                                ('published', 'metadata differs')):
+            reread = self.draft(earlier)
+            if change == 'digest':
+                reread['assets'][0]['digest'] = 'sha256:' + '0' * 64
+            elif change == 'asset':
+                reread['assets'].append({**reread['assets'][0], 'id': 99, 'name': 'extra.txt'})
+            else:
+                reread['draft'] = False
+            # The draft passes every check, then differs when it is read again before publication.
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, message):
+                self.publish({'draft': 42}, [self.draft(earlier), reread], earlier)
+            self.assertEqual(self.downloads, 5)
             self.assertEqual(self.written('--method') + self.written('release create'), [])
 
     def test_a_changed_release_state_stops_before_any_write(self):

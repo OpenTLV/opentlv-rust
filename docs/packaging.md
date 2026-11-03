@@ -221,7 +221,7 @@ failure left; it never overwrites, retargets or deletes a tag, release or asset:
 | --- | --- |
 | Nothing | Creates the tag and the draft, as usual |
 | The tag at this commit, no release | Creates the draft for the existing tag |
-| The tag at this commit and one draft | Downloads the draft's assets and publishes the draft unchanged only if their names, sizes and digests match the release listing, every asset is attested by `rust-release.yml` at this commit, its own Full evidence and gate pass, its tag, version, definition hashes, Core lock and notes equal this run's, and its crates have the digests this run tested |
+| The tag at this commit and one draft | Requires exactly the five asset names, once each, before any download. Then downloads the assets and publishes the draft unchanged only if their sizes and digests match the release listing, every asset is attested by `rust-release.yml` at this commit, its own Full evidence and gate pass, its tag, version, definition hashes, Core lock and notes equal this run's, and its crates have the digests this run tested. The draft is read again just before publication and must still match |
 | The tag at another commit, a published release, a prerelease, several releases, or a release without its tag | Stops before any write |
 
 A draft that fails these checks, such as one with only some assets uploaded, stops

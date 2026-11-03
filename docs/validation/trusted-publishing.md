@@ -51,7 +51,7 @@ digests from the `SHA256SUMS` of the
 
 | Command | Result |
 | --- | --- |
-| `python -B -m unittest discover -s tests` | 179 tests passed, 41 of them in `tests/test_crates_io.py` and 21 in `tests/test_release.py` |
+| `python -B -m unittest discover -s tests` | 180 tests passed, 41 of them in `tests/test_crates_io.py` and 22 in `tests/test_release.py`; the 22 release tests also passed on WSL Ubuntu 24.04 with Python 3.12 |
 | `python -B scripts/check_quality.py` | Passed, REUSE compliant with 174/174 files |
 | `actionlint` 1.7.7 | Passed |
 
@@ -98,16 +98,25 @@ of creation, and a failed publication can be finished:
   It accepts an unused tag, or the tag of this commit with no release or one draft,
   and the request records which. A tag at another commit, a published release or
   prerelease, several releases, or a release without its tag stop the run.
-- For the tag alone, the run creates the draft. For an existing draft, it
-  downloads the five assets by asset ID and publishes the draft unchanged only if
-  the listing, attestations, own Full evidence and gate, tag, version, definition
-  hashes, Core lock, notes and crate digests match this run. Otherwise it stops
-  before any write.
+- For the tag alone, the run creates the draft. For an existing draft, it first
+  requires exactly the five asset names, once each, then downloads them by asset ID
+  and publishes the draft unchanged only if the listing, attestations, own Full
+  evidence and gate, tag, version, definition hashes, Core lock, notes and crate
+  digests match this run. Otherwise it stops before any write.
+- Every draft is read again by its release ID just before publication and must
+  still match the verified assets and state.
 
 `tests/test_release.py` covers the delayed listing, a duplicate, a missing draft, an
-existing tag without a release, a matching draft, a partial draft and drafts with
-other notes, digests, crate bytes or commit, a changed state between request and
-publication, and every rejected state.
+existing tag without a release, a matching draft, drafts with missing, duplicate or
+extra assets, which stop before any download, drafts with other notes, digests,
+crate bytes or commit, a draft that changes after its verification, a changed state
+between request and publication, and every rejected state.
+
+Hosted PR CI of the first version of this change failed in source quality: the
+partial-draft test kept the first three assets in the platform's file order, which on
+Linux left out `release-manifest.json`, so the run ended with a `FileNotFoundError`
+instead of a validation error. The asset list is now checked before any download,
+and the test names the missing assets.
 
 ## Release 0.2.2
 

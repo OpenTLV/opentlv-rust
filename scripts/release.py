@@ -236,8 +236,12 @@ def resumed_draft(release, directory, request):
     """Prove that an interrupted publication's draft is a verified release of this tested state."""
     shutil.rmtree(RESUMED, ignore_errors=True)
     RESUMED.mkdir(parents=True)
-    for asset in release.get('assets', []):
-        require(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*', asset['name']), 'Unexpected release asset name')
+    # Before any download: exactly the five assets of this run's verified payload, once each.
+    names = [asset['name'] for asset in release.get('assets', [])]
+    require(len(names) == len(set(names)) and set(names) == {p.name for p in directory.iterdir()},
+            'The existing draft has an incomplete or unexpected asset set; record it and remove it '
+            'by hand, or release a new version')
+    for asset in release['assets']:
         download(asset, RESUMED / asset['name'])
     verify_release_files(release, RESUMED, request, True)
     commit = request['identity']['commit']
@@ -270,12 +274,14 @@ def publish(directory):
         run('gh', 'release', 'create', tag, '--repo', REPOSITORY, '--verify-tag',
             '--draft', '--title', 'OpenTLV Rust ' + tag,
             '--notes-file', directory / 'release-notes.md', *sorted(directory.iterdir()))
-        release = find_draft(tag)
+        identifier = find_draft(tag)['id']
         payload = directory
     else:
         # A draft is never changed: it is published as it is, or the run stops.
-        release = api(f'repos/{REPOSITORY}/releases/{state["draft"]}')
-        payload = resumed_draft(release, directory, request)
+        identifier = state['draft']
+        payload = resumed_draft(api(f'repos/{REPOSITORY}/releases/{identifier}'), directory, request)
+    # Read again just before publication: the draft must still be exactly what was verified.
+    release = api(f'repos/{REPOSITORY}/releases/{identifier}')
     verify_published_assets(release, payload, request, True)
     require(api(f'repos/{REPOSITORY}/commits/{tag}')['sha'] == commit, 'Release tag changed')
     # By identity: a lookup by tag would depend on the release list again.
