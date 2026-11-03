@@ -5,6 +5,11 @@ Validation for [issue #39](https://github.com/OpenTLV/opentlv-rust/issues/39) on
 workflow has not run on GitHub.** The [procedure](../packaging.md#cratesio-publication)
 describes the workflow.
 
+Issue [#45](https://github.com/OpenTLV/opentlv-rust/issues/45) later removed the
+`bootstrap` path with its `CRATES_IO_BOOTSTRAP_TOKEN` secret, so the workflow now
+publishes only through Trusted Publishing; see the
+[Trusted Publishing validation](trusted-publishing.md).
+
 ## Registry support
 
 Checked against the source of the

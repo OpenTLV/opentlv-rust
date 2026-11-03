@@ -29,6 +29,7 @@ USER_AGENT = f'opentlv-rust-release (https://github.com/{REPOSITORY})'
 WORK = ROOT / 'build/crates-io'
 WAIT_SECONDS = 600
 POLL_SECONDS = 15
+RECOVERY = 'see docs/packaging.md#recovery'
 
 
 def fetch(url, missing=(404,)):
@@ -57,11 +58,13 @@ def index_entry(crate, version):
 def upload_plan(version, packages):
     """The crates still to upload, dependency first, and the credential they need."""
     uploads = []
-    first_version = False
     for crate in CRATES:
         logins = owners(crate)
-        first_version |= logins is None
-        require(logins is None or OWNER in logins, f'{crate} on crates.io is not owned by {OWNER}')
+        # Trusted Publishing cannot create a crate, and this workflow holds no API token.
+        require(logins is not None,
+                f'{crate} does not exist on crates.io, and Trusted Publishing can only publish '
+                f'new versions of an existing crate; nothing was uploaded, {RECOVERY}')
+        require(OWNER in logins, f'{crate} on crates.io is not owned by {OWNER}')
         entry = index_entry(crate, version)
         if entry is None:
             uploads.append(crate)
@@ -70,9 +73,7 @@ def upload_plan(version, packages):
             require(entry['cksum'] == packages[crate] and not entry['yanked'],
                     f'{crate} {version} is already on crates.io with other bytes or yanked; '
                     'release a new version')
-    # crates.io accepts Trusted Publishing only for a crate that already exists.
-    auth = 'none' if not uploads else 'bootstrap' if first_version else 'trusted'
-    return uploads, auth
+    return uploads, 'trusted' if uploads else 'none'
 
 
 def protected_environment():
@@ -187,7 +188,9 @@ def wait_published(crate, version, expected):
 
 
 def upload(plan, token):
-    require(token, 'Missing crates.io credential')
+    # Only a plan of this workflow's OIDC path may upload, never one of the retired bootstrap path.
+    require(plan['auth'] == 'trusted', f'The plan selects {plan["auth"]!r}, not Trusted Publishing; {RECOVERY}')
+    require(token, f'Missing crates.io credential from the Trusted Publishing token exchange; {RECOVERY}')
     cargo = publisher()
     version = plan['version']
     for crate in plan['uploads']:

@@ -32,6 +32,7 @@ path = [
     "docs/validation/registry-builds.md",
     "docs/validation/standalone-build.json",
     "docs/validation/standalone-build.md",
+    "docs/validation/trusted-publishing.md",
     "opentlv-sys/README.md",
     "opentlv-sys/core/core-artifact.json",
     "opentlv/README.md",

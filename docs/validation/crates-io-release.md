@@ -143,6 +143,11 @@ issue requires, and nothing in this repository takes them:
    and revoke the token.
 7. Record the results below, in a commit after the publication, and close the issue.
 
+Steps 4 and 6 are done: issue [#45](https://github.com/OpenTLV/opentlv-rust/issues/45)
+recorded the trusted publishers, the revoked token and the deleted secret in the
+[Trusted Publishing validation](trusted-publishing.md), and removed the token's path
+from the workflow.
+
 ## Publication
 
 Not done yet. To record: the release and workflow run links, the published digests, the

@@ -26,7 +26,7 @@ from ci_support import ROOT, digest, read  # noqa: E402
 from test_ci_contract import DEFINITIONS, IDENTITY  # noqa: E402
 import test_release  # noqa: E402
 
-VERSION = '0.2.0'
+VERSION = '0.2.1'
 SYS, SAFE = 'opentlv-sys', 'opentlv'
 PACKAGES = {SYS: 'a' * 64, SAFE: 'b' * 64}
 TOKEN = 'cio-secret'
@@ -49,18 +49,23 @@ class Plan(unittest.TestCase):
         with owned, indexed:
             return crates_io.upload_plan(VERSION, PACKAGES)
 
-    def test_first_publication_uploads_the_dependency_first_with_the_bootstrap_token(self):
-        self.assertEqual(self.plan({SYS: (None, {}), SAFE: (None, {})}), ([SYS, SAFE], 'bootstrap'))
-
-    def test_later_versions_use_trusted_publishing_only(self):
+    def test_new_versions_of_existing_crates_use_trusted_publishing_dependency_first(self):
         owner = {crates_io.OWNER, 'github:opentlv:maintainers'}
         self.assertEqual(self.plan({SYS: (owner, {}), SAFE: (owner, {})}), ([SYS, SAFE], 'trusted'))
 
+    def test_a_missing_crate_stops_before_any_upload_without_a_token_fallback(self):
+        owner = {crates_io.OWNER}
+        # The safe crate is checked in the same pass, before the dependency can be uploaded.
+        for state in ({SYS: (None, {}), SAFE: (None, {})}, {SYS: (None, {}), SAFE: (owner, {})},
+                      {SYS: (owner, {}), SAFE: (None, {})},
+                      {SYS: (owner, {VERSION: entry(SYS)}), SAFE: (None, {})}):
+            with self.subTest(state=state), \
+                    self.assertRaisesRegex(ValueError, r'does not exist on crates.io.*'
+                                                       r'nothing was uploaded.*#recovery'):
+                self.plan(state)
+
     def test_retry_uploads_only_what_is_missing_and_never_replaces(self):
         owner = {crates_io.OWNER}
-        # Interrupted first publication: the safe crate is still new and cannot use OIDC.
-        self.assertEqual(self.plan({SYS: (owner, {VERSION: entry(SYS)}), SAFE: (None, {})}),
-                         ([SAFE], 'bootstrap'))
         self.assertEqual(self.plan({SYS: (owner, {VERSION: entry(SYS)}), SAFE: (owner, {})}),
                          ([SAFE], 'trusted'))
         self.assertEqual(self.plan({SYS: (owner, {VERSION: entry(SYS)}),
@@ -75,7 +80,7 @@ class Plan(unittest.TestCase):
     def test_a_name_owned_by_someone_else_stops_before_any_upload(self):
         # The safe crate is checked in the same pass, before the dependency can be uploaded.
         with self.assertRaisesRegex(ValueError, 'opentlv on crates.io is not owned'):
-            self.plan({SYS: (None, {}), SAFE: ({'squatter'}, {})})
+            self.plan({SYS: ({crates_io.OWNER}, {}), SAFE: ({'squatter'}, {})})
 
 
 class Registry(unittest.TestCase):
@@ -98,13 +103,13 @@ class Registry(unittest.TestCase):
                 crates_io.fetch('https://example.invalid/x', missing=missing)
 
     def test_index_and_owner_formats(self):
-        lines = b'{"vers":"0.0.9","cksum":"x","yanked":false}\n{"vers":"0.2.0","cksum":"y","yanked":false}\n'
+        lines = b'{"vers":"0.0.9","cksum":"x","yanked":false}\n{"vers":"0.2.1","cksum":"y","yanked":false}\n'
         with mock.patch.object(crates_io, 'fetch', return_value=lines) as fetch:
-            self.assertEqual(crates_io.index_entry(SYS, '0.2.0')['cksum'], 'y')
+            self.assertEqual(crates_io.index_entry(SYS, '0.2.1')['cksum'], 'y')
             self.assertIsNone(crates_io.index_entry(SYS, '0.3.0'))
             self.assertEqual(fetch.call_args.args[0], 'https://index.crates.io/op/en/opentlv-sys')
         with mock.patch.object(crates_io, 'fetch', return_value=None):
-            self.assertIsNone(crates_io.index_entry(SYS, '0.2.0'))
+            self.assertIsNone(crates_io.index_entry(SYS, '0.2.1'))
             self.assertIsNone(crates_io.owners(SYS))
         users = json.dumps({'users': [{'login': 'someone', 'kind': 'user'}]}).encode()
         with mock.patch.object(crates_io, 'fetch', return_value=users):
@@ -169,7 +174,7 @@ class AttestedRelease(unittest.TestCase):
         release.assemble(self.evidence, self.output)
         self.assets = self.root / 'assets'
         self.commit = IDENTITY['commit']
-        self.remote = {'id': 42, 'html_url': 'release-url', 'tag_name': 'v0.2.0', 'draft': False,
+        self.remote = {'id': 42, 'html_url': 'release-url', 'tag_name': 'v0.2.1', 'draft': False,
                        'prerelease': False, 'body': release.NOTES.read_text(encoding='utf-8'),
                        'assets': [{'name': p.name, 'size': p.stat().st_size, 'state': 'uploaded',
                                    'digest': 'sha256:' + digest(p)} for p in self.output.iterdir()]}
@@ -179,7 +184,7 @@ class AttestedRelease(unittest.TestCase):
     def replies(self, path):
         if path.endswith('/git/ref/heads/main'):
             return {'object': {'sha': self.main_sha}}
-        if path.endswith('/commits/v0.2.0'):
+        if path.endswith('/commits/v0.2.1'):
             return {'sha': self.tag_sha}
         return self.remote
 
@@ -187,7 +192,7 @@ class AttestedRelease(unittest.TestCase):
         if args[:3] == ('gh', 'release', 'download'):
             shutil.copytree(self.output, self.assets)
 
-    def verify(self, attestations=None, definitions=DEFINITIONS, tag='v0.2.0'):
+    def verify(self, attestations=None, definitions=DEFINITIONS, tag='v0.2.1'):
         with mock.patch.object(crates_io, 'api', side_effect=self.replies), \
                 mock.patch.object(crates_io, 'run', side_effect=self.download), \
                 mock.patch.object(release, 'pages', return_value=[self.remote]), \
@@ -241,7 +246,7 @@ class AttestedRelease(unittest.TestCase):
 
     def test_attested_release_notes_must_equal_this_checkout(self):
         other = self.root / 'other-notes.md'
-        other.write_text('# OpenTLV Rust v0.2.0\n\n- Other notes\n', encoding='utf-8')
+        other.write_text('# OpenTLV Rust v0.2.1\n\n- Other notes\n', encoding='utf-8')
         with mock.patch.object(release, 'NOTES', other), \
                 self.assertRaisesRegex(ValueError, 'differs from this checkout'):
             self.verify()
@@ -250,7 +255,7 @@ class AttestedRelease(unittest.TestCase):
         with mock.patch.object(crates_io, 'api', side_effect=self.replies), \
                 mock.patch.object(release, 'pages', return_value=[]), \
                 self.assertRaisesRegex(ValueError, 'Missing or duplicate'):
-            crates_io.verified_release('v0.2.0', self.commit, self.assets)
+            crates_io.verified_release('v0.2.1', self.commit, self.assets)
 
 
 class Prepare(unittest.TestCase):
@@ -284,22 +289,22 @@ class Prepare(unittest.TestCase):
             self.addCleanup(patch.stop)
 
     def test_read_only_job_checks_the_protection_first_and_needs_no_approval(self):
-        with mock.patch.object(crates_io, 'upload_plan', return_value=([SYS, SAFE], 'bootstrap')):
-            crates_io.prepare('v0.2.0', False)
+        with mock.patch.object(crates_io, 'upload_plan', return_value=([SYS, SAFE], 'trusted')):
+            crates_io.prepare('v0.2.1', False)
         self.assertEqual(self.order, ['environment', 'release'])
         crates_io.approved_by.assert_not_called()
         plan = read(self.work / 'plan.json')
         self.assertIsNone(plan['approved_by'])
         self.assertEqual(plan['uploads'], [SYS, SAFE])
         auth, published = self.output.read_text(encoding='utf-8').splitlines()
-        self.assertEqual(auth, 'auth=bootstrap')
+        self.assertEqual(auth, 'auth=trusted')
         self.assertEqual(json.loads(published.removeprefix('published=')),
                          {'version': plan['version'], 'packages': plan['packages']})
         crates_io.check_packaged.assert_called_once()
 
     def test_protected_job_records_the_approval_and_a_complete_publication_packs_nothing(self):
         with mock.patch.object(crates_io, 'upload_plan', return_value=([], 'none')):
-            crates_io.prepare('v0.2.0', True)
+            crates_io.prepare('v0.2.1', True)
         self.assertEqual(read(self.work / 'plan.json')['approved_by'], ['marekcingel'])
         crates_io.approved_by.assert_called_once_with(IDENTITY['run_id'])
         crates_io.check_packaged.assert_not_called()
@@ -310,12 +315,12 @@ class Prepare(unittest.TestCase):
         (self.work / 'plan.json').write_text('{}', encoding='utf-8')
         crates_io.protected_environment.side_effect = ValueError('unprotected')
         with self.assertRaisesRegex(ValueError, 'unprotected'):
-            crates_io.prepare('v0.2.0', True)
+            crates_io.prepare('v0.2.1', True)
         self.assertFalse((self.work / 'plan.json').exists())
 
     def test_the_workflow_identity_is_the_publisher_not_the_release_workflow(self):
         with mock.patch.object(crates_io, 'upload_plan', return_value=([], 'none')):
-            crates_io.prepare('v0.2.0', False)
+            crates_io.prepare('v0.2.1', False)
         release.hosted_identity.assert_called_once_with(crates_io.SIGNER)
 
 
@@ -393,8 +398,16 @@ class Upload(unittest.TestCase):
         self.assertNotIn(('publish', SYS), self.events)
 
     def test_missing_credential_fails_before_the_toolchain_or_cargo(self):
-        with self.assertRaisesRegex(ValueError, 'credential'):
+        with self.assertRaisesRegex(ValueError, 'credential from the Trusted Publishing token exchange'):
             crates_io.upload(self.plan(), '')
+        self.assertEqual(self.events, [])
+        crates_io.publisher.assert_not_called()
+
+    def test_only_a_trusted_publishing_plan_can_upload(self):
+        # A plan of the retired bootstrap path, or one without uploads, never reaches Cargo.
+        for auth in ('bootstrap', 'none'):
+            with self.subTest(auth=auth), self.assertRaisesRegex(ValueError, 'not Trusted Publishing'):
+                crates_io.upload({**self.plan(), 'auth': auth}, TOKEN)
         self.assertEqual(self.events, [])
         crates_io.publisher.assert_not_called()
 
@@ -497,23 +510,23 @@ class Workflow(unittest.TestCase):
         self.assertEqual(jobs['publish']['environment']['name'], crates_io.ENVIRONMENT)
         self.assertEqual(jobs['publish']['permissions']['id-token'], 'write')
         self.assertEqual(workflow()['permissions'], {'contents': 'read'})
-        for job in jobs.values():
+        for name, job in jobs.items():
             self.assertEqual(job['permissions']['contents'], 'read')
+            if name != 'publish':
+                self.assertNotIn('id-token', job['permissions'], name)
 
-    def test_protected_job_requires_the_approval_and_stores_no_github_token_with_the_credential(self):
+    def test_protected_job_requires_the_approval_and_uploads_only_with_the_oidc_token(self):
         steps = workflow()['jobs']['publish']['steps']
         prepare = next(step for step in steps if step.get('id') == 'prepare')
         self.assertTrue(prepare['run'].endswith('crates_io.py prepare --approved'))
-        uploads = [step for step in steps if step.get('run', '').endswith('crates_io.py upload')]
-        self.assertEqual([step['if'] for step in uploads], ["steps.prepare.outputs.auth == 'trusted'",
-                                                           "steps.prepare.outputs.auth == 'bootstrap'"])
-        for step in uploads:
-            self.assertEqual(set(step['env']), {'CARGO_REGISTRY_TOKEN'})
         self.assertEqual(steps.index(prepare), 1)
-        self.assertIn('auth.outputs.token', uploads[0]['env']['CARGO_REGISTRY_TOKEN'])
-        self.assertIn('secrets.CRATES_IO_BOOTSTRAP_TOKEN', uploads[1]['env']['CARGO_REGISTRY_TOKEN'])
+        uploads = [step for step in steps if step.get('run', '').endswith('crates_io.py upload')]
+        self.assertEqual([step['if'] for step in uploads], ["steps.prepare.outputs.auth == 'trusted'"])
+        self.assertEqual(uploads[0]['env'], {'CARGO_REGISTRY_TOKEN': '${{ steps.auth.outputs.token }}'})
+        # No stored registry credential: the retired bootstrap token cannot come back unnoticed.
         text = (ROOT / crates_io.WORKFLOW).read_text(encoding='utf-8')
-        self.assertEqual(text.count('secrets.'), 1)
+        self.assertNotIn('secrets.', text)
+        self.assertNotIn('BOOTSTRAP', text.upper())
 
     def test_the_token_exchange_is_pinned_and_conditional(self):
         steps = workflow()['jobs']['publish']['steps']

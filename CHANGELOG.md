@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-11-03
+
+### Changed
+
+- Publish to crates.io only through Trusted Publishing: the `Rust crates.io` workflow drops the bootstrap upload step and references no secret, `scripts/crates_io.py prepare` stops before any upload when either crate does not exist on crates.io, pointing to the recovery procedure, and `upload` accepts only a Trusted Publishing plan with a token. The digest, attestation, approval, exact-package and post-publication checks and the `opentlv-sys`-first order are unchanged. The packaging document records the configured trusted publishers of both crates, with trusted publishing required for every new version, the revoked bootstrap token and deleted environment secret, and a recovery procedure for publisher identity mismatch, environment approval, OIDC token failure, registry propagation and partial publication that never falls back to a stored token. A real OIDC publication waits for the approved publication of `0.2.1`. (#45)
+- Prepare the `0.2.1` patch release of `opentlv-sys` and `opentlv`, the first to be published through Trusted Publishing, with the public API, Cargo features, native linking and the verified Core `v0.8.0` dependency unchanged; `opentlv` requires exactly `opentlv-sys` `0.2.1`, and the release notes, release and publication workflow inputs, packaging document and Core dependency tables name the new version. Nothing was tagged or published. (#45)
+
 ## [0.2.0] - 2026-11-01
 
 ### Changed
@@ -55,3 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Build both crates standalone against Core pinned to an exact commit, with recorded and header-validated Core identity, a development-only local Core override, and Verified Source/Binary support for locked Core releases with checksum and GitHub Artifact Attestation verification; Cargo features and native linking modes unchanged. (#2)
 - Import the existing Rust Cargo workspace from Core byte-for-byte: both crates, sources, tests, examples, FFI declarations, Cargo features and native linking unchanged, with the original guides and workflow preserved as evidence, a migration verifier against the frozen baseline, and an identical imported-source rerun of the baseline matrix in the Core build context. (#1)
 - Record the Rust migration baseline from Core: source commit, history, crate versions, Cargo features and defaults, native linking modes, supported platforms, the complete source and integration inventory, and Windows baseline build and test results, with a verifier against the pinned Core tree. No Rust sources are imported yet. (OpenTLV/opentlv#671)
+
+[0.2.1]: https://github.com/OpenTLV/opentlv-rust/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/OpenTLV/opentlv-rust/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/OpenTLV/opentlv-rust/releases/tag/v0.1.0
