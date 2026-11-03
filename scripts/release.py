@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 import re
 import shutil
+import subprocess
+import time
 import tomllib
 
 from ci_contract import (CRATES, REPOSITORY, definition_hashes, identity, lock,
@@ -17,6 +19,10 @@ from ci_timings import fetch_jobs
 WORKFLOW = '.github/workflows/rust-release.yml'
 SIGNER = REPOSITORY + '/' + WORKFLOW
 NOTES = ROOT / 'ci/release-notes.md'
+RESUMED = ROOT / 'build/resumed'
+# The release list can lag behind the creation of a draft (v0.2.1 failed on that).
+DRAFT_WAIT_SECONDS = 300
+DRAFT_POLL_SECONDS = 10
 
 
 def pages(endpoint, key=None):
@@ -61,13 +67,23 @@ def hosted_identity(workflow=SIGNER):
     return current
 
 
-def unused_tag(tag, commit):
+def release_state(tag, commit):
+    """None for an unused tag, or what an interrupted publication of this commit left behind."""
     require(api(f'repos/{REPOSITORY}/git/ref/heads/main')['object']['sha'] == commit,
             'Main moved; validate and release the new commit')
     refs = api(f'repos/{REPOSITORY}/git/matching-refs/tags/{tag}')
-    require(not any(ref['ref'] == 'refs/tags/' + tag for ref in refs), 'Tag already exists')
-    releases = pages(f'repos/{REPOSITORY}/releases')
-    require(not any(item['tag_name'] == tag for item in releases), 'Release already exists')
+    tagged = any(ref['ref'] == 'refs/tags/' + tag for ref in refs)
+    releases = [item for item in pages(f'repos/{REPOSITORY}/releases') if item['tag_name'] == tag]
+    if not tagged and not releases:
+        return None
+    # Only the tag and draft of this commit can be resumed; nothing else is ever changed.
+    require(tagged, 'A release exists without its tag')
+    require(api(f'repos/{REPOSITORY}/commits/{tag}')['sha'] == commit,
+            'Tag already exists at another commit; release a new version')
+    require(len(releases) <= 1, 'Duplicate releases for the tag')
+    require(not releases or (releases[0]['draft'] is True and releases[0]['prerelease'] is False),
+            'Release already exists')
+    return {'draft': releases[0]['id'] if releases else None}
 
 
 def check_main(run_info, commit):
@@ -100,14 +116,14 @@ def check_gate(run_id, attempt):
 def preflight(tag):
     version = version_for(tag)
     current = hosted_identity()
-    unused_tag(tag, current['commit'])
+    resume = release_state(tag, current['commit'])
     main = main_evidence(current['commit'])
     check_gate(main['run_id'], main['run_attempt'])
     core = lock(True)
     require(core['release_tag'] == 'v' + core['version'], 'Core tag/version differs')
     return {'schema': 1, 'tag': tag, 'version': version, 'identity': current,
             'definitions': definition_hashes(), 'core': core, 'main': main,
-            'notes_sha256': digest(NOTES)}
+            'notes_sha256': digest(NOTES), 'resume': resume}
 
 
 def validate_request(request):
@@ -195,31 +211,82 @@ def verify_attestations(directory, commit):
             '--signer-workflow', SIGNER, '--source-digest', commit)
 
 
+def find_draft(tag):
+    """The draft just created, the only release of its tag, waiting while the release list lags."""
+    deadline = time.monotonic() + DRAFT_WAIT_SECONDS
+    while True:
+        matches = [item for item in pages(f'repos/{REPOSITORY}/releases') if item['tag_name'] == tag]
+        require(len(matches) <= 1, 'Duplicate releases for the tag')
+        if matches:
+            require(matches[0]['draft'] is True, 'The new release is not a draft')
+            return api(f'repos/{REPOSITORY}/releases/{matches[0]["id"]}')
+        require(time.monotonic() < deadline, 'The new draft release did not appear')
+        time.sleep(DRAFT_POLL_SECONDS)
+
+
+def download(asset, path):
+    command = ['gh', 'api', '-H', 'Accept: application/octet-stream',
+               f'repos/{REPOSITORY}/releases/assets/{asset["id"]}']
+    print('+ ' + ' '.join(command), flush=True)
+    with open(path, 'wb') as output:
+        subprocess.run(command, cwd=ROOT, check=True, stdout=output)
+
+
+def resumed_draft(release, directory, request):
+    """Prove that an interrupted publication's draft is a verified release of this tested state."""
+    shutil.rmtree(RESUMED, ignore_errors=True)
+    RESUMED.mkdir(parents=True)
+    for asset in release.get('assets', []):
+        require(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*', asset['name']), 'Unexpected release asset name')
+        download(asset, RESUMED / asset['name'])
+    verify_release_files(release, RESUMED, request, True)
+    commit = request['identity']['commit']
+    verify_attestations(RESUMED, commit)
+    # Its own Full evidence and gate, then the identity of what this run has just tested.
+    earlier = verify_contents(RESUMED)
+    require(all(earlier[key] == request[key] for key in ('tag', 'version', 'definitions', 'core',
+                                                         'notes_sha256')) and
+            earlier['identity']['commit'] == commit,
+            'The existing draft is not a release of this verified state; record it and remove it '
+            'by hand, or release a new version')
+    require(read(RESUMED / 'release-manifest.json')['packages'] ==
+            read(directory / 'release-manifest.json')['packages'],
+            'The existing draft has other crate bytes than this run tested')
+    return RESUMED
+
+
 def publish(directory):
     request = verify_payload(directory)
     commit = request['identity']['commit']
+    tag = request['tag']
     verify_attestations(directory, commit)
-    # Final read before the first write; never overwrite an existing tag/release.
-    unused_tag(request['tag'], commit)
-    run('gh', 'api', '--method', 'POST', f'repos/{REPOSITORY}/git/refs',
-        '-f', 'ref=refs/tags/' + request['tag'], '-f', 'sha=' + commit)
-    run('gh', 'release', 'create', request['tag'], '--repo', REPOSITORY, '--verify-tag',
-        '--draft', '--title', 'OpenTLV Rust ' + request['tag'],
-        '--notes-file', directory / 'release-notes.md', *sorted(directory.iterdir()))
-    releases = pages(f'repos/{REPOSITORY}/releases')
-    matches = [r for r in releases if r['tag_name'] == request['tag']]
-    require(len(matches) == 1, 'Missing or duplicate draft release')
-    release = api(f'repos/{REPOSITORY}/releases/{matches[0]["id"]}')
-    verify_published_assets(release, directory, request, True)
-    require(api(f'repos/{REPOSITORY}/commits/{request["tag"]}')['sha'] == commit,
-            'Release tag changed')
-    run('gh', 'release', 'edit', request['tag'], '--repo', REPOSITORY, '--draft=false')
+    # Final read before the first write; never overwrite or retarget an existing tag or release.
+    state = release_state(tag, commit)
+    require(state == request['resume'], 'Release state changed since the request')
+    if state is None:
+        run('gh', 'api', '--method', 'POST', f'repos/{REPOSITORY}/git/refs',
+            '-f', 'ref=refs/tags/' + tag, '-f', 'sha=' + commit)
+    if state is None or state['draft'] is None:
+        run('gh', 'release', 'create', tag, '--repo', REPOSITORY, '--verify-tag',
+            '--draft', '--title', 'OpenTLV Rust ' + tag,
+            '--notes-file', directory / 'release-notes.md', *sorted(directory.iterdir()))
+        release = find_draft(tag)
+        payload = directory
+    else:
+        # A draft is never changed: it is published as it is, or the run stops.
+        release = api(f'repos/{REPOSITORY}/releases/{state["draft"]}')
+        payload = resumed_draft(release, directory, request)
+    verify_published_assets(release, payload, request, True)
+    require(api(f'repos/{REPOSITORY}/commits/{tag}')['sha'] == commit, 'Release tag changed')
+    # By identity: a lookup by tag would depend on the release list again.
+    run('gh', 'api', '--method', 'PATCH', f'repos/{REPOSITORY}/releases/{release["id"]}',
+        '-F', 'draft=false')
     release = api(f'repos/{REPOSITORY}/releases/{release["id"]}')
-    verify_published_assets(release, directory, request, False)
-    require(api(f'repos/{REPOSITORY}/commits/{request["tag"]}')['sha'] == commit,
-            'Published tag changed')
-    write(ROOT / 'build/published.json', {'url': release['html_url'], 'tag': request['tag'],
+    verify_published_assets(release, payload, request, False)
+    require(api(f'repos/{REPOSITORY}/commits/{tag}')['sha'] == commit, 'Published tag changed')
+    write(ROOT / 'build/published.json', {'url': release['html_url'], 'tag': tag,
                                         'identity': request['identity'], 'core': request['core'],
+                                        'resumed': state is not None,
                                         'assets': [a['name'] for a in release['assets']]})
     print(release['html_url'])
 

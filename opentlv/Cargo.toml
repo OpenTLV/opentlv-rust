@@ -20,7 +20,7 @@ nfc = ["opentlv-sys/nfc"]
 document = ["opentlv-sys/document"]
 
 [dependencies]
-opentlv-sys = { version = "=0.2.1", path = "../opentlv-sys", default-features = false }
+opentlv-sys = { version = "=0.2.2", path = "../opentlv-sys", default-features = false }
 
 [package.metadata.docs.rs]
 all-features = true
