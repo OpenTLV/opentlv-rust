@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2026-11-03
+
+### Changed
+
+- Prepare the `0.2.2` patch release of `opentlv-sys` and `opentlv`, the first to be published through Trusted Publishing, with the public API, Cargo features, native linking and the verified Core `v0.8.0` dependency unchanged; `opentlv` requires exactly `opentlv-sys` `0.2.2`, and the release notes, release and publication workflow inputs, packaging document and Core dependency tables name the new version. `0.2.1` was tagged at `0422708` but never published: its GitHub release stopped after creating the tag and a draft with all five assets, which stay unchanged and are never reused. (#45)
+
+### Fixed
+
+- Finish a GitHub release whose new draft is missing from the release list read right after its creation, as happened to `v0.2.1`: `scripts/release.py publish` waits up to five minutes for exactly one release of the tag, failing at once on a duplicate, and publishes the verified draft by its release ID instead of looking it up by tag. A new dispatch of the same commit resumes an interrupted publication instead of stopping at the existing tag: it creates the missing draft for a tag at this commit, or downloads an existing draft and publishes it unchanged only when its asset listing, attestations, own Full evidence and gate, tag, version, definition hashes, Core lock, notes and crate digests match this run. A tag at another commit, a published release or prerelease, duplicate releases, a release without its tag, and a partial or mismatched draft stop the run before any write; nothing is ever overwritten, retargeted or deleted. (#45)
+- Stop resuming an existing draft whose asset list is incomplete, has duplicates or unexpected names with a clear error before anything is downloaded, instead of a `FileNotFoundError` for its missing manifest, and read the draft again by its release ID just before publication, so that a change after its verification stops the run. The regression test of a partial draft no longer depends on the platform's file order, which made it fail on Linux. (#45)
+
 ## [0.2.1] - 2026-11-03
 
 ### Changed
@@ -63,6 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Import the existing Rust Cargo workspace from Core byte-for-byte: both crates, sources, tests, examples, FFI declarations, Cargo features and native linking unchanged, with the original guides and workflow preserved as evidence, a migration verifier against the frozen baseline, and an identical imported-source rerun of the baseline matrix in the Core build context. (#1)
 - Record the Rust migration baseline from Core: source commit, history, crate versions, Cargo features and defaults, native linking modes, supported platforms, the complete source and integration inventory, and Windows baseline build and test results, with a verifier against the pinned Core tree. No Rust sources are imported yet. (OpenTLV/opentlv#671)
 
+[0.2.2]: https://github.com/OpenTLV/opentlv-rust/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/OpenTLV/opentlv-rust/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/OpenTLV/opentlv-rust/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/OpenTLV/opentlv-rust/releases/tag/v0.1.0

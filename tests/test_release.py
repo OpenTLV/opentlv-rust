@@ -5,6 +5,7 @@
 import copy
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -22,8 +23,8 @@ from test_ci_contract import CHECKS, DEFINITIONS, IDENTITY, records  # noqa: E40
 
 class Preflight(unittest.TestCase):
     def test_version_and_notes_match_the_first_release(self):
-        self.assertEqual(release.version_for('v0.2.1'), '0.2.1')
-        for tag in ('v0.8.0', 'v0.7.1', '0.2.1', 'v0.2.1-rc1', 'v00.2.1', '../main'):
+        self.assertEqual(release.version_for('v0.2.2'), '0.2.2')
+        for tag in ('v0.8.0', 'v0.7.1', '0.2.2', 'v0.2.2-rc1', 'v00.2.2', '../main'):
             with self.subTest(tag=tag), self.assertRaises(ValueError):
                 release.version_for(tag)
 
@@ -57,20 +58,56 @@ class Preflight(unittest.TestCase):
                 good, {**good, 'id': 101, 'conclusion': 'failure'}]), self.assertRaises(ValueError):
             release.main_evidence(IDENTITY['commit'])
 
-    def test_unused_tag_rejects_existing_tag_draft_or_changed_main(self):
+    def state(self, refs, releases, tag_commit=IDENTITY['commit']):
         main = {'object': {'sha': IDENTITY['commit']}}
-        with mock.patch.object(release, 'api', side_effect=[main, []]), \
-                mock.patch.object(release, 'pages', return_value=[]):
-            release.unused_tag('v0.2.1', IDENTITY['commit'])
-        for refs, releases in (([{'ref': 'refs/tags/v0.2.1'}], []),
-                               ([], [{'tag_name': 'v0.2.1', 'draft': True}])):
-            with mock.patch.object(release, 'api', side_effect=[main, refs]), \
-                    mock.patch.object(release, 'pages', return_value=releases), \
-                    self.assertRaises(ValueError):
-                release.unused_tag('v0.2.1', IDENTITY['commit'])
+        with mock.patch.object(release, 'api', side_effect=[main, refs, {'sha': tag_commit}]), \
+                mock.patch.object(release, 'pages', return_value=releases):
+            return release.release_state('v0.2.2', IDENTITY['commit'])
+
+    def test_release_state_is_unused_or_an_interrupted_publication_of_this_commit(self):
+        tag = [{'ref': 'refs/tags/v0.2.2'}]
+        draft = {'id': 42, 'tag_name': 'v0.2.2', 'draft': True, 'prerelease': False}
+        other = {'id': 7, 'tag_name': 'v0.2.0', 'draft': False, 'prerelease': False}
+        self.assertIsNone(self.state([{'ref': 'refs/tags/v0.2.20'}], [other]))
+        self.assertEqual(self.state(tag, [other]), {'draft': None})
+        self.assertEqual(self.state(tag, [draft, other]), {'draft': 42})
+
+    def test_release_state_never_resumes_another_commit_or_a_public_release(self):
+        tag = [{'ref': 'refs/tags/v0.2.2'}]
+        draft = {'id': 42, 'tag_name': 'v0.2.2', 'draft': True, 'prerelease': False}
+        for name, refs, releases, commit, message in (
+                ('other commit', tag, [draft], 'b' * 40, 'another commit'),
+                ('published', tag, [{**draft, 'draft': False}], IDENTITY['commit'], 'already exists'),
+                ('prerelease', tag, [{**draft, 'prerelease': True}], IDENTITY['commit'], 'already exists'),
+                ('duplicate', tag, [draft, {**draft, 'id': 43}], IDENTITY['commit'], 'Duplicate'),
+                ('untagged draft', [], [draft], IDENTITY['commit'], 'without its tag')):
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, message):
+                self.state(refs, releases, commit)
         with mock.patch.object(release, 'api', return_value={'object': {'sha': 'b' * 40}}), \
                 self.assertRaisesRegex(ValueError, 'Main moved'):
-            release.unused_tag('v0.2.1', IDENTITY['commit'])
+            release.release_state('v0.2.2', IDENTITY['commit'])
+
+    def test_a_new_draft_is_found_although_the_release_list_lags_behind(self):
+        draft = {'id': 42, 'tag_name': 'v0.2.2', 'draft': True}
+        with mock.patch.object(release, 'pages', side_effect=[[], [], [draft]]), \
+                mock.patch.object(release, 'api', return_value={**draft, 'assets': []}) as api, \
+                mock.patch.object(release.time, 'sleep') as sleep:
+            self.assertEqual(release.find_draft('v0.2.2')['id'], 42)
+        api.assert_called_once_with(f'repos/{release.REPOSITORY}/releases/42')
+        self.assertEqual(sleep.call_count, 2)
+        clock = iter([0, 1, release.DRAFT_WAIT_SECONDS + 1])
+        with mock.patch.object(release, 'pages', return_value=[]), \
+                mock.patch.object(release.time, 'monotonic', side_effect=lambda: next(clock)), \
+                mock.patch.object(release.time, 'sleep'), \
+                self.assertRaisesRegex(ValueError, 'did not appear'):
+            release.find_draft('v0.2.2')
+        for releases, message in (([draft, {**draft, 'id': 43}], 'Duplicate'),
+                                  ([{**draft, 'draft': False}], 'not a draft')):
+            with self.subTest(message=message), mock.patch.object(release, 'pages', return_value=releases), \
+                    mock.patch.object(release.time, 'sleep') as sleep, \
+                    self.assertRaisesRegex(ValueError, message):
+                release.find_draft('v0.2.2')
+            sleep.assert_not_called()
 
     def test_gate_is_attempt_scoped_and_unique(self):
         good = {'name': 'full / checks / Rust quality gate',
@@ -92,16 +129,17 @@ class Payload(unittest.TestCase):
         self.evidence = self.root / 'evidence'
         self.output = self.root / 'release'
         self.data = records('full')
-        self.request = {'schema': 1, 'tag': 'v0.2.1', 'version': '0.2.1',
+        self.request = {'schema': 1, 'tag': 'v0.2.2', 'version': '0.2.2',
                         'identity': copy.deepcopy(IDENTITY), 'definitions': DEFINITIONS,
-                        'notes_sha256': digest(release.NOTES), 'core': release.lock(True)}
+                        'notes_sha256': digest(release.NOTES), 'core': release.lock(True),
+                        'resume': None}
         packages = self.evidence / 'packages'
         packages.mkdir(parents=True)
         for record in self.data:
             record['require_release'] = True
             if record['configuration']['id'] == 'linux-stable':
                 for crate in release.CRATES:
-                    path = packages / f'{crate}-0.2.1.crate'
+                    path = packages / f'{crate}-0.2.2.crate'
                     path.write_bytes((crate + ' tested bytes').encode())
                     record['package'][crate] = digest(path)
                 for consumer in record['consumer'].values():
@@ -181,15 +219,15 @@ class Payload(unittest.TestCase):
     def test_attestation_failure_precedes_any_publication_write(self):
         self.assemble()
         with mock.patch.object(release, 'run', side_effect=subprocess.CalledProcessError(1, 'gh')) as run, \
-                mock.patch.object(release, 'unused_tag') as unused, \
+                mock.patch.object(release, 'release_state') as state, \
                 self.assertRaises(subprocess.CalledProcessError):
             release.publish(self.output)
         self.assertEqual(run.call_args.args[1:3], ('attestation', 'verify'))
-        unused.assert_not_called()
+        state.assert_not_called()
 
     def test_remote_asset_metadata_is_checked(self):
         self.assemble()
-        published = {'tag_name': 'v0.2.1', 'draft': True, 'prerelease': False,
+        published = {'tag_name': 'v0.2.2', 'draft': True, 'prerelease': False,
                      'body': release.NOTES.read_text(encoding='utf-8'),
                      'assets': [{'name': p.name, 'size': p.stat().st_size,
                                  'state': 'uploaded', 'digest': 'sha256:' + digest(p)}
@@ -204,37 +242,178 @@ class Payload(unittest.TestCase):
             release.verify_published_assets({**published, 'assets': published['assets'][:-1]},
                                            self.output, self.request, True)
 
-    def test_publication_verifies_draft_before_making_it_public(self):
+    def draft(self, directory=None):
+        directory = directory or self.output
+        return {'id': 42, 'html_url': 'https://github.com/OpenTLV/opentlv-rust/releases/tag/v0.2.2',
+                'tag_name': 'v0.2.2', 'draft': True, 'prerelease': False,
+                'body': release.NOTES.read_text(encoding='utf-8'),
+                'assets': [{'id': index, 'name': p.name, 'size': p.stat().st_size,
+                            'state': 'uploaded', 'digest': 'sha256:' + digest(p)}
+                           for index, p in enumerate(sorted(directory.iterdir()))]}
+
+    def resume(self, state):
+        """Assembles a run whose request found this release state."""
+        self.request['resume'] = state
+        write(self.evidence / 'request.json', self.request)
         self.assemble()
-        draft = {'id': 42, 'html_url': 'https://github.com/OpenTLV/opentlv-rust/releases/tag/v0.2.1',
-                 'tag_name': 'v0.2.1', 'draft': True, 'prerelease': False,
-                 'body': release.NOTES.read_text(encoding='utf-8'),
-                 'assets': [{'name': p.name, 'size': p.stat().st_size,
-                             'state': 'uploaded', 'digest': 'sha256:' + digest(p)}
-                            for p in self.output.iterdir()]}
+
+    def publish(self, state, replies, earlier=None):
+        """Runs publish with GitHub mocked; earlier is the directory the existing draft serves."""
+        def download(asset, path):
+            path.write_bytes((earlier / asset['name']).read_bytes())
+
+        with mock.patch.object(release, 'run') as run, \
+                mock.patch.object(release, 'release_state', return_value=state), \
+                mock.patch.object(release, 'find_draft', side_effect=lambda tag: replies.pop(0)), \
+                mock.patch.object(release, 'api', side_effect=lambda path: replies.pop(0)), \
+                mock.patch.object(release, 'download', side_effect=download) as downloaded, \
+                mock.patch.object(release, 'ROOT', self.root), \
+                mock.patch.object(release, 'RESUMED', self.root / 'build/resumed'), \
+                mock.patch('builtins.print'):
+            try:
+                release.publish(self.output)
+            finally:
+                self.calls = [call.args for call in run.call_args_list]
+                self.downloads = downloaded.call_count
+
+    def written(self, kind):
+        return [args for args in self.calls if kind in ' '.join(map(str, args))]
+
+    def test_publication_verifies_draft_before_making_it_public(self):
+        self.resume(None)
         for corrupt in (False, True):
+            draft = self.draft()
             remote = copy.deepcopy(draft)
             if corrupt:
                 remote['assets'][0]['digest'] = 'sha256:' + '0' * 64
-            replies = [remote, {'sha': IDENTITY['commit']},
-                       {**draft, 'draft': False}, {'sha': IDENTITY['commit']}]
-            with self.subTest(corrupt=corrupt), mock.patch.object(release, 'run') as run, \
-                    mock.patch.object(release, 'unused_tag'), \
-                    mock.patch.object(release, 'pages', return_value=[draft]), \
-                    mock.patch.object(release, 'api', side_effect=replies), \
-                    mock.patch.object(release, 'ROOT', self.root), mock.patch('builtins.print'):
+            # find_draft, the read just before publication, the tag, the public release and tag.
+            replies = [draft, remote, {'sha': IDENTITY['commit']},
+                       {**self.draft(), 'draft': False}, {'sha': IDENTITY['commit']}]
+            with self.subTest(corrupt=corrupt):
                 if corrupt:
                     with self.assertRaisesRegex(ValueError, 'digest'):
-                        release.publish(self.output)
+                        self.publish(None, replies)
                 else:
-                    release.publish(self.output)
-                    self.assertEqual(read(self.root / 'build/published.json')['url'], draft['html_url'])
-                calls = [call.args for call in run.call_args_list]
-                self.assertTrue(all(args[1:3] == ('attestation', 'verify') for args in calls[:5]))
-                self.assertEqual(calls[5][1:4], ('api', '--method', 'POST'))
-                self.assertIn('--draft', calls[6])
-                edits = [args for args in calls if args[1:3] == ('release', 'edit')]
-                self.assertEqual(len(edits), 0 if corrupt else 1)
+                    self.publish(None, replies)
+                    published = read(self.root / 'build/published.json')
+                    self.assertEqual(published['url'], draft['html_url'])
+                    self.assertFalse(published['resumed'])
+                self.assertTrue(all(args[1:3] == ('attestation', 'verify') for args in self.calls[:5]))
+                self.assertEqual(self.calls[5][1:4], ('api', '--method', 'POST'))
+                self.assertIn('--draft', self.calls[6])
+                # Published by the identity of the verified draft, never looked up by tag again.
+                edits = self.written('--method PATCH')
+                self.assertEqual(edits, [] if corrupt else [
+                    ('gh', 'api', '--method', 'PATCH', f'repos/{release.REPOSITORY}/releases/42',
+                     '-F', 'draft=false')])
+                self.assertEqual(self.downloads, 0)
+
+    def test_an_existing_tag_of_this_commit_gets_its_draft_without_a_new_tag(self):
+        self.resume({'draft': None})
+        self.publish({'draft': None}, [self.draft(), self.draft(), {'sha': IDENTITY['commit']},
+                                       {**self.draft(), 'draft': False}, {'sha': IDENTITY['commit']}])
+        self.assertEqual(self.written('git/refs'), [])
+        self.assertEqual(len(self.written('release create')), 1)
+        self.assertEqual(len(self.written('--method PATCH')), 1)
+        self.assertTrue(read(self.root / 'build/published.json')['resumed'])
+
+    def test_a_matching_interrupted_draft_is_published_unchanged(self):
+        self.resume({'draft': 42})
+        earlier = self.root / 'earlier'
+        shutil.copytree(self.output, earlier)
+        self.publish({'draft': 42}, [self.draft(earlier), self.draft(earlier), {'sha': IDENTITY['commit']},
+                                     {**self.draft(earlier), 'draft': False}, {'sha': IDENTITY['commit']}],
+                     earlier)
+        self.assertEqual(self.downloads, 5)
+        # Its downloaded assets are attested again before anything is written.
+        self.assertEqual(len(self.written('attestation verify')), 10)
+        self.assertEqual(self.written('git/refs') + self.written('release create'), [])
+        self.assertEqual(len(self.written('--method PATCH')), 1)
+        self.assertTrue(read(self.root / 'build/published.json')['resumed'])
+
+    def test_a_mismatched_or_partial_draft_is_never_changed(self):
+        self.resume({'draft': 42})
+        earlier = self.root / 'earlier'
+        incomplete = 'incomplete or unexpected asset set'
+        for kind, message in (('partial', incomplete), ('duplicate', incomplete), ('extra', incomplete),
+                              ('notes', 'Release notes changed'),
+                              ('digest', 'digest'), ('crate', 'checksums differ'),
+                              ('state', 'not a release of this verified state'),
+                              ('rebuilt', 'other crate bytes than this run tested')):
+            shutil.rmtree(earlier, ignore_errors=True)
+            shutil.copytree(self.output, earlier)
+            # Self-consistent evidence that verify_contents returns for the downloaded draft only.
+            substitute = None
+            draft = self.draft(earlier)
+            if kind == 'partial':
+                # An upload interrupted before the manifest and the notes.
+                draft['assets'] = [asset for asset in draft['assets']
+                                   if asset['name'] not in ('release-manifest.json', 'release-notes.md')]
+            elif kind == 'duplicate':
+                manifest = next(a for a in draft['assets'] if a['name'] == 'release-manifest.json')
+                draft['assets'] = [a for a in draft['assets'] if a['name'] != 'release-notes.md']
+                draft['assets'].append({**manifest, 'id': 99})
+            elif kind == 'extra':
+                draft['assets'].append({**draft['assets'][0], 'id': 99, 'name': 'extra.txt'})
+            elif kind == 'notes':
+                (earlier / 'release-notes.md').write_bytes(b'# OpenTLV Rust v0.2.2\n\n- Other\n')
+                (earlier / 'SHA256SUMS').write_text(''.join(
+                    f'{digest(p)}  {p.name}\n' for p in sorted(earlier.iterdir())
+                    if p.name != 'SHA256SUMS'), encoding='utf-8')
+            elif kind == 'crate':
+                next(earlier.glob('*.crate')).write_bytes(b'other crate bytes')
+            elif kind == 'state':
+                # Consistent evidence of another commit, as an older tag would have.
+                substitute = {**self.request, 'identity': {**self.request['identity'], 'commit': 'b' * 40}}
+            elif kind == 'rebuilt':
+                manifest = read(earlier / 'release-manifest.json')
+                write(earlier / 'release-manifest.json', {**manifest, 'packages': {
+                    name: 'c' * 64 for name in manifest['packages']}})
+                substitute = self.request
+            if kind in ('notes', 'crate', 'rebuilt'):
+                draft = self.draft(earlier)
+            if kind == 'digest':
+                draft['assets'][0]['digest'] = 'sha256:' + '0' * 64
+
+            def contents(directory, real=release.verify_contents, substitute=substitute):
+                if substitute is None or directory != self.root / 'build/resumed':
+                    return real(directory)
+                return substitute
+
+            with self.subTest(kind=kind), self.assertRaisesRegex(ValueError, message), \
+                    mock.patch.object(release, 'verify_contents', side_effect=contents):
+                self.publish({'draft': 42}, [draft], earlier)
+            self.assertEqual(self.written('--method') + self.written('release create'), [])
+            if message == incomplete:
+                # Checked against the listing, before anything is downloaded or read.
+                self.assertEqual(self.downloads, 0)
+
+    def test_a_draft_changed_after_its_verification_is_not_published(self):
+        self.resume({'draft': 42})
+        earlier = self.root / 'earlier'
+        shutil.copytree(self.output, earlier)
+        for change, message in (('digest', 'digest'), ('asset', 'asset set differs'),
+                                ('published', 'metadata differs')):
+            reread = self.draft(earlier)
+            if change == 'digest':
+                reread['assets'][0]['digest'] = 'sha256:' + '0' * 64
+            elif change == 'asset':
+                reread['assets'].append({**reread['assets'][0], 'id': 99, 'name': 'extra.txt'})
+            else:
+                reread['draft'] = False
+            # The draft passes every check, then differs when it is read again before publication.
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, message):
+                self.publish({'draft': 42}, [self.draft(earlier), reread], earlier)
+            self.assertEqual(self.downloads, 5)
+            self.assertEqual(self.written('--method') + self.written('release create'), [])
+
+    def test_a_changed_release_state_stops_before_any_write(self):
+        self.resume(None)
+        with mock.patch.object(release, 'run') as run, \
+                mock.patch.object(release, 'release_state', return_value={'draft': 42}), \
+                self.assertRaisesRegex(ValueError, 'state changed'):
+            release.publish(self.output)
+        self.assertTrue(all(call.args[1:3] == ('attestation', 'verify') for call in run.call_args_list))
 
 
 class Workflow(unittest.TestCase):

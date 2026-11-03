@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Unused Rust tag matching Cargo and ci/release-notes.md (v0.2.1)
+        description: Rust tag matching Cargo and ci/release-notes.md, unused or interrupted at this commit (v0.2.2)
         required: true
         type: string
 permissions:

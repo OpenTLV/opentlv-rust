@@ -24,7 +24,7 @@ the root `Cargo.toml`:
 
 | Field | Value |
 | --- | --- |
-| `version` | `0.2.1` |
+| `version` | `0.2.2` |
 | `edition` | `2021` |
 | `rust-version` | `1.82` |
 | `license` | `MIT` |
@@ -61,7 +61,7 @@ The Rust bindings have their own version, independent of OpenTLV Core:
 `opentlv` depends on exactly the `opentlv-sys` version it is released with:
 
 ```toml
-opentlv-sys = { version = "=0.2.1", path = "../opentlv-sys", default-features = false }
+opentlv-sys = { version = "=0.2.2", path = "../opentlv-sys", default-features = false }
 ```
 
 The exact requirement is deliberate. `links = "tlv"` permits only one
@@ -81,7 +81,7 @@ which is part of the package:
 | --- | --- | --- | --- |
 | 0.1.0 | 0.8.0 | `345c77acb29266036df5f27d04ce315bb61853cc` | v0.8.0 |
 | 0.2.0 | 0.8.0 | `345c77acb29266036df5f27d04ce315bb61853cc` | v0.8.0 |
-| 0.2.1 | 0.8.0 | `345c77acb29266036df5f27d04ce315bb61853cc` | v0.8.0 |
+| 0.2.2 | 0.8.0 | `345c77acb29266036df5f27d04ce315bb61853cc` | v0.8.0 |
 
 The packages do not contain Core. A build from an archive selects Core exactly
 as a build from the repository does, as described in the
@@ -176,8 +176,10 @@ of every new bundled or linked dependency here and to the crate archives.
 
 ## GitHub release
 
-The manual `Rust Release` workflow accepts an unused `vMAJOR.MINOR.PATCH` tag
-matching both Cargo manifests, `Cargo.lock` and `ci/release-notes.md`.
+The manual `Rust Release` workflow accepts a `vMAJOR.MINOR.PATCH` tag matching
+both Cargo manifests, `Cargo.lock` and `ci/release-notes.md` that is unused, or
+that an [interrupted publication](#interrupted-publication) of the same commit
+left behind.
 Changes stay under `Unreleased` during development; close the changelog under
 the matching version without the tag's `v` prefix and the release date
 before dispatching the release (for example, `## [0.1.0] - 2026-10-28`). The
@@ -185,30 +187,60 @@ versioned release notes are the publication text and are included in the
 hashed CI definitions. No crates.io credentials or uploads are involved.
 
 1. Review and merge the release preparation. Wait for successful Rust Main CI
-   on that exact commit. Dispatch `Rust Release` on `main` with `tag: v0.2.1`.
+   on that exact commit. Dispatch `Rust Release` on `main` with `tag: v0.2.2`.
 2. The workflow rejects a foreign, dirty or non-main checkout, a changed main
-   tip, an existing tag/release, wrong versions or missing Main evidence.
+   tip, a tag or release that it cannot resume, wrong versions or missing Main
+   evidence.
    It runs Full CI with `require_verified_core: true`: all seven configurations,
    source quality, CodeQL, API coverage, packaging and the aggregate gate.
 3. Assembly revalidates every record against the current commit, run, attempt,
    Core lock and source hashes. It copies the exact two Linux stable packages
    whose digests the Full record contains. It does not rebuild them.
-4. The workflow attests all five assets: `opentlv-sys-0.2.1.crate`,
-   `opentlv-0.2.1.crate`, `release-manifest.json`, `release-notes.md` and
-   `SHA256SUMS`. Publication rechecks evidence, checksums, attestations and
-   unused tag status, then creates the tag and a draft release. Only after the
-   uploaded asset names, sizes, SHA-256 digests, notes and tag commit match
-   does it publish the draft and verify the public result.
+4. The workflow attests all five assets: `opentlv-sys-0.2.2.crate`,
+   `opentlv-0.2.2.crate`, `release-manifest.json`, `release-notes.md` and
+   `SHA256SUMS`. Publication rechecks evidence, checksums, attestations and the
+   tag and release state, then creates the tag and a draft release. The release
+   list can show a new draft only after a delay, so publication waits up to five
+   minutes for exactly one release of the tag. Only after the uploaded asset
+   names, sizes, SHA-256 digests, notes and tag commit match does it publish that
+   draft, by its release ID, and verify the public result.
 5. Record the published URL and exact commit, Main and Release/Full run links
    in [issue #33](https://github.com/OpenTLV/opentlv-rust/issues/33) and
    [Core epic #718](https://github.com/OpenTLV/opentlv/issues/718). Close the
    tracking only after publication and asset verification. The workflow emits
    `rust-published-<attempt>` with the URL, source and asset identities.
 
-If a failure occurs after creating a tag or draft, inspect that state before
-retrying; the workflow deliberately refuses to overwrite either. Earlier
-attempts' artifacts cannot satisfy a new attempt. A new main commit or a new
-Main run requires a new release attempt with matching evidence.
+### Interrupted publication
+
+Earlier attempts' artifacts cannot satisfy a new attempt, so a failed publication
+is finished by dispatching `Rust Release` again with the same tag while `main` is
+still at that commit. The new run repeats Full CI and continues from what the
+failure left; it never overwrites, retargets or deletes a tag, release or asset:
+
+| State left behind | What the new run does |
+| --- | --- |
+| Nothing | Creates the tag and the draft, as usual |
+| The tag at this commit, no release | Creates the draft for the existing tag |
+| The tag at this commit and one draft | Requires exactly the five asset names, once each, before any download. Then downloads the assets and publishes the draft unchanged only if their sizes and digests match the release listing, every asset is attested by `rust-release.yml` at this commit, its own Full evidence and gate pass, its tag, version, definition hashes, Core lock and notes equal this run's, and its crates have the digests this run tested. The draft is read again just before publication and must still match |
+| The tag at another commit, a published release, a prerelease, several releases, or a release without its tag | Stops before any write |
+
+A draft that fails these checks, such as one with only some assets uploaded, stops
+the run with nothing changed. Record its run, release ID and asset digests, then
+remove it by hand or release a new version. A new main commit always needs a new
+version.
+
+`v0.2.1` is such a case. [Run 41606751726](https://github.com/OpenTLV/opentlv-rust/actions/runs/41606751726)
+passed Full CI and assembly, created the tag `v0.2.1` at
+`04227084765a369012fede8269c2cbe8f83a0e05` and the draft release `432479334` with
+all five assets, then stopped with *Missing or duplicate draft release*: the
+release list it read right after the creation did not contain the new draft.
+Nothing was published on GitHub or crates.io. The fix moves `main` past the tag,
+so `v0.2.1` cannot be resumed: the tag stays where it is and is never reused or
+moved, the draft stays unpublished, and the next version is `0.2.2`. The
+[Trusted Publishing validation](validation/trusted-publishing.md#v021) records the
+evidence.
+
+### Release archives without crates.io
 
 To use GitHub release archives instead of crates.io, extract both `.crate`
 files into adjacent directories, then use a Cargo path dependency and patch
@@ -216,14 +248,14 @@ the exact registry dependency back to the extracted raw crate:
 
 ```toml
 [dependencies]
-opentlv = { path = "vendor/opentlv-0.2.1" }
+opentlv = { path = "vendor/opentlv-0.2.2" }
 
 [patch.crates-io]
-opentlv-sys = { path = "vendor/opentlv-sys-0.2.1" }
+opentlv-sys = { path = "vendor/opentlv-sys-0.2.2" }
 ```
 
 The normal Core build requirements still apply. Rust's crate version is
-`0.2.1`; `opentlv::version()` should report linked Core `0.8.0`.
+`0.2.2`; `opentlv::version()` should report linked Core `0.8.0`.
 
 ### Local preparation evidence (2026-10-27)
 

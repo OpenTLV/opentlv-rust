@@ -19,7 +19,7 @@ import crates_io  # noqa: E402
 import verify_published as verify  # noqa: E402
 
 SYS, SAFE = 'opentlv-sys', 'opentlv'
-VERSION = '0.2.1'
+VERSION = '0.2.2'
 DIGEST = 'a' * 64
 
 
