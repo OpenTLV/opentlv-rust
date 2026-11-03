@@ -49,18 +49,23 @@ class Plan(unittest.TestCase):
         with owned, indexed:
             return crates_io.upload_plan(VERSION, PACKAGES)
 
-    def test_first_publication_uploads_the_dependency_first_with_the_bootstrap_token(self):
-        self.assertEqual(self.plan({SYS: (None, {}), SAFE: (None, {})}), ([SYS, SAFE], 'bootstrap'))
-
-    def test_later_versions_use_trusted_publishing_only(self):
+    def test_new_versions_of_existing_crates_use_trusted_publishing_dependency_first(self):
         owner = {crates_io.OWNER, 'github:opentlv:maintainers'}
         self.assertEqual(self.plan({SYS: (owner, {}), SAFE: (owner, {})}), ([SYS, SAFE], 'trusted'))
 
+    def test_a_missing_crate_stops_before_any_upload_without_a_token_fallback(self):
+        owner = {crates_io.OWNER}
+        # The safe crate is checked in the same pass, before the dependency can be uploaded.
+        for state in ({SYS: (None, {}), SAFE: (None, {})}, {SYS: (None, {}), SAFE: (owner, {})},
+                      {SYS: (owner, {}), SAFE: (None, {})},
+                      {SYS: (owner, {VERSION: entry(SYS)}), SAFE: (None, {})}):
+            with self.subTest(state=state), \
+                    self.assertRaisesRegex(ValueError, r'does not exist on crates.io.*'
+                                                       r'nothing was uploaded.*#recovery'):
+                self.plan(state)
+
     def test_retry_uploads_only_what_is_missing_and_never_replaces(self):
         owner = {crates_io.OWNER}
-        # Interrupted first publication: the safe crate is still new and cannot use OIDC.
-        self.assertEqual(self.plan({SYS: (owner, {VERSION: entry(SYS)}), SAFE: (None, {})}),
-                         ([SAFE], 'bootstrap'))
         self.assertEqual(self.plan({SYS: (owner, {VERSION: entry(SYS)}), SAFE: (owner, {})}),
                          ([SAFE], 'trusted'))
         self.assertEqual(self.plan({SYS: (owner, {VERSION: entry(SYS)}),
@@ -75,7 +80,7 @@ class Plan(unittest.TestCase):
     def test_a_name_owned_by_someone_else_stops_before_any_upload(self):
         # The safe crate is checked in the same pass, before the dependency can be uploaded.
         with self.assertRaisesRegex(ValueError, 'opentlv on crates.io is not owned'):
-            self.plan({SYS: (None, {}), SAFE: ({'squatter'}, {})})
+            self.plan({SYS: ({crates_io.OWNER}, {}), SAFE: ({'squatter'}, {})})
 
 
 class Registry(unittest.TestCase):
@@ -284,7 +289,7 @@ class Prepare(unittest.TestCase):
             self.addCleanup(patch.stop)
 
     def test_read_only_job_checks_the_protection_first_and_needs_no_approval(self):
-        with mock.patch.object(crates_io, 'upload_plan', return_value=([SYS, SAFE], 'bootstrap')):
+        with mock.patch.object(crates_io, 'upload_plan', return_value=([SYS, SAFE], 'trusted')):
             crates_io.prepare('v0.2.0', False)
         self.assertEqual(self.order, ['environment', 'release'])
         crates_io.approved_by.assert_not_called()
@@ -292,7 +297,7 @@ class Prepare(unittest.TestCase):
         self.assertIsNone(plan['approved_by'])
         self.assertEqual(plan['uploads'], [SYS, SAFE])
         auth, published = self.output.read_text(encoding='utf-8').splitlines()
-        self.assertEqual(auth, 'auth=bootstrap')
+        self.assertEqual(auth, 'auth=trusted')
         self.assertEqual(json.loads(published.removeprefix('published=')),
                          {'version': plan['version'], 'packages': plan['packages']})
         crates_io.check_packaged.assert_called_once()
@@ -393,8 +398,16 @@ class Upload(unittest.TestCase):
         self.assertNotIn(('publish', SYS), self.events)
 
     def test_missing_credential_fails_before_the_toolchain_or_cargo(self):
-        with self.assertRaisesRegex(ValueError, 'credential'):
+        with self.assertRaisesRegex(ValueError, 'credential from the Trusted Publishing token exchange'):
             crates_io.upload(self.plan(), '')
+        self.assertEqual(self.events, [])
+        crates_io.publisher.assert_not_called()
+
+    def test_only_a_trusted_publishing_plan_can_upload(self):
+        # A plan of the retired bootstrap path, or one without uploads, never reaches Cargo.
+        for auth in ('bootstrap', 'none'):
+            with self.subTest(auth=auth), self.assertRaisesRegex(ValueError, 'not Trusted Publishing'):
+                crates_io.upload({**self.plan(), 'auth': auth}, TOKEN)
         self.assertEqual(self.events, [])
         crates_io.publisher.assert_not_called()
 
@@ -497,23 +510,23 @@ class Workflow(unittest.TestCase):
         self.assertEqual(jobs['publish']['environment']['name'], crates_io.ENVIRONMENT)
         self.assertEqual(jobs['publish']['permissions']['id-token'], 'write')
         self.assertEqual(workflow()['permissions'], {'contents': 'read'})
-        for job in jobs.values():
+        for name, job in jobs.items():
             self.assertEqual(job['permissions']['contents'], 'read')
+            if name != 'publish':
+                self.assertNotIn('id-token', job['permissions'], name)
 
-    def test_protected_job_requires_the_approval_and_stores_no_github_token_with_the_credential(self):
+    def test_protected_job_requires_the_approval_and_uploads_only_with_the_oidc_token(self):
         steps = workflow()['jobs']['publish']['steps']
         prepare = next(step for step in steps if step.get('id') == 'prepare')
         self.assertTrue(prepare['run'].endswith('crates_io.py prepare --approved'))
-        uploads = [step for step in steps if step.get('run', '').endswith('crates_io.py upload')]
-        self.assertEqual([step['if'] for step in uploads], ["steps.prepare.outputs.auth == 'trusted'",
-                                                           "steps.prepare.outputs.auth == 'bootstrap'"])
-        for step in uploads:
-            self.assertEqual(set(step['env']), {'CARGO_REGISTRY_TOKEN'})
         self.assertEqual(steps.index(prepare), 1)
-        self.assertIn('auth.outputs.token', uploads[0]['env']['CARGO_REGISTRY_TOKEN'])
-        self.assertIn('secrets.CRATES_IO_BOOTSTRAP_TOKEN', uploads[1]['env']['CARGO_REGISTRY_TOKEN'])
+        uploads = [step for step in steps if step.get('run', '').endswith('crates_io.py upload')]
+        self.assertEqual([step['if'] for step in uploads], ["steps.prepare.outputs.auth == 'trusted'"])
+        self.assertEqual(uploads[0]['env'], {'CARGO_REGISTRY_TOKEN': '${{ steps.auth.outputs.token }}'})
+        # No stored registry credential: the retired bootstrap token cannot come back unnoticed.
         text = (ROOT / crates_io.WORKFLOW).read_text(encoding='utf-8')
-        self.assertEqual(text.count('secrets.'), 1)
+        self.assertNotIn('secrets.', text)
+        self.assertNotIn('BOOTSTRAP', text.upper())
 
     def test_the_token_exchange_is_pinned_and_conditional(self):
         steps = workflow()['jobs']['publish']['steps']

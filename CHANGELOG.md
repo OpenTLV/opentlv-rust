@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Publish to crates.io only through Trusted Publishing: the `Rust crates.io` workflow drops the bootstrap upload step and references no secret, `scripts/crates_io.py prepare` stops before any upload when either crate does not exist on crates.io, pointing to the recovery procedure, and `upload` accepts only a Trusted Publishing plan with a token. The digest, attestation, approval, exact-package and post-publication checks and the `opentlv-sys`-first order are unchanged. The packaging document records the configured trusted publishers of both crates, with trusted publishing required for every new version, the revoked bootstrap token and deleted environment secret, and a recovery procedure for publisher identity mismatch, environment approval, OIDC token failure, registry propagation and partial publication that never falls back to a stored token. A real OIDC publication is deferred to the next release. (#45)
+
 ## [0.2.0] - 2026-11-01
 
 ### Changed

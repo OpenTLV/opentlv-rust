@@ -267,19 +267,21 @@ or hosted acceptance; a new Full run on the fix commit is still required.
 
 The manual `Rust crates.io` workflow,
 [`rust-crates-io.yml`](../.github/workflows/rust-crates-io.yml), publishes the
-crate pair of an existing GitHub release. It is the only workflow with a registry
-credential; `Rust Release` still holds none. It has no pull request, push or tag
-trigger. The [publication validation](validation/crates-io-publication.md) records
-what has and has not been exercised.
+crate pair of an existing GitHub release. It is the only workflow that can obtain a
+registry credential, and only through Trusted Publishing; `Rust Release` holds none.
+It has no pull request, push or tag trigger. The
+[publication validation](validation/crates-io-publication.md) and the
+[Trusted Publishing validation](validation/trusted-publishing.md) record what has
+and has not been exercised.
 
 ### Procedure
 
 1. Finish the [GitHub release](#github-release) of the new version, and keep `main`
    at its commit: any later commit, even a documentation change, requires a new
    version.
-2. Make the [one-time configuration](#one-time-configuration) and review the
-   [consumer requirements](#consumer-requirements). The workflow cannot check
-   these decisions for you.
+2. Check that the [one-time configuration](#one-time-configuration) is unchanged and
+   review the [consumer requirements](#consumer-requirements). The workflow cannot
+   check the crates.io settings or these decisions for you.
 3. Dispatch `Rust crates.io` on `main` with the release tag. The `prepare` job runs
    every check below without a credential and uploads
    `rust-crates-io-plan-<attempt>`, which lists the crates, digests and credential
@@ -311,8 +313,9 @@ Before any upload, `scripts/crates_io.py prepare` requires:
   the [consumer builds](#validation) of the same archive digests, with Main CI
   successful on this commit and the definition hashes, Core lock and release notes
   equal to this checkout;
-- for each crate that already exists, `marekcingel` among its crates.io owners, so
-  that a name taken by someone else stops the publication before the first upload;
+- both crates on crates.io with `marekcingel` among their owners. Trusted
+  Publishing cannot create a crate, so a missing crate, like a name taken by someone
+  else, stops the publication before the first upload;
 - for each version already on crates.io, the tested digest and no yank.
 
 Cargo cannot upload an existing archive: `cargo publish` packs the crate again.
@@ -351,18 +354,26 @@ as a docs.rs queue. For a defect, release a new version, and yank the faulty one
 
 ### Credentials
 
-crates.io accepts Trusted Publishing only for a crate that already exists, so the
-workflow selects the credential from the registry state:
+The workflow stores no registry credential. Trusted Publishing is its only way to
+upload, and crates.io requires it for every new version of both crates, so no API
+token could publish one either:
 
 | Registry state | `auth` | Credential |
 | --- | --- | --- |
-| Either crate does not exist yet | `bootstrap` | `CRATES_IO_BOOTSTRAP_TOKEN`, a secret of the environment |
-| Both crates exist | `trusted` | A 30-minute token from [`rust-lang/crates-io-auth-action`](https://github.com/rust-lang/crates-io-auth-action), which revokes it at the end of the job |
+| Both crates exist, and this version is missing from at least one | `trusted` | A 30-minute token from [`rust-lang/crates-io-auth-action`](https://github.com/rust-lang/crates-io-auth-action), exchanged for the job's GitHub OIDC token and revoked at the end of the job |
 | This version is already complete | `none` | None; the job only confirms the published bytes |
+| Either crate does not exist | | None: `prepare` fails before any upload, because Trusted Publishing cannot create a crate |
 
-Only the upload step receives the credential, without `GH_TOKEN`, and only the
-`cargo publish` call receives it from that step. Only the `publish` job has
-`id-token: write`.
+Only the `publish` job has `id-token: write`, and it starts only after the approval.
+Only the upload step receives the registry token, without `GH_TOKEN`, and only the
+`cargo publish` call receives it from that step. `scripts/crates_io.py upload`
+refuses a plan whose `auth` is not `trusted`, and a missing token, before it
+installs the toolchain or runs Cargo.
+
+The first versions, `0.2.0`, were published on 2026-11-01 with a `publish-new` API
+token, because crates.io requires one for a crate's first version. Issue
+[#45](https://github.com/OpenTLV/opentlv-rust/issues/45) revoked that token, deleted
+its environment secret and removed its path from the workflow.
 
 ### Retry and immutability
 
@@ -377,23 +388,46 @@ version.
 The `v0.1.0` archives cannot pass this workflow: its tag is not at the current
 `main` commit, and its Full evidence predates the `consumer` check.
 
+### Recovery
+
+Every failure below stops before an upload or leaves the published bytes as they
+are. Fix the cause, then re-run the `publish` job, which needs a new approval, or
+dispatch again while `main` is still at the release commit. Never store a crates.io
+API token in the repository or the environment to get past a failure: the crates
+require Trusted Publishing, and a stored token would outlive the publication it
+served.
+
+| Failure | Cause | Recovery |
+| --- | --- | --- |
+| `prepare` stops: *does not exist on crates.io* | A crate in `CRATES` has no crates.io entry: a renamed or new crate, or a deleted one | Nothing was uploaded. Trusted Publishing cannot create a crate, so a new crate name is a separate decision with its own issue, not a retry |
+| `prepare` stops: *not owned by `marekcingel`* | The crate's owners changed | Restore the owner, or change `OWNER` in a reviewed commit, which needs a new version |
+| `prepare` stops on the environment | Its reviewer, administrator bypass or branch rule changed | Restore the [configuration](#one-time-configuration). Never weaken it to let a run through |
+| `publish` waits for approval | The required reviewer has not approved | Review the plan artifact, then approve `crates-io`. A rejected or expired approval publishes nothing; dispatch again |
+| The `auth` step fails | The trusted publisher does not match the run: owner, repository, workflow file name or environment differ, or a crate lacks a publisher | Compare each crate's trusted publisher on crates.io with `OpenTLV`, `opentlv-rust`, `rust-crates-io.yml` and `crates-io`. Correct the side that changed, in both crates when a name in the workflow changes, then re-run |
+| `upload` stops: *Missing crates.io credential*, or `cargo publish` reports an authentication error | The OIDC exchange produced no token, `id-token: write` is missing, or crates.io rejected or expired the 30-minute token | Re-run the `publish` job, which requests a new OIDC token. If the error stays, check the publisher identity as above and the [crates.io status](https://status.crates.io) |
+| `upload` or `confirm` stops: *did not appear on crates.io* | The index or the download did not serve the version within 10 minutes | The upload may have succeeded. Re-run: `prepare` confirms a version that crates.io now serves with the tested bytes and uploads only what is missing. A delay never needs a new version |
+| Only `opentlv-sys` is published | A failure between the two uploads | Re-run or dispatch again while `main` is at the release commit; only `opentlv` is uploaded. If `main` has moved, publish a new version of both crates, and yank the lone `opentlv-sys` version only if it harms users |
+| *other bytes* or *yanked* | A version on crates.io differs from the tested archive | crates.io versions are immutable: release a new version |
+
 ### One-time configuration
 
-These settings live outside this repository and are made by a maintainer:
+These settings live outside this repository. A maintainer made them on 2026-11-03,
+and the [Trusted Publishing validation](validation/trusted-publishing.md) records
+them:
 
-1. In the repository settings, create the environment `crates-io` as `luarocks` is
-   configured in `opentlv-lua`: a required reviewer, administrators cannot bypass,
-   and deployment limited to the branch `main`.
-2. With the `marekcingel` crates.io account, create an API token for the first
-   publication only: scope `publish-new`, limited to `opentlv` and `opentlv-sys`,
-   with the shortest practical expiry. Store it as the **environment** secret
-   `CRATES_IO_BOOTSTRAP_TOKEN` of `crates-io`, not as a repository secret.
-3. After the first publication, add a GitHub trusted publisher in each crate's
-   crates.io settings: owner `OpenTLV`, repository `opentlv-rust`, workflow
-   `rust-crates-io.yml`, environment `crates-io`.
-4. Delete the secret and revoke the token. Add further crate owners, such as an
-   OpenTLV GitHub team, with `cargo owner`; `marekcingel` must stay an owner, or
-   `OWNER` in `scripts/crates_io.py` must change with it.
+1. The repository environment `crates-io`, configured as `luarocks` in
+   `opentlv-lua`: the required reviewer `marekcingel`, no administrator bypass and
+   deployment limited to the branch `main`. It holds no secrets.
+2. A GitHub trusted publisher in the crates.io settings of each crate: owner
+   `OpenTLV`, repository `opentlv-rust`, workflow `rust-crates-io.yml`, environment
+   `crates-io`. Renaming any of them breaks the publisher until both crates are
+   changed with it.
+3. *Require trusted publishing for all new versions* is enabled on both crates.
+4. The `0.2.0` bootstrap token is revoked, and the `marekcingel` crates.io account
+   has no other API token.
+
+Further crate owners, such as an OpenTLV GitHub team, can be added; `marekcingel`
+must stay an owner, or `OWNER` in `scripts/crates_io.py` must change with it.
 
 ## Consumer requirements
 
